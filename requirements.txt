@@ -1,0 +1,8 @@
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.3
+joblib>=1.3
+fastapi>=0.100
+uvicorn>=0.23
+# Only needed if your raw dataset is .xlsx:
+# openpyxl>=3.1

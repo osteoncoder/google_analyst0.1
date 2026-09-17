@@ -1,0 +1,332 @@
+{
+  "task": "classification",
+  "model": "Gradient Boosting",
+  "selection_metric": "validation macro_f1",
+  "features": [
+    "size_mb",
+    "price",
+    "price_is_positive",
+    "category"
+  ],
+  "n_total": 10355,
+  "n_train": 6205,
+  "n_val": 2084,
+  "n_test": 2066,
+  "candidates": {
+    "Dummy baseline (class prior)": {
+      "val": {
+        "accuracy": 0.3584452975047985,
+        "macro_f1": 0.1319321794418933,
+        "weighted_f1": 0.1891618772420236
+      },
+      "test": {
+        "accuracy": 0.34462729912875123,
+        "macro_f1": 0.12814974802015838,
+        "weighted_f1": 0.17665560617686887
+      }
+    },
+    "Logistic Regression": {
+      "val": {
+        "accuracy": 0.4904030710172745,
+        "macro_f1": 0.36076215400275125,
+        "weighted_f1": 0.46735473061359617
+      },
+      "test": {
+        "accuracy": 0.489351403678606,
+        "macro_f1": 0.3615556138642605,
+        "weighted_f1": 0.4653821098449065
+      }
+    },
+    "Decision Tree": {
+      "val": {
+        "accuracy": 0.4692898272552783,
+        "macro_f1": 0.40966274139508246,
+        "weighted_f1": 0.4687800979381269
+      },
+      "test": {
+        "accuracy": 0.4554695062923524,
+        "macro_f1": 0.35849368225341605,
+        "weighted_f1": 0.4520262522656235
+      }
+    },
+    "Random Forest": {
+      "val": {
+        "accuracy": 0.4870441458733205,
+        "macro_f1": 0.4200644134575879,
+        "weighted_f1": 0.482351593007686
+      },
+      "test": {
+        "accuracy": 0.46708615682478216,
+        "macro_f1": 0.36007519049271197,
+        "weighted_f1": 0.4578066043391838
+      }
+    },
+    "Gradient Boosting": {
+      "val": {
+        "accuracy": 0.5283109404990403,
+        "macro_f1": 0.4452775915702868,
+        "weighted_f1": 0.5133559960805241
+      },
+      "test": {
+        "accuracy": 0.5062923523717329,
+        "macro_f1": 0.38152153521313137,
+        "weighted_f1": 0.4855836572621257
+      }
+    }
+  },
+  "test_metrics": {
+    "accuracy": 0.5096805421103582,
+    "macro_f1": 0.38310410572472164,
+    "weighted_f1": 0.4875825337159154,
+    "per_class": {
+      "Under 10K": {
+        "precision": 0.5315870570107858,
+        "recall": 0.5476190476190477,
+        "f1": 0.5394839718530101,
+        "support": 630
+      },
+      "10K-1M": {
+        "precision": 0.455188679245283,
+        "recall": 0.30393700787401573,
+        "f1": 0.364494806421152,
+        "support": 635
+      },
+      "1M-100M": {
+        "precision": 0.5282631038026722,
+        "recall": 0.7219101123595506,
+        "f1": 0.6100890207715134,
+        "support": 712
+      },
+      "100M+": {
+        "precision": 0.05,
+        "recall": 0.011235955056179775,
+        "f1": 0.01834862385321101,
+        "support": 89
+      }
+    },
+    "confusion": {
+      "matrix": [
+        [
+          345,
+          137,
+          145,
+          3
+        ],
+        [
+          205,
+          193,
+          234,
+          3
+        ],
+        [
+          94,
+          91,
+          514,
+          13
+        ],
+        [
+          5,
+          3,
+          80,
+          1
+        ]
+      ],
+      "labels": [
+        "Under 10K",
+        "10K-1M",
+        "1M-100M",
+        "100M+"
+      ]
+    }
+  },
+  "rf_feature_importances": [
+    [
+      "num__size_mb",
+      0.7217618205818233
+    ],
+    [
+      "num__price",
+      0.04288638461542048
+    ],
+    [
+      "num__price_is_positive",
+      0.019387593492053146
+    ],
+    [
+      "cat__category_Medical",
+      0.015745141981819286
+    ],
+    [
+      "cat__category_Game",
+      0.014525308680911047
+    ],
+    [
+      "cat__category_Business",
+      0.012576065635139784
+    ],
+    [
+      "cat__category_Family",
+      0.010394069664807033
+    ],
+    [
+      "cat__category_Communication",
+      0.009735894070665298
+    ],
+    [
+      "cat__category_Photography",
+      0.009185883088084481
+    ],
+    [
+      "cat__category_Tools",
+      0.009126049469905832
+    ],
+    [
+      "cat__category_Productivity",
+      0.008668389507327264
+    ],
+    [
+      "cat__category_Entertainment",
+      0.007939214940672614
+    ],
+    [
+      "cat__category_Lifestyle",
+      0.00688898038790559
+    ],
+    [
+      "cat__category_Personalization",
+      0.006680607702897429
+    ],
+    [
+      "cat__category_Health And Fitness",
+      0.006678740935210258
+    ],
+    [
+      "cat__category_Education",
+      0.0064842053609224775
+    ],
+    [
+      "cat__category_Sports",
+      0.006114575272303995
+    ],
+    [
+      "cat__category_Finance",
+      0.005670257913380788
+    ],
+    [
+      "cat__category_Books And Reference",
+      0.0055034384526265285
+    ],
+    [
+      "cat__category_Social",
+      0.005436429117364893
+    ],
+    [
+      "cat__category_Dating",
+      0.005214025517619894
+    ],
+    [
+      "cat__category_News And Magazines",
+      0.005091766908506865
+    ],
+    [
+      "cat__category_Travel And Local",
+      0.0049806694449024465
+    ],
+    [
+      "cat__category_Shopping",
+      0.004763865371009086
+    ],
+    [
+      "cat__category_Art And Design",
+      0.004434645177292457
+    ],
+    [
+      "cat__category_Video Players",
+      0.004429212429004682
+    ],
+    [
+      "cat__category_Parenting",
+      0.0043964582606746015
+    ],
+    [
+      "cat__category_Maps And Navigation",
+      0.004318134529181542
+    ],
+    [
+      "cat__category_Weather",
+      0.004287298085868162
+    ],
+    [
+      "cat__category_Auto And Vehicles",
+      0.004237420767218413
+    ],
+    [
+      "cat__category_Events",
+      0.004118493916655628
+    ],
+    [
+      "cat__category_Libraries And Demo",
+      0.003989678177544567
+    ],
+    [
+      "cat__category_Food And Drink",
+      0.003816958394195509
+    ],
+    [
+      "cat__category_Comics",
+      0.0036844757303079773
+    ],
+    [
+      "cat__category_Beauty",
+      0.003575224776831461
+    ],
+    [
+      "cat__category_House And Home",
+      0.0032726216419451727
+    ]
+  ],
+  "importances_from": "Random Forest candidate",
+  "target": "install tier (4 bands)",
+  "tier_bounds": [
+    [
+      0,
+      10000,
+      "Under 10K"
+    ],
+    [
+      10000,
+      1000000,
+      "10K-1M"
+    ],
+    [
+      1000000,
+      100000000,
+      "1M-100M"
+    ],
+    [
+      100000000,
+      null,
+      "100M+"
+    ]
+  ],
+  "labels": [
+    "Under 10K",
+    "10K-1M",
+    "1M-100M",
+    "100M+"
+  ],
+  "class_counts_full_data": {
+    "Under 10K": 3150,
+    "10K-1M": 3153,
+    "1M-100M": 3573,
+    "100M+": 479
+  },
+  "dataset": {
+    "source": "data/play_store.csv",
+    "is_sample": false,
+    "rows_cleaned": 10355,
+    "md5": "725f6a903af8"
+  },
+  "version": "without_reviews",
+  "inputs_note": "Base inputs only \u2014 no Reviews (primary dashboard model)."
+}
