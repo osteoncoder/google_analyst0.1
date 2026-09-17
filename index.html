@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX &mdash; Play Store Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span><span></span></div>
+<div class="noise"></div>
+
+<div class="shell">
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">APEX</div>
+        <div class="brand-sub">Store Intelligence</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="nav-group-label">Pipeline Stages</div>
+      <ul class="nav-list">
+        <li><a href="#overview" class="active"><span class="dot"></span>Overview</a></li>
+        <li><a href="#quality"><span class="dot"></span>Quality Benchmark</a></li>
+        <li><a href="#reach"><span class="dot"></span>Global Reach</a></li>
+        <li><a href="#trajectory"><span class="dot"></span>Category Trajectory</a></li>
+        <li><a href="#expansion"><span class="dot"></span>Market Expansion</a></li>
+        <li><a href="#categories"><span class="dot"></span>Category Analysis</a></li>
+        <li><a href="#monetization"><span class="dot"></span>Monetization</a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="pipeline-tag"><span class="pulse"></span>ETL synced &middot; live dataset</div>
+    </div>
+  </aside>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+
+    <div class="topbar">
+      <div>
+        <div class="eyebrow">Google Play Store &middot; Analytics Dashboard</div>
+        <h1 class="page-title">App Ecosystem Intelligence</h1>
+        <p class="page-sub">A live view over the cleaned dataset &mdash; ratings, installs, size, revenue and category dynamics, rendered from your ETL pipeline.</p>
+      </div>
+      <div class="refresh-chip"><span id="rowCount">&mdash;</span> records &middot; last run <span id="runTime"></span></div>
+    </div>
+
+    <!-- ============ KPI STRIP ============ -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- ============ 1. QUALITY BENCHMARK ============ -->
+    <section class="viz-section" id="quality">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">01</span>App Quality Benchmark</h2>
+          <p class="section-desc">Size (MB) vs. user rating, bubble scaled by total installs &mdash; apps with &ge;1,000 installs and known size/rating only.</p>
+        </div>
+      </div>
+      <div class="card"><div id="chart1" class="plot tall"></div></div>
+    </section>
+
+    <!-- ============ 2. GLOBAL REACH ============ -->
+    <section class="viz-section" id="reach">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">02</span>Global Reach</h2>
+          <p class="section-desc">Top 5 categories by total installs, mapped to a representative market and scored by install scale tier.</p>
+        </div>
+      </div>
+      <div class="card"><div id="chart2" class="plot tall"></div></div>
+    </section>
+
+    <!-- ============ 3. TRAJECTORY ============ -->
+    <section class="viz-section" id="trajectory">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">03</span>Category Trajectory</h2>
+          <p class="section-desc">Monthly active install growth across the top 4 categories by app count, with the surge window flagged.</p>
+        </div>
+      </div>
+      <div class="card"><div id="chart3" class="plot"></div></div>
+    </section>
+
+    <!-- ============ 4. MARKET EXPANSION ============ -->
+    <section class="viz-section" id="expansion">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">04</span>Market Expansion</h2>
+          <p class="section-desc">Cumulative installs for well-rated, mid-sized apps (rating &ge; 4.0, 10&ndash;100MB) across the top 3 categories.</p>
+        </div>
+      </div>
+      <div class="card"><div id="chart4" class="plot"></div></div>
+    </section>
+
+    <!-- ============ 5. CATEGORY ANALYSIS ============ -->
+    <section class="viz-section" id="categories">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">05</span>Category Analysis</h2>
+          <p class="section-desc">Average rating against total review volume for the top 10 categories by installs &mdash; log scale to balance both axes.</p>
+        </div>
+      </div>
+      <div class="card"><div id="chart5" class="plot tall"></div></div>
+    </section>
+
+    <!-- ============ 6. MONETIZATION ============ -->
+    <section class="viz-section" id="monetization">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">06</span>Monetization Mix</h2>
+          <p class="section-desc">Average installs vs. average revenue, Free vs. Paid, across the top 3 categories by installs.</p>
+        </div>
+      </div>
+      <div class="card"><div id="chart6" class="plot tall"></div></div>
+    </section>
+
+    <div class="footer-note">
+      <strong>Data note</strong> &mdash; running on your actual 11-row dataset, cleaned through the same steps as your notebook: category casing normalized ("business" &rarr; "Business", "commics" &rarr; "Commics"), size strings parsed to MB, no Price/Type column supplied so every app is treated as Free (the Paid-side dummy fallback in chart 06 kicks in automatically). Send the fuller dataset whenever it's ready and this page scales straight to it &mdash; no logic changes needed.
+    </div>
+
+  </main>
+</div>
+
+<!-- data.js must load before charts.js: charts.js reads df_app / CATEGORIES / PURPLE_SCALE -->
+<script src="js/data.js"></script>
+<script src="js/charts.js"></script>
+</body>
+</html>
