@@ -119,7 +119,11 @@ body{
 /* ============================================================
    LAYOUT SHELL
    ============================================================ */
-.shell{ position:relative; z-index:2; display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+/* minmax(0,1fr) — a bare 1fr track has an automatic minimum of `auto`, so a
+   wide child (Plotly container, metric table) would push the column wider
+   than the viewport instead of shrinking. This is the root cause of most of
+   the right-edge overflow; `body{overflow-x:hidden}` was only hiding it. */
+.shell{ position:relative; z-index:2; display:grid; grid-template-columns:250px minmax(0,1fr); min-height:100vh; }
 
 /* ---------- SIDEBAR ---------- */
 .sidebar{
@@ -166,8 +170,31 @@ body{
 .pipeline-tag .pulse{width:6px;height:6px;border-radius:50%;background:#34d399; box-shadow:0 0 8px #34d399; animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
+/* ---------- HAMBURGER / OFF-CANVAS NAV ---------- */
+/* Desktop: the sidebar is always visible, so the toggle does not exist. */
+.nav-toggle{
+  display:none;
+  align-items:center; gap:9px;
+  margin-bottom:14px;
+  padding:8px 14px 8px 11px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-mid); background:var(--glass);
+  border:1px solid var(--border); border-radius:999px;
+  cursor:pointer; transition:border-color .2s,color .2s,background .2s;
+}
+.nav-toggle:hover{color:var(--text-hi); border-color:var(--purple); background:var(--glass-hi);}
+.nav-toggle:focus-visible{outline:2px solid var(--purple-lt); outline-offset:2px;}
+.nav-toggle-bars{display:inline-flex; flex-direction:column; gap:3px; width:15px;}
+.nav-toggle-bars i{display:block; height:1.5px; width:100%; background:currentColor; border-radius:2px;}
+.nav-backdrop{
+  position:fixed; inset:0; z-index:55;
+  background:rgba(5,4,12,.62); backdrop-filter:blur(2px);
+  border:0; padding:0;
+}
+.nav-backdrop[hidden]{display:none;}
+
 /* ---------- MAIN ---------- */
-main{padding:36px 44px 80px; max-width:1400px;}
+main{padding:36px 44px 80px; max-width:1400px; min-width:0; width:100%;}
 
 .topbar{
   display:flex; justify-content:space-between; align-items:flex-end;
@@ -225,6 +252,30 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 }
 .section-desc{color:var(--text-mid); font-size:13.5px; max-width:640px; line-height:1.55;}
 
+/* The claim stays visible; its justification lives behind a one-line
+   disclosure. Nothing is deleted — the data-integrity caveats are a
+   deliberate strength of this project, they are just no longer walls of text. */
+details.why{margin-top:10px; max-width:720px;}
+details.why > summary{
+  cursor:pointer; list-style:none;
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-low); padding:4px 10px; border:1px solid var(--border);
+  border-radius:999px; background:var(--glass);
+  transition:color .2s, border-color .2s;
+}
+details.why > summary::-webkit-details-marker{display:none;}
+details.why > summary::before{content:'+'; font-size:12px; line-height:1; color:var(--purple-neon);}
+details.why[open] > summary::before{content:'−';}
+details.why > summary:hover{color:var(--text-hi); border-color:var(--purple);}
+details.why > summary:focus-visible{outline:2px solid var(--purple-lt); outline-offset:2px;}
+details.why > div, details.why > p{
+  margin:9px 0 0; padding:12px 14px;
+  border-left:2px solid var(--purple-deep); border-radius:0 8px 8px 0;
+  background:var(--glass); color:var(--text-mid); font-size:12.5px; line-height:1.7;
+}
+details.why strong{color:var(--text-hi);}
+
 .card{
   background:linear-gradient(180deg, var(--glass-hi), var(--glass));
   border:1px solid var(--border); border-radius:var(--radius);
@@ -236,13 +287,39 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .card .plot{width:100%; height:440px;}
 .card .plot.tall{height:500px;}
 
-.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
-@media (max-width:1080px){ .grid-2{grid-template-columns:1fr;} .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+.grid-2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px;}
+/* Grid/flex children default to min-width:auto, which lets a wide table or a
+   Plotly container refuse to shrink. One rule here, instead of hunting each
+   offender every time something new is added. */
+.grid-2 > *, .kpi-grid > *, .viz-section, .card{min-width:0;}
+@media (max-width:1080px){ .grid-2{grid-template-columns:minmax(0,1fr);} .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+/* Below 1080px the sidebar leaves the grid and becomes an off-canvas drawer:
+   it no longer eats 250px of a narrow viewport, and it no longer stacks above
+   the dashboard pushing the content down a full screen. */
+@media (max-width:1080px){
+  .shell{grid-template-columns:minmax(0,1fr);}
+  .nav-toggle{display:inline-flex;}
+  .sidebar{
+    position:fixed; top:0; left:0; z-index:60;
+    width:290px; max-width:86vw; height:100vh; height:100dvh;
+    overflow-y:auto;
+    transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    background:linear-gradient(180deg, rgba(18,15,36,.97), rgba(10,9,24,.97));
+    box-shadow:0 0 0 100vmax rgba(0,0,0,0);
+  }
+  .sidebar.open{transform:translateX(0); box-shadow:24px 0 60px rgba(0,0,0,.5);}
+  main{padding:28px 24px 60px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .sidebar{transition:none;}
+}
+
 @media (max-width:760px){
-  .shell{grid-template-columns:1fr;}
-  .sidebar{position:relative; height:auto;}
-  main{padding:24px 18px 60px;}
+  main{padding:24px 16px 60px;}
   .kpi-grid{grid-template-columns:1fr 1fr;}
+  .nav-toggle-text{display:none;}
+  .nav-toggle{padding:8px 11px;}
 }
 
 .footer-note{
@@ -319,7 +396,7 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .ml-side h4{font-family:var(--font-display);font-size:13.5px;font-weight:700;margin:0 0 12px;color:var(--purple-glow);}
 .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;margin:0 0 12px;}
 .kv dt{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-low);align-self:center;}
-.kv dd{margin:0;font-size:12.5px;color:var(--text-mid);line-height:1.6;}
+.kv dd{margin:0;font-size:12.5px;color:var(--text-mid);line-height:1.6;overflow-wrap:anywhere;}
 .limit-list{margin:12px 0 0 18px;color:var(--text-mid);font-size:12.5px;line-height:1.8;}
 .limit-list li::marker{color:var(--cyan);}
 
@@ -357,6 +434,7 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .unavailable pre{
   font-family:var(--font-mono);font-size:11.5px;color:var(--cyan);background:var(--surface-2);
   border:1px solid var(--border);border-radius:10px;padding:12px 14px;line-height:1.8;
+  overflow-x:auto;                     /* a long command must not widen the page */
 }
 .unavailable .retry-btn{
   font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;

@@ -26,6 +26,21 @@ const legendV = {orientation:'v', x:1.02, y:1, font:{color:'#b1a8cf', size:11}, 
 const legendH = {orientation:'h', y:-0.22, x:0.5, font:{color:'#b1a8cf', size:11}, bgcolor:'rgba(0,0,0,0)'};
 const CONFIG = {displayModeBar:false, responsive:true};
 
+/* ---------------- WebGL capability ----------------
+   Chart 1 draws ~30,000 markers. As SVG that is ~30,000 DOM nodes, which is
+   what makes it slow; as WebGL it is one draw call per trace. Detect the
+   context once and cache it — the chart falls back to the SVG scatter it has
+   always used whenever WebGL is unavailable, so nothing can break. */
+let WEBGL_OK = null;
+function webglAvailable(){
+  if(WEBGL_OK !== null) return WEBGL_OK;
+  try{
+    const c = document.createElement('canvas');
+    WEBGL_OK = !!(c && c.getContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+  }catch(e){ WEBGL_OK = false; }
+  return WEBGL_OK;
+}
+
 function gap(el, title, bodyHTML){
   el.innerHTML = `<div class="data-gap"><h3>${title}</h3><p>${bodyHTML}</p></div>`;
 }
@@ -70,26 +85,44 @@ function renderChart1(){
     gap(el, 'No apps to plot', 'Filter requires ≥1,000 reported installs and known size and rating.');
     return;
   }
-  const cats = [...new Set(rows.map(d=>d.category))].sort();
+  // One pass to group by category — this replaces 48 filter() sweeps over the
+  // same rows, and computes each group's marker sizes in the same loop.
+  const byCat = new Map();
+  for(const d of rows){
+    let arr = byCat.get(d.category);
+    if(!arr){ arr = []; byCat.set(d.category, arr); }
+    arr.push(d);
+  }
+  const cats = [...byCat.keys()].sort();
+  const glType = webglAvailable() ? 'scattergl' : 'scatter';
   const traces = cats.map((cat,i)=>{
-    const r = rows.filter(d=>d.category===cat);
+    const r = byCat.get(cat);
     const sizes = r.map(d=>Math.sqrt(d.installs)/9);
+    // Math.max(...sizes) spreads ~30k arguments and can overflow the call
+    // stack on a big dataset — a plain loop is both safer and faster.
+    let maxSize = 0;
+    for(let k=0;k<sizes.length;k++) if(sizes[k] > maxSize) maxSize = sizes[k];
     return {
-      x:r.map(d=>d.size_mb), y:r.map(d=>d.rating), mode:'markers', type:'scatter', name:cat,
+      x:r.map(d=>d.size_mb), y:r.map(d=>d.rating), mode:'markers', type:glType, name:cat,
       marker:{
         size:sizes, sizemode:'area',
-        sizeref: 2.0*Math.max(...sizes)/(40**2), sizemin:4,
+        sizeref: 2.0*maxSize/(40**2), sizemin:4,
         color:PURPLE_SCALE[i%PURPLE_SCALE.length], opacity:0.75,
-        line:{width:1, color:'rgba(255,255,255,0.25)'},
+        // A 1px stroke on every one of ~30k markers roughly doubles the paint
+        // cost and buys almost nothing at this bubble size.
+        line:{width:0},
       },
-      customdata: r.map(d=>`${d.app}<br>Installs (band lower bound): ${d.installs.toLocaleString()}`),
+      customdata: r.map(d=>`${d.app}<br>Category: ${d.category}<br>Installs (band lower bound): ${d.installs.toLocaleString()}`),
       hovertemplate: '%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra>'+cat+'</extra>',
     };
   });
   Plotly.newPlot(el, traces, {
     ...layoutBase,
-    margin:{t:16,l:60,r:130,b:56},
-    legend:legendV,
+    // No 48-entry legend: it was drawn outside the plot area (x:1.02, right
+    // margin 130px), which is both unreadable and what pushed content towards
+    // the right edge on narrow viewports. Hover carries the category instead.
+    margin:{t:16,l:60,r:24,b:56},
+    showlegend:false,
     xaxis:{...AX, title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
     yaxis:{...AX, title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
   }, CONFIG);
@@ -288,6 +321,9 @@ function renderChart5(){
     return;
   }
   const order = [...pts].sort((a,b)=>b.sumRev-a.sumRev).map(p=>p.cat);
+  // Map the category -> rank ONCE; the old order.indexOf(p.cat) inside the
+  // colour map rescanned the array for every point (O(n²)).
+  const rank = new Map(order.map((cat,i)=>[cat,i]));
   Plotly.newPlot(el, [{
     x:pts.map(p=>p.sumRev), y:pts.map(p=>p.avg), type:'scatter', mode:'markers+text',
     text:pts.map(p=>p.cat), textposition:'top center',
@@ -295,7 +331,7 @@ function renderChart5(){
     customdata:pts.map(p=>`${p.n} app${p.n>1?'s':''} · Σ reviews ${p.sumRev.toLocaleString()} · avg rating ${p.avg.toFixed(2)} (unweighted mean of app ratings)`),
     marker:{
       size:pts.map(p=>10+3*Math.sqrt(p.n)),
-      color:pts.map(p=>PURPLE_SCALE[order.indexOf(p.cat)%PURPLE_SCALE.length]),
+      color:pts.map(p=>PURPLE_SCALE[(rank.get(p.cat)||0)%PURPLE_SCALE.length]),
       opacity:0.85, line:{width:1.5, color:'rgba(5,4,12,0.5)'},
     },
     hovertemplate:'%{text}<br>%{customdata}<br>Total reviews: %{x:,.0f}<extra></extra>',
@@ -398,11 +434,73 @@ const CHART_RENDERERS = {
   chart1: renderChart1, chart2: renderChart2, chart3: renderChart3,
   chart4: renderChart4, chart5: renderChart5, chart6: renderChart6,
 };
-function renderCharts(){
-  for(const id of Object.keys(CHART_RENDERERS)) CHART_RENDERERS[id]();
+
+/* ---------------- lazy, measured rendering ----------------
+   Rendering all six charts synchronously used to block the main thread until
+   every one of them was done: the page was unresponsive (and felt frozen
+   around whichever chart the user happened to be looking at) even though only
+   one chart was ever visible at a time. Each chart is now plotted when it
+   first comes near the viewport, with a yield so the scroll that revealed it
+   is not itself janked.
+
+   Append `?bench=1` to the URL (or set window.APEX_BENCH = true) to log the
+   per-chart Plotly timing to the console. */
+const BENCH = globalThis.APEX_BENCH === true ||
+  !!(globalThis.location && /[?&]bench=1\b/.test(globalThis.location.search || ''));
+const CHART_TIMES = {};
+const plotted = new Set();
+
+function plotChart(id){
+  if(plotted.has(id)) return;
+  plotted.add(id);
+  const now = () => (globalThis.performance && globalThis.performance.now
+    ? globalThis.performance.now() : Date.now());
+  const t0 = now();
+  try{
+    CHART_RENDERERS[id]();
+  }catch(err){
+    console.error(`[apex] ${id} failed to render`, err);
+  }
+  const dt = now() - t0;
+  CHART_TIMES[id] = Math.round(dt);
+  if(BENCH) console.log(`[apex] ${id}: ${dt.toFixed(0)} ms`);
+  return dt;
 }
-window.addEventListener('resize', ()=>{
-  document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
-    if(el && el.data) Plotly.Plots.resize(el);
+
+function renderCharts(){
+  const ids = Object.keys(CHART_RENDERERS);
+  // No IntersectionObserver (very old browser, jsdom, the test harness):
+  // fall back to rendering everything, exactly like before.
+  if(typeof IntersectionObserver === 'undefined' || typeof document.getElementById !== 'function'){
+    ids.forEach(plotChart);
+    return;
+  }
+  const io = new IntersectionObserver((entries)=>{
+    for(const entry of entries){
+      if(!entry.isIntersecting) continue;
+      io.unobserve(entry.target);
+      const id = entry.target.id;
+      // Yield first: the browser gets to paint the scroll before Plotly runs.
+      setTimeout(()=>plotChart(id), 0);
+    }
+  }, {rootMargin:'400px 0px'});        // start about a screen before it shows
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) io.observe(el);
   });
+}
+
+/* Resize: `responsive:true` already redraws on container changes; this only
+   handles window resizes, and debounces them so dragging the window edge does
+   not relayout all seven plots once per event. */
+let resizeTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
+      if(el && el.data) Plotly.Plots.resize(el);
+    });
+  }, 150);
 });
+
+globalThis.APEX_CHART_TIMES = CHART_TIMES;

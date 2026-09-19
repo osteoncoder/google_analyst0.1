@@ -887,6 +887,50 @@ function renderML(){
 /* ================================================================
    BOOTSTRAP
    ================================================================ */
+/* ---------------- off-canvas nav (below 1080px) ----------------
+   The sidebar is a drawer under the same breakpoint at which it would
+   otherwise eat a quarter of a narrow viewport. Everything here degrades
+   safely: on desktop the toggle is display:none, so nothing can get stuck. */
+const NAV_BREAKPOINT = 1080;
+
+function isDrawerLayout(){
+  return window.matchMedia ? window.matchMedia(`(max-width:${NAV_BREAKPOINT}px)`).matches
+                           : window.innerWidth <= NAV_BREAKPOINT;
+}
+
+function setNavOpen(open){
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('navBackdrop');
+  const toggle = document.getElementById('navToggle');
+  if(!sidebar) return;
+  sidebar.classList.toggle('open', open);
+  if(toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if(backdrop) backdrop.hidden = !open;
+  // Scroll-locking the body while the drawer is open would shift the layout on
+  // iOS; the drawer scrolls internally instead (overflow-y:auto).
+}
+
+function initNavToggle(){
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('navBackdrop');
+  const toggle = document.getElementById('navToggle');
+  if(!sidebar || !toggle) return;
+
+  toggle.addEventListener('click', ()=>setNavOpen(!sidebar.classList.contains('open')));
+  if(backdrop) backdrop.addEventListener('click', ()=>setNavOpen(false));
+  // Tapping a nav link must both navigate AND close the drawer.
+  sidebar.querySelectorAll('.nav-list a').forEach(a=>{
+    a.addEventListener('click', ()=>setNavOpen(false));
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') setNavOpen(false);
+  });
+  // Crossing back to the desktop layout must never leave a drawer stuck open.
+  const mq = window.matchMedia ? window.matchMedia(`(max-width:${NAV_BREAKPOINT}px)`) : null;
+  if(mq && mq.addEventListener) mq.addEventListener('change', (e)=>{ if(!e.matches) setNavOpen(false); });
+  window.addEventListener('resize', ()=>{ if(!isDrawerLayout()) setNavOpen(false); });
+}
+
 function initNav(){
   const links = document.querySelectorAll('.nav-list a');
   window.addEventListener('scroll', ()=>{
@@ -902,6 +946,7 @@ function initNav(){
 
 function bootstrap(){
   initNav();
+  initNavToggle();
   loadApps().then(({rows, source, is_sample, degraded, errors})=>{
     DF = rows;
     APP_SOURCE = source;

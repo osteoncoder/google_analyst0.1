@@ -460,6 +460,18 @@ only viewable.
 
 ---
 
+## Phase status
+
+| Phase | Status | Commits |
+|---|---|---|
+| Phase 1 — enriched features + faster training | ✅ **DONE** (2026-09-19) | `13e019f`, `4a4ea57` |
+| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose | 🔄 **IN PROGRESS** (2026-09-19) | — |
+| Phase 3 — professionalise the README | ⬜ not started | — |
+| Phase 4 — `VIVA_PREP.txt` | ⬜ not started | — |
+
+Branch `arena/01a0ba27-google-analyst0-1`. PR **#3** is open and **not merged**
+— merging it is what republishes GitHub Pages.
+
 ## Sequencing and dependencies
 
 ```
@@ -469,9 +481,9 @@ Phase 3 (README)      ──┘   (but 3 should come after 1 so the numbers are 
 Phase 4 (viva file)   ── last: must quote the FINAL metrics
 ```
 
-- The **open decision** in §0 (adopt enriched features?) should be settled
-  before or during Phase 1, since it changes the metrics that Phases 3 and 4
-  quote.
+- ~~The **open decision** in §0 (adopt enriched features?)~~ **RESOLVED** —
+  adopted, shipped as Gradient Boosting (§0 + Phase 1). The metrics Phases 3
+  and 4 quote are final: M2-B 0.7682 / 0.5440, M1 R² +0.0711.
 - Phase 2's chart refactor touches `tests/smoke_frontend.js` assertions
   (48 traces → 1). Update those assertions deliberately.
 
@@ -480,8 +492,8 @@ Phase 4 (viva file)   ── last: must quote the FINAL metrics
 1. `git checkout arena/01a0ba27-google-analyst0-1 && git pull`
 2. Confirm state: `node tests/browser_inference.test.js` and
    `node tests/smoke_frontend.js` must both print `ALL CHECKS PASSED`.
-3. Start from the **Phase 0 open decision**, then take phases in the order
-   above. Each phase is independently shippable — commit and push at the end
+3. Start from the **Phase status** table above, then take phases in the order
+   given. Each phase is independently shippable — commit and push at the end
    of each one rather than batching.
 4. Scratch experiments live in `/tmp` (`/tmp/feat`, `/tmp/feat3`) and are
    **not** persisted — they hold the enriched-feature patches and the measured

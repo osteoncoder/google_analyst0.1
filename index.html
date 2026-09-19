@@ -16,7 +16,7 @@
 
 <div class="shell">
   <!-- ============ SIDEBAR ============ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="brand-mark">A</div>
       <div>
@@ -52,11 +52,20 @@
     </div>
   </aside>
 
+  <!-- Off-canvas backdrop: click-outside closes the menu (keyboard Escape too). -->
+  <div class="nav-backdrop" id="navBackdrop" aria-hidden="true" hidden></div>
+
   <!-- ============ MAIN ============ -->
   <main>
 
     <div class="topbar" id="overview">
       <div>
+        <!-- Below 1080px the sidebar is off-canvas; this is the only way in. -->
+        <button type="button" class="nav-toggle" id="navToggle"
+                aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">
+          <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="nav-toggle-text">Menu</span>
+        </button>
         <div class="eyebrow">Google Play Store &middot; Analytics Dashboard</div>
         <h1 class="page-title">App Ecosystem Intelligence</h1>
         <p class="page-sub">A live view over the cleaned dataset &mdash; ratings, reported installs, size and
@@ -73,11 +82,20 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">01</span>App Quality Benchmark</h2>
-          <p class="section-desc">Size (MB) vs. user rating, bubble area &prop; reported installs (band lower
-          bound) &mdash; apps with &ge;1,000 reported installs and known size/rating only.</p>
+          <p class="section-desc">Size (MB) vs. user rating; bubble area &prop; reported installs.</p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Installs are a <strong>band lower bound</strong>, not an exact download count
+            &mdash; the bubble area is therefore a floor, not a measured volume. Only apps with
+            &ge;1,000 reported installs and a known size and rating are plotted.</div>
+          </details>
         </div>
       </div>
-      <div class="card"><div id="chart1" class="plot tall"></div></div>
+      <div class="card">
+        <div id="chart1" class="plot tall"></div>
+        <p class="chart-note">Each bubble is one app. Colour groups apps by
+        category (48 of them — a legend that long is unreadable, so hover any
+        bubble for its name, category and install band).</p>
+      </div>
     </section>
 
     <!-- ============ 2. FEATURE CORRELATION (was fabricated "Global Reach") ============ -->
@@ -85,9 +103,13 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">02</span>Feature Correlation</h2>
-          <p class="section-desc">Pearson correlation matrix over the genuine numeric columns of the cleaned
-          dataset &mdash; Reviews and Installs are log1p-transformed (heavy right skew). The dataset contains
-          no location column, so the original map was removed. Correlation is association, not causation.</p>
+          <p class="section-desc">Pearson correlation over the genuine numeric columns.
+          <strong>Correlation is association, not causation.</strong></p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Reviews and Installs are log1p-transformed (heavy right skew). The dataset
+            contains <strong>no location column</strong>, so the original choropleth map was
+            removed rather than drawn from invented geography.</div>
+          </details>
         </div>
       </div>
       <div class="card">
@@ -101,9 +123,12 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">03</span>Apps by Last-Updated Month</h2>
-          <p class="section-desc">Apps grouped by the month of their <em>latest</em> update and category.
-          This is a snapshot distribution of each app&rsquo;s most recent update date &mdash; not a complete
-          update history and not a monthly install history.</p>
+          <p class="section-desc">Apps grouped by the month of their <em>latest</em> update and category.</p>
+          <details class="why"><summary>What this does not claim</summary>
+            <div>A snapshot distribution of each app&rsquo;s most recent update date &mdash;
+            <strong>not</strong> a complete update history and <strong>not</strong> a monthly
+            install history. Only rows whose Last Updated field parsed to a real date are counted.</div>
+          </details>
         </div>
       </div>
       <div class="card"><div id="chart3" class="plot"></div></div>
@@ -114,9 +139,12 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">04</span>Rating Distribution</h2>
-          <p class="section-desc">Histogram of app ratings (all apps with a valid 1&ndash;5 rating), bin width
-          0.25. The original &ldquo;cumulative installs&rdquo; growth curve was a fixed multipliers projection
-          with no date data behind it, so it was replaced by this directly observed distribution.</p>
+          <p class="section-desc">Histogram of app ratings (1&ndash;5), bin width 0.25.</p>
+          <details class="why"><summary>Why this replaced the growth curve</summary>
+            <div>The original &ldquo;cumulative installs&rdquo; chart was a fixed-multipliers projection
+            with no date data behind it. This is a directly observed distribution instead.
+            Apps whose rating is missing (unrated listings) are excluded, never counted as 0.</div>
+          </details>
         </div>
       </div>
       <div class="card"><div id="chart4" class="plot"></div></div>
@@ -127,9 +155,14 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">05</span>Category Analysis</h2>
-          <p class="section-desc">One point per category: total review volume (x, log scale, zero-safe) vs.
-          average rating (y). Averages are the unweighted mean of the category&rsquo;s app ratings; totals are
-          sums of review counts. Ratings and review counts no longer share one axis.</p>
+          <p class="section-desc">One point per category: total review volume (x, log scale) vs.
+          average rating (y).</p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Averages are the <strong>unweighted mean of the category&rsquo;s app ratings</strong>;
+            totals are sums of review counts. Ratings and review counts no longer share one axis
+            (the original did, which made the two incomparable scales look related). Categories with
+            zero total reviews are excluded from the log axis.</div>
+          </details>
         </div>
       </div>
       <div class="card">
@@ -143,9 +176,13 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">06</span>Pricing Mix</h2>
-          <p class="section-desc">Free vs. paid app counts (and mean listed price where a Price column exists).
-          Listed price is a price tag, <strong>not observed revenue</strong> &mdash; no revenue is estimated
-          anywhere in this dashboard. Legitimate $0.00 prices are preserved, never imputed.</p>
+          <p class="section-desc">Free vs. paid app counts, and mean listed price.</p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Listed price is a price tag, <strong>not observed revenue</strong> &mdash; no revenue
+            is estimated anywhere in this dashboard. Legitimate $0.00 prices are preserved, never
+            imputed to a non-zero value, and a dataset with no Price column at all is reported as
+            unknown rather than assumed to be all-free.</div>
+          </details>
         </div>
       </div>
       <div class="card">
@@ -161,15 +198,17 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">07</span>Rating Predictor</h2>
-          <p class="section-desc">M1 regression: app profile (category, size, price, review volume) &rarr;
-          expected average rating. Inference uses the <em>saved</em> scikit-learn preprocessing + model
-          pipeline &mdash; nothing is retrained per request. It runs on the FastAPI backend when
-          <code>app.py</code> is serving, and otherwise in this page via
-          <code>ml_inference.js</code> (the same pipeline exported to
-          <code>ml/artifacts/browser/models.js</code>); the result always says which one answered.
-          The form asks for only what a user can know; the model's other inputs (content rating,
-          app age, time since the last update, developer portfolio size…) are imputed to their
-          training medians, and every imputation is listed with the value used.</p>
+          <p class="section-desc">M1 regression: app profile &rarr; expected average rating.
+          Runs on the FastAPI backend when <code>app.py</code> is serving, otherwise in this page
+          via <code>ml_inference.js</code> &mdash; the result always says which one answered.</p>
+          <details class="why"><summary>How inference works &amp; what is assumed</summary>
+            <div>Inference uses the <em>saved</em> scikit-learn preprocessing + model pipeline
+            &mdash; nothing is retrained per request. The form asks for only what a user can know;
+            the model's other inputs (content rating, app age, time since the last update,
+            developer portfolio size) are imputed to their training medians, and
+            <strong>every imputation is listed with the value used</strong> under the result.
+            Predicted ratings are clipped to the rating domain [1, 5] and say so when clipped.</div>
+          </details>
         </div>
       </div>
       <div class="card grid-2">
@@ -199,13 +238,16 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">08</span>Install-Tier Classifier</h2>
-          <p class="section-desc">M2 four-class classifier (primary version <strong>excludes Reviews</strong>,
-          a strong proxy for installs). Inputs available at prediction time: category, size, price,
-          content rating, minimum Android, and the ad / in-app-purchase / Editors' Choice flags.
-          App age, days since last update and developer portfolio size are imputed to their
-          training medians — every imputation is stated, with the value used, under the result.
-          Probabilities are model estimates, not guarantees. Like section 07, this works with or
-          without the Python backend.</p>
+          <p class="section-desc">M2 four-class classifier. The primary version
+          <strong>excludes Reviews</strong>, a strong proxy for installs.
+          Probabilities are model estimates, not guarantees.</p>
+          <details class="why"><summary>Inputs &amp; what is assumed</summary>
+            <div>Inputs at prediction time: category, size, price, content rating, minimum Android,
+            and the ad / in-app-purchase / Editors' Choice flags. App age, days since the last
+            update and developer portfolio size have no field here, so they are imputed to their
+            training medians &mdash; <strong>every imputation is stated, with the value used</strong>,
+            under the result. Like section 07, this works with or without the Python backend.</div>
+          </details>
         </div>
       </div>
       <div class="card grid-2">
@@ -279,9 +321,14 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">09</span>Model Performance</h2>
-          <p class="section-desc">Actual evaluation metrics from the reproducible training run
-          (fixed seed, grouped split, validation-based model selection, test set used once).
+          <p class="section-desc">Actual evaluation metrics from the reproducible training run.
           No tuned-to-test numbers, no placeholders.</p>
+          <details class="why"><summary>Protocol</summary>
+            <div>Fixed seed; 80/20 train/test split grouped by app name and made
+            <em>before</em> any preprocessing; 75/25 train/validation for model selection; the
+            winner is refit and the test set is used exactly once. Any candidate whose serialized
+            pipeline exceeds the 10&nbsp;MB shipping budget is excluded and shown struck out.</div>
+          </details>
         </div>
       </div>
 
@@ -321,16 +368,21 @@
     </section>
 
     <div class="footer-note">
-      <strong>Data note</strong> &mdash; dataset: <span id="footSource">loading…</span>.
-      Primary source: the MIT-licensed <em>gauthamp10/Google-Playstore-Dataset</em> scrape
-      (June 2021, 24 attributes); the committed default is a deterministic stratified sample
-      and <code>python fetch_dataset.py</code> builds the full 2,312,944-row file
-      (<code>data/raw/playstore_full.csv</code>, auto-detected by <code>clean.py</code>).
-      Cleaning follows the documented rules in <code>clean.py</code> (install bands treated as lower
-      bounds, zero prices preserved, one category typo fixed, exact duplicates removed).
-      ML: scikit-learn pipelines, seed 42, grouped train/test split; models are trained by
-      <code>python train_models.py</code> and served by <code>python app.py</code> (no retraining per request).
-      No revenue, geography, or historical trends are fabricated anywhere on this page.
+      <strong>Data note</strong> &mdash; <span id="footSource">loading…</span>.
+      Cleaning and modelling follow the documented rules in <code>clean.py</code> and
+      <code>train_models.py</code>. No revenue, geography or historical trend is
+      fabricated anywhere on this page.
+      <details class="why"><summary>Provenance &amp; pipeline</summary>
+        <div>Primary source: the MIT-licensed
+        <em>gauthamp10/Google-Playstore-Dataset</em> scrape (June 2021, 24 attributes). The
+        committed default is a deterministic stratified sample;
+        <code>python fetch_dataset.py</code> builds the full 2,312,944-row file
+        (<code>data/raw/playstore_full.csv</code>), which <code>clean.py</code> auto-detects.
+        Cleaning treats install bands as lower bounds, preserves $0 prices, fixes one
+        category typo and removes exact duplicates. ML: scikit-learn pipelines, seed 42,
+        grouped train/test split; models are trained by <code>python train_models.py</code>
+        and served by <code>python app.py</code> (no retraining per request).</div>
+      </details>
     </div>
 
   </main>

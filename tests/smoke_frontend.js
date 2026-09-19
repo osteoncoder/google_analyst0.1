@@ -48,10 +48,16 @@ class El {
       contains(c) { return self.classList._s.has(c); },
     };
     this.parentElement = { innerHTML: '', _banners: '', insertAdjacentHTML(pos, html) { this.innerHTML += html; } };
+    this.dataset = {};
+    this.attrs = {};
   }
   addEventListener(ev, fn) { (this.listeners[ev] = this.listeners[ev] || []).push(fn); }
   insertAdjacentHTML(pos, html) { this.innerHTML += html; }
   focus() {}
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  /* Real elements return a NodeList; the tests only ever iterate it. */
+  querySelectorAll() { return { forEach() {} }; }
 }
 const docListeners = {};
 const plots = {};
@@ -359,6 +365,66 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   else fail(`browser-engine tier result missing: ${trLocal.slice(0, 200)}`);
 
   sandbox.fetch = origFetch;
+
+  /* ---------------- off-canvas nav (hamburger) ---------------- */
+  const sidebarEl = g('sidebar'), toggleEl = g('navToggle'), backdropEl = g('navBackdrop');
+  const clickToggle = () => (toggleEl.listeners['click'] || [])[0]({});
+  const pressEscape = () => (docListeners['keydown'] || []).forEach(fn => fn({ key: 'Escape' }));
+  clickToggle();
+  if (sidebarEl.classList.contains('open') && toggleEl.getAttribute('aria-expanded') === 'true'
+      && backdropEl.hidden === false)
+    ok(`nav: toggle opens the drawer (aria-expanded=true, backdrop shown)`);
+  else fail(`nav: drawer did not open (open=${sidebarEl.classList.contains('open')}, aria=${toggleEl.getAttribute('aria-expanded')})`);
+  (backdropEl.listeners['click'] || [])[0]({});
+  if (!sidebarEl.classList.contains('open') && backdropEl.hidden === true)
+    ok('nav: clicking the backdrop closes the drawer');
+  else fail('nav: backdrop click did not close the drawer');
+  clickToggle();
+  pressEscape();
+  if (!sidebarEl.classList.contains('open') && toggleEl.getAttribute('aria-expanded') === 'false')
+    ok('nav: Escape closes the drawer and resets aria-expanded');
+  else fail('nav: Escape did not close the drawer');
+
+  /* ---------------- lazy chart rendering ---------------- */
+  // Charts must be plotted at most once each, and the timings must be
+  // recorded (that is what ?bench=1 prints).
+  const plottedOnce = vm.runInContext(`(() => {
+    const before = Object.keys(APEX_CHART_TIMES).length;
+    const times0 = Object.assign({}, APEX_CHART_TIMES);
+    plotChart('chart1'); plotChart('chart1'); plotChart('chart4');
+    return { before, after: Object.keys(APEX_CHART_TIMES).length,
+             unchanged: JSON.stringify(times0) === JSON.stringify(APEX_CHART_TIMES) };
+  })()`, sandbox);
+  if (plottedOnce.before >= 6 && plottedOnce.unchanged)
+    ok(`charts: each chart is plotted at most once (${plottedOnce.before} already rendered, re-plot is a no-op)`);
+  else fail(`charts: re-plotting a chart re-ran the renderer (${JSON.stringify(plottedOnce)})`);
+
+  // With an IntersectionObserver present nothing is plotted until it fires.
+  const lazy = vm.runInContext(`(() => {
+    const seen = [];
+    globalThis.IntersectionObserver = class {
+      constructor(cb){ this.cb = cb; globalThis.__io = this; }
+      observe(el){ seen.push(el.id); }
+      unobserve(){}
+    };
+    let plottedNames = 0;
+    const realPlot = globalThis.Plotly.newPlot;
+    globalThis.Plotly.newPlot = function(){ plottedNames++; return realPlot.apply(this, arguments); };
+    renderCharts();
+    const observedImmediately = seen.slice();
+    const plottedBeforeScroll = plottedNames;
+    globalThis.__io.cb([{ isIntersecting: true, target: { id: 'chart2' } }]);
+    globalThis.Plotly.newPlot = realPlot;
+    delete globalThis.IntersectionObserver;
+    return { observedImmediately, plottedBeforeScroll };
+  })()`, sandbox);
+  if (lazy.observedImmediately.length === 6 && lazy.plottedBeforeScroll === 0)
+    ok('charts: with IntersectionObserver, nothing renders before it fires (6 observed, 0 plotted)');
+  else fail(`charts: lazy render not wired up (${JSON.stringify(lazy)})`);
+  await tick();
+  if (plots['chart2'] && plots['chart2'].traces.length)
+    ok('charts: a chart revealed by the observer is rendered on the next tick');
+  else fail('charts: observed chart was never rendered');
 
   console.log(failures.length ? `\nSMOKE TEST: ${failures.length} FAILURE(S)` : '\nSMOKE TEST: ALL CHECKS PASSED');
   process.exit(failures.length ? 1 : 0);
