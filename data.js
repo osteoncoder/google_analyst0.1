@@ -8,9 +8,10 @@
    data/playstore_sample.meta.json), and the full run substitutes the
    complete file via `python fetch_dataset.py`.
    If apps.json cannot be fetched (e.g. the page is opened directly
-   with file://), the dashboard falls back to EMBEDDED_SAMPLE below —
-   an 11-row sample, kept only so the static preview keeps working.
-   It is labelled as a sample everywhere.
+   with file://, where browsers block fetch()), the dashboard loads
+   data/apps_bundle.js — the same payload as a plain <script>, which
+   IS allowed from file://. EMBEDDED_SAMPLE (11 rows) is only the last
+   resort when both are unreachable, and is labelled as such.
 
    The parsing functions mirror clean.py rule-by-rule so the JS
    fallback and the Python pipeline can never disagree:
@@ -149,34 +150,123 @@ function cleanRow(r){
   };
 }
 
-/* ---------------- dataset loading ---------------- */
+/* ---------------- dataset loading ----------------
+   Three routes, tried in order:
+     1. fetch('data/apps.json')            served over http(s): app.py, Live Server, GitHub Pages
+     2. <script src="data/apps_bundle.js"> the SAME payload as a script — the only
+                                           route that works on a file:// page, where
+                                           browsers block fetch() with an opaque origin
+     3. EMBEDDED_SAMPLE                    11 rows, last resort, always labelled as such
+
+   Route 2 is why the dashboard no longer silently collapses to 11 rows when the
+   page is opened straight off the disk (VS Code "Run Active File", double-click).
+   -------------------------------------------------------------------------- */
+
+const APPS_JSON_URL = 'data/apps.json';
+const APPS_BUNDLE_URL = 'data/apps_bundle.js';
+
+/* Classic <script> injection: allowed from file:// (fetch/XHR is not). */
+function loadScriptTag(src){
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ()=>resolve();
+    s.onerror = ()=>reject(new Error('could not load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+/* Expand the columnar bundle back into row objects (inverse of
+   browser_export.build_dataset_bundle). Values are byte-identical to
+   apps.json — tests/browser_inference.test.js asserts that. */
+function expandBundle(p){
+  const cols = p.columns || {};
+  const keys = Object.keys(cols);
+  const n = p.row_count || ((cols.app && cols.app.data) || []).length;
+  const rows = new Array(n);
+  for(let i=0;i<n;i++){
+    const r = {};
+    for(let k=0;k<keys.length;k++){
+      const key = keys[k];
+      const c = cols[key];
+      r[key] = c.dict ? c.dict[c.data[i]] : c.data[i];
+    }
+    rows[i] = r;
+  }
+  return rows;
+}
+
+async function loadAppsFromBundle(){
+  await loadScriptTag(APPS_BUNDLE_URL);
+  const payload = window.APEX_APPS_PAYLOAD;
+  if(!payload || !payload.columns) throw new Error(APPS_BUNDLE_URL + ' loaded but empty');
+  const rows = expandBundle(payload);
+  if(rows.length === 0) throw new Error('no rows in ' + APPS_BUNDLE_URL);
+  return {rows, payload};
+}
+
+function isFilePage(){
+  return typeof location !== 'undefined' && location.protocol === 'file:';
+}
+
+/* Shared label logic for both routes. */
+function sourceLabel(rows, payload){
+  const sampling = payload.sampling || null;
+  const label = sampling && sampling.full_rows
+    ? `${Number(sampling.sample_rows || rows.length).toLocaleString()}-row sample of the ` +
+      `${Number(sampling.full_rows).toLocaleString()}-row dataset`
+    : (payload.is_sample ? 'SAMPLE' : '');
+  return {sampling, label};
+}
 
 async function loadApps(){
+  let fetchErr = null;
+
+  // file:// pages cannot fetch: skip straight to the script bundle.
+  if(!isFilePage()){
+    try{
+      const res = await fetch(APPS_JSON_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      const payload = await res.json();
+      const rows = (payload.rows || []).map(cleanRow);
+      if(rows.length === 0) throw new Error('no rows in apps.json');
+      const {sampling, label} = sourceLabel(rows, payload);
+      return {
+        rows,
+        report: payload.report || {},
+        sampling,
+        source: (payload.source || APPS_JSON_URL) + (label ? ` (${label})` : ''),
+        is_sample: !!payload.is_sample,
+        mode: 'fetch',
+      };
+    }catch(err){
+      fetchErr = err;
+    }
+  }
+
   try{
-    const res = await fetch('data/apps.json', {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const payload = await res.json();
-    const rows = (payload.rows || []).map(cleanRow);
-    if(rows.length === 0) throw new Error('no rows in apps.json');
-    const sampling = payload.sampling || null;
-    // Say WHICH dataset and, for the committed sample, what it is a sample of.
-    const label = sampling && sampling.full_rows
-      ? `${Number(sampling.sample_rows || rows.length).toLocaleString()}-row sample of the ` +
-        `${Number(sampling.full_rows).toLocaleString()}-row dataset`
-      : (payload.is_sample ? 'SAMPLE' : '');
+    const {rows, payload} = await loadAppsFromBundle();
+    const cleaned = rows.map(cleanRow);
+    const {sampling, label} = sourceLabel(cleaned, payload);
     return {
-      rows,
+      rows: cleaned,
       report: payload.report || {},
       sampling,
-      source: (payload.source || 'data/apps.json') + (label ? ` (${label})` : ''),
+      source: (payload.source || APPS_JSON_URL) + ' via ' + APPS_BUNDLE_URL + (label ? ` (${label})` : ''),
       is_sample: !!payload.is_sample,
+      mode: 'bundle',
     };
-  }catch(err){
+  }catch(bundleErr){
+    // Genuinely nothing to show — say so instead of pretending 11 rows is the data.
     return {
       rows: EMBEDDED_SAMPLE.map(cleanRow),
       report: {},
-      source: 'embedded 11-row sample in data.js (no data/apps.json found)',
+      source: 'EMBEDDED 11-ROW SAMPLE — ' + APPS_JSON_URL + ' and ' + APPS_BUNDLE_URL +
+              ' were both unreachable' + (isFilePage() ? ' (file:// pages cannot fetch)' : ''),
       is_sample: true,
+      mode: 'embedded',
+      degraded: true,
+      errors: [fetchErr, bundleErr].filter(Boolean).map(e=>String(e.message || e)),
     };
   }
 }

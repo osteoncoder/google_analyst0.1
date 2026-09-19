@@ -1,15 +1,30 @@
 /* ================================================================
    ml_dashboard.js — ML sections 07-09 + app bootstrap
 
-   Sections 07/08 perform REAL inference by calling the FastAPI
-   backend (app.py), which loads the saved scikit-learn pipelines
-   once at startup. No retraining per request. If the backend or
-   the artifacts are unavailable, a clear "unavailable" state is
-   shown — never random or demo predictions.
+   Sections 07/08 perform REAL inference. Two engines, tried in order:
+
+     1. the FastAPI backend (app.py), which loads the saved
+        scikit-learn pipelines once at startup — no retraining per
+        request;
+     2. the same fitted pipelines, exported to
+        ml/artifacts/browser/models.js and evaluated in this page by
+        ml_inference.js (impute -> scale -> one-hot -> walk the trees).
+
+   Engine 2 is why the forms keep working on GitHub Pages, under VS
+   Code Live Server, and on a page opened straight from disk, where
+   there is no /api behind it. It is NOT a stand-in model: it walks
+   the exported numbers of the trained pipeline, and
+   tests/browser_inference.test.js proves it matches scikit-learn to
+   ~1e-11 on 180 cases. If neither engine is available the section
+   shows a clear "unavailable" state — never random or demo values.
    ================================================================ */
 
 let METRICS = null;
 let METRICS_FROM_API = false;   // true = live backend; false = static snapshot / unknown
+
+/* Which engine is answering: 'api' | 'browser' | 'none' | 'unknown'. */
+let INFERENCE = { mode: 'unknown', models: null, error: null };
+const BROWSER_MODELS_URL = 'ml/artifacts/browser/models.js';
 
 /* Endpoints the read-only metrics may come from, in order of preference:
    1. the FastAPI route (live backend, also proves inference is available)
@@ -73,12 +88,207 @@ async function loadMetrics(){
   throw lastErr || new Error('metrics unreachable');
 }
 
+/* True when the failure means "that engine is not there", as opposed to
+   "your input was rejected" — only the former may fall through to the
+   other engine. A 422 is a validation error and must reach the user. */
+function isAvailabilityError(err){
+  const m = String((err && err.message) || err || '');
+  if(/Failed to fetch|NetworkError|Load failed|network|TypeError/i.test(m)) return true;
+  const code = (m.match(/HTTP\s+(\d{3})/) || [])[1];
+  return code ? ['404', '405', '500', '502', '503', '504'].indexOf(code) !== -1 : false;
+}
+
+/* ---------------- engine 2: the browser bundle ---------------- */
+
+function loadBrowserModels(){
+  if(INFERENCE.models) return Promise.resolve(INFERENCE.models);
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = BROWSER_MODELS_URL;
+    s.onload = ()=>{
+      const m = (window.APEX_BROWSER_MODELS || {}).models || null;
+      if(!m || !m.m1_rating){ reject(new Error(BROWSER_MODELS_URL + ' loaded but empty')); return; }
+      INFERENCE.models = m;
+      resolve(m);
+    };
+    s.onerror = ()=>reject(new Error('could not load ' + BROWSER_MODELS_URL));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureBrowserModels(){
+  if(INFERENCE.models) return INFERENCE.models;
+  if(typeof ApexInference === 'undefined'){
+    throw new Error('ml_inference.js is not loaded');
+  }
+  return loadBrowserModels();
+}
+
+/* Decide once, at bootstrap, so the UI can say which engine is live. */
+async function detectInference(){
+  if(!isFilePage()){
+    try{
+      const h = await fetchJSON('api/health');
+      if(h && h.models_loaded){
+        INFERENCE.mode = 'api';
+        return INFERENCE.mode;
+      }
+    }catch(err){ /* not served by app.py — try the browser bundle */ }
+  }
+  try{
+    await ensureBrowserModels();
+    INFERENCE.mode = 'browser';
+  }catch(err){
+    INFERENCE.mode = 'none';
+    INFERENCE.error = err;
+  }
+  return INFERENCE.mode;
+}
+
+/* Mirrors app.py's response shape field-for-field, so the renderers below
+   cannot tell (or care) which engine answered. */
+function localRating(model, inputs){
+  const category = String(inputs.category || '');
+  const price = inputs.price === null ? 0 : inputs.price;
+  const row = {
+    category: category,
+    size_mb: inputs.size_mb === null ? null : inputs.size_mb,
+    price: price,
+    price_is_positive: price > 0 ? 1 : 0,
+    reviews_log: Math.log1p(inputs.reviews || 0),
+  };
+  const raw = ApexInference.predictRegression(model, row);
+  // Play ratings live on [1, 5]; say so when extrapolation was clipped.
+  const pred = Math.min(5, Math.max(1, raw));
+
+  const assumptions = [];
+  if(inputs.size_mb === null) assumptions.push('size omitted → imputed to the training-set median');
+  if(inputs.price === null) assumptions.push('price omitted → treated as free ($0)');
+  if(inputs.reviews === null) assumptions.push('reviews omitted → treated as 0');
+  assumptions.push('listed price is a price tag, not observed revenue');
+
+  const categoryUsed = ApexInference.normalizeCategory(category) || category.trim();
+  const cats = model.prep.cat.categories;
+  if(cats.indexOf(categoryUsed) === -1){
+    assumptions.push(`category ${categoryUsed} was not seen in training → encoded as an unknown `
+      + `category (the model knows ${cats.length} categories)`);
+  }
+  if(pred !== raw){
+    assumptions.push(`raw prediction ${raw.toFixed(3)} clipped to the rating domain [1, 5]`);
+  }
+
+  return {
+    predicted_rating: Math.round(pred * 1000) / 1000,
+    category_used: categoryUsed,
+    category_changed: category.trim() !== categoryUsed,
+    model: model.model,
+    test_metrics: model.test_metrics || {},
+    n_test: model.n_test,
+    assumptions,
+    warning: 'Model estimate on a cross-sectional snapshot — not a pre-launch or future rating guarantee.',
+    engine: 'browser',
+  };
+}
+
+function localTier(model, inputs){
+  const category = String(inputs.category || '');
+  const price = inputs.price === null ? 0 : inputs.price;
+  const row = {
+    category: category,
+    size_mb: inputs.size_mb === null ? null : inputs.size_mb,
+    price: price,
+    price_is_positive: price > 0 ? 1 : 0,
+  };
+  const out = ApexInference.tier(model, row);
+  const probabilities = {};
+  Object.keys(out.probabilities).forEach(k=>{
+    probabilities[k] = Math.round(out.probabilities[k] * 10000) / 10000;
+  });
+
+  const assumptions = [];
+  if(inputs.size_mb === null) assumptions.push('size omitted → imputed to the training-set median');
+  if(inputs.price === null) assumptions.push('price omitted → treated as free ($0)');
+  assumptions.push('listed price is a price tag, not observed revenue');
+
+  const categoryUsed = ApexInference.normalizeCategory(category) || category.trim();
+  const cats = model.prep.cat.categories;
+  if(cats.indexOf(categoryUsed) === -1){
+    assumptions.push(`category ${categoryUsed} was not seen in training → encoded as an unknown `
+      + `category (the model knows ${cats.length} categories)`);
+  }
+
+  return {
+    predicted_tier: out.predicted_tier,
+    probabilities,
+    tier_order: model.labels || Object.keys(probabilities),
+    category_used: categoryUsed,
+    category_changed: category.trim() !== categoryUsed,
+    model: model.model,
+    test_metrics: model.test_metrics || {},
+    assumptions,
+    warning: 'Probabilities are model estimates, not guarantees. '
+      + 'This model deliberately excludes Reviews (target proxy).',
+    engine: 'browser',
+  };
+}
+
+/* Live API first; fall back to the browser engine only when the API is simply
+   not there. An API that ANSWERED with a rejection (422 validation, 503 with
+   missing artifacts) must be heard — substituting a local answer would hide a
+   real error behind a plausible number. */
+async function runInference(kind, inputs){
+  let apiErr = null;
+  if(INFERENCE.mode !== 'browser' && !isFilePage()){
+    try{
+      const out = await fetchJSON('api/predict/' + kind, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(inputs),
+      });
+      INFERENCE.mode = 'api';
+      out.engine = 'api';
+      return out;
+    }catch(err){ apiErr = err; }
+  }
+
+  let local;
+  try{
+    const models = await ensureBrowserModels();
+    INFERENCE.mode = 'browser';
+    local = kind === 'rating'
+      ? localRating(models.m1_rating, inputs)
+      : localTier(models.m2_tier_without_reviews, inputs);
+  }catch(err){
+    throw apiErr || err;                 // neither engine could answer
+  }
+  if(apiErr && !isAvailabilityError(apiErr)) throw apiErr;
+  return local;
+}
+
+function predictRating(inputs){ return runInference('rating', inputs); }
+function predictTier(inputs){ return runInference('tier', inputs); }
+
+/* One line saying WHO computed the number — never leave the user guessing. */
+function engineNote(out){
+  if(!out) return '';
+  if(out.engine === 'browser'){
+    return '<p class="tiny">Computed <strong>in your browser</strong> by '
+      + '<code>ml_inference.js</code> from the exported pipeline '
+      + '(<code>ml/artifacts/browser/models.js</code>) — the same fitted scikit-learn model '
+      + 'the API serves. No backend, no retraining.</p>';
+  }
+  if(out.engine === 'api'){
+    return '<p class="tiny">Computed by the FastAPI backend '
+      + '(<code>python app.py</code>) using the saved <code>ml/artifacts</code> pipelines.</p>';
+  }
+  return '';
+}
+
 /* Actionable hint for a failed inference call. */
 function backendHint(err){
   const m = String((err && err.message) || err || '');
   if(/Failed to fetch|NetworkError|Load failed|network/i.test(m)){
     return '<p class="tiny">The model service could not be reached from this page. '
-      + 'Predictions need the FastAPI backend: run <code>python app.py</code> and open the served page '
+      + 'Start the FastAPI backend with <code>python app.py</code> and open the served page '
       + '(<code>http://localhost:8000</code>, or the live preview of port 8000). '
       + 'Everything else on this page (charts, metrics tables) works without it.</p>';
   }
@@ -98,12 +308,16 @@ function unavailable(el, note, err){
   const detail = err ? ` <span class="tiny">(${String(err.message || err)})</span>` : '';
   el.innerHTML = `
     <div class="unavailable">
-      <h3>Model service not available</h3>
-      <p>These sections call a small FastAPI backend that loads the saved
-      scikit-learn pipelines (no retraining per request). Start it with:</p>
+      <h3>No inference engine available</h3>
+      <p>Predictions run the saved scikit-learn pipelines (no retraining per
+      request) through one of two engines:</p>
       <pre>pip install -r requirements.txt
 python clean.py &amp;&amp; python train_models.py
 python app.py</pre>
+      <p>Either start the backend above and open the page it serves, or (for a
+      static host / <code>file://</code> page) let <code>train_models.py</code> export
+      <code>ml/artifacts/browser/models.js</code> so the pipeline is evaluated in the
+      browser instead.</p>
       <p>Until then no predictions are shown — this project deliberately never
       returns random or demo values when models are absent.</p>
       ${note ? `<p class="tiny">${note}${detail}</p>` : ''}
@@ -112,19 +326,26 @@ python app.py</pre>
   wireRetry(el, ()=>renderML());
 }
 
-/* Banner when the read-only metrics came from a static file instead of the API:
-   the numbers are still the real measured ones, but inference is not available. */
+/* Banner explaining WHERE the numbers came from. Nothing here is a fallback
+   value: the metrics are the measured training results either way, and the
+   prediction engine is stated explicitly. */
 function showMlNotice(){
   const el = document.getElementById('mlNotice');
   if(!el) return;
+  const bits = [];
   if(METRICS && !METRICS_FROM_API){
-    el.innerHTML = `<p class="warn-note">⚠ Sections 08–09 below are reading the measured metrics snapshot
-    <code>ml/artifacts/metrics.json</code> directly (the live API did not answer). The numbers are the real
-    results of the reproducible training run, but the prediction forms need the backend —
-    run <code>python app.py</code> and open the page it serves.</p>`;
-  }else{
-    el.innerHTML = '';
+    bits.push('Sections 08–09 below are reading the measured metrics snapshot '
+      + '<code>ml/artifacts/metrics.json</code> directly (the live API did not answer). '
+      + 'The numbers are the real results of the reproducible training run.');
   }
+  if(INFERENCE.mode === 'browser'){
+    bits.push('Predictions run <strong>in your browser</strong>: <code>ml_inference.js</code> evaluates '
+      + 'the fitted scikit-learn pipelines exported to <code>ml/artifacts/browser/models.js</code> — '
+      + 'same model, same numbers, no backend needed.');
+  }else if(INFERENCE.mode === 'api'){
+    bits.push('Predictions are served by the FastAPI backend (<code>python app.py</code>).');
+  }
+  el.innerHTML = bits.length ? `<p class="warn-note">${bits.join(' ')}</p>` : '';
 }
 
 /* Honest, dataset-driven caveat: never claim "11-row" when the model was
@@ -196,14 +417,11 @@ function initRatingForm(){
     }
     result.innerHTML = '<p class="tiny">Predicting…</p>';
     try{
-      const out = await fetchJSON('api/predict/rating', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          category: cat,
-          size_mb: numOrNull(document.getElementById('rfSize')),
-          price: numOrNull(document.getElementById('rfPrice')),
-          reviews: intOrNull(document.getElementById('rfReviews')),
-        }),
+      const out = await predictRating({
+        category: cat,
+        size_mb: numOrNull(document.getElementById('rfSize')),
+        price: numOrNull(document.getElementById('rfPrice')),
+        reviews: intOrNull(document.getElementById('rfReviews')),
       });
       const tm = out.test_metrics || {};
       const catNote = out.category_used
@@ -215,7 +433,8 @@ function initRatingForm(){
         ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> · held-out test:
         MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}
-        (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>`;
+        (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>
+        ${engineNote(out)}`;
     }catch(err){
       result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
         + backendHint(err) + sampleNote();
@@ -260,13 +479,10 @@ function initTierForm(){
     }
     result.innerHTML = '<p class="tiny">Predicting…</p>';
     try{
-      const out = await fetchJSON('api/predict/tier', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          category: cat,
-          size_mb: numOrNull(document.getElementById('tfSize')),
-          price: numOrNull(document.getElementById('tfPrice')),
-        }),
+      const out = await predictTier({
+        category: cat,
+        size_mb: numOrNull(document.getElementById('tfSize')),
+        price: numOrNull(document.getElementById('tfPrice')),
       });
       const order = out.tier_order || Object.keys(out.probabilities);
       const bars = order.map(t=>{
@@ -287,7 +503,8 @@ function initTierForm(){
         ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> (without Reviews) · held-out test:
         accuracy ${tm.accuracy?.toFixed(3)} · macro-F1 ${tm['macro_f1']?.toFixed(3)}
-        · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>`;
+        · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>
+        ${engineNote(out)}`;
     }catch(err){
       result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
         + backendHint(err) + sampleNote();
@@ -456,6 +673,20 @@ function renderML(){
   initRatingForm();
   initTierForm();
   (async ()=>{
+    /* Inference and the read-only metrics are independent: decide the engine
+       first so the forms are usable even when metrics.json is unreachable. */
+    await detectInference();
+    if(INFERENCE.mode === 'none'){
+      const note = 'No inference engine is available: neither the FastAPI backend '
+        + '(<code>api/health</code>) nor the exported browser bundle '
+        + '(<code>' + BROWSER_MODELS_URL + '</code>) could be loaded.';
+      ['ratingResult','tierResult'].forEach(id=>{
+        const e = document.getElementById(id);
+        if(e) unavailable(e, note, INFERENCE.error);
+      });
+    }
+    showMlNotice();
+
     try{
       const hit = await loadMetrics();
       METRICS = hit.data;
@@ -465,7 +696,6 @@ function renderML(){
       METRICS_FROM_API = false;
       showMlNotice();
       const note = 'Backend reachable but no artifacts yet? Run: python clean.py && python train_models.py';
-      ['ratingResult','tierResult'].forEach(id=>unavailable(document.getElementById(id), note, err));
       ['ratingModelCard','confusionCard','perfContent'].forEach(id=>{
         const e = document.getElementById(id);
         if(e) unavailable(e, note, err);
@@ -503,7 +733,7 @@ function initNav(){
 
 function bootstrap(){
   initNav();
-  loadApps().then(({rows, source, is_sample})=>{
+  loadApps().then(({rows, source, is_sample, degraded, errors})=>{
     DF = rows;
     APP_SOURCE = source;
     APP_IS_SAMPLE = is_sample;
@@ -511,6 +741,23 @@ function bootstrap(){
     document.getElementById('runTime').textContent = source;
     const fs = document.getElementById('footSource');
     if(fs) fs.textContent = rows.length.toLocaleString() + ' cleaned rows · ' + source;
+
+    // Never let the 11-row sample pass silently for the real dataset.
+    if(degraded){
+      const top = document.getElementById('overview');
+      if(top && top.insertAdjacentHTML){
+        top.insertAdjacentHTML('afterend',
+          '<div class="gap-banner"><strong>⚠ Showing the embedded 11-row sample</strong> — '
+          + 'the cleaned dataset could not be loaded, so every chart below describes '
+          + 'those 11 rows only.'
+          + (errors && errors.length ? ` <span class="tiny">(${errors.join(' · ')})</span>` : '')
+          + ' A page opened straight from disk (<code>file://</code>) cannot <code>fetch()</code>; '
+          + 'open the page served by <code>python app.py</code>, or keep '
+          + '<code>data/apps_bundle.js</code> (built by <code>python clean.py</code>) next to '
+          + '<code>index.html</code>.</div>');
+      }
+    }
+
     renderKPIs();
     renderCharts();
     renderML();

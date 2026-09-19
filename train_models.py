@@ -400,6 +400,16 @@ def main() -> None:
     ART.mkdir(parents=True, exist_ok=True)
     (ART / "metrics.json").write_text(json.dumps(metrics, indent=2, default=str))
 
+    # Also publish the fitted pipelines as a <script>-loadable bundle so the
+    # prediction forms keep working with no backend (static host / file://
+    # page), evaluated in the browser by ml_inference.js.
+    try:
+        from browser_export import write_models_bundle
+        write_models_bundle()
+    except Exception as exc:                                # pragma: no cover
+        print(f"\nWARNING: browser model bundle not exported ({exc}).\n"
+              f"         Predictions will need the backend (python app.py).")
+
     # ---------------- console summary ----------------
     print("=== Training summary ===")
     print(f"dataset      : {dataset_info['source']} (rows={n})")

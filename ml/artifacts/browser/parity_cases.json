@@ -1,0 +1,2184 @@
+{
+ "generated_at": "2026-09-19T15:19:10+00:00",
+ "note": "Inputs plus the sklearn pipeline's own output \u2014 ml_inference.js must reproduce these exactly.",
+ "tasks": {
+  "m1_rating": {
+   "cases": [
+    {
+     "category": "News & Magazines",
+     "size_mb": null,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "Action",
+     "size_mb": 236.312,
+     "price": 0.99,
+     "reviews": 2944054
+    },
+    {
+     "category": "Arcade",
+     "size_mb": 247.81,
+     "price": 0.99,
+     "reviews": 402829
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 266.403,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "casual",
+     "size_mb": 241.753,
+     "price": 39.99,
+     "reviews": 3198563
+    },
+    {
+     "category": "Productivity",
+     "size_mb": 99.507,
+     "price": null,
+     "reviews": 3076839
+    },
+    {
+     "category": "Action",
+     "size_mb": 24.858,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "Events",
+     "size_mb": null,
+     "price": 0.0,
+     "reviews": 1437886
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": 38.911,
+     "price": 0.99,
+     "reviews": 4536178
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 124.014,
+     "price": 0.0,
+     "reviews": null
+    },
+    {
+     "category": "educational",
+     "size_mb": 124.442,
+     "price": null,
+     "reviews": 1499217
+    },
+    {
+     "category": "Role_Playing",
+     "size_mb": 122.74,
+     "price": 39.99,
+     "reviews": 402181
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 175.509,
+     "price": 2.49,
+     "reviews": null
+    },
+    {
+     "category": "Auto & Vehicles",
+     "size_mb": 263.162,
+     "price": 39.99,
+     "reviews": 1383051
+    },
+    {
+     "category": "Shopping",
+     "size_mb": null,
+     "price": 9.99,
+     "reviews": 3485850
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 252.874,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "shopping",
+     "size_mb": 127.726,
+     "price": 2.49,
+     "reviews": 1005082
+    },
+    {
+     "category": "Tools",
+     "size_mb": 126.397,
+     "price": 9.99,
+     "reviews": 893437
+    },
+    {
+     "category": "Food & Drink",
+     "size_mb": 185.277,
+     "price": 0.0,
+     "reviews": null
+    },
+    {
+     "category": "Music",
+     "size_mb": 180.385,
+     "price": 2.49,
+     "reviews": 2936427
+    },
+    {
+     "category": "Finance",
+     "size_mb": 252.068,
+     "price": null,
+     "reviews": 59075
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": null,
+     "price": 2.49,
+     "reviews": null
+    },
+    {
+     "category": "trivia",
+     "size_mb": 199.708,
+     "price": 39.99,
+     "reviews": 4012460
+    },
+    {
+     "category": "Action",
+     "size_mb": 295.225,
+     "price": 0.99,
+     "reviews": 4853477
+    },
+    {
+     "category": "Casino",
+     "size_mb": 59.786,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "Action",
+     "size_mb": 96.522,
+     "price": null,
+     "reviews": 3053676
+    },
+    {
+     "category": "Comics",
+     "size_mb": 194.143,
+     "price": 39.99,
+     "reviews": 3213283
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 9.942,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "action",
+     "size_mb": null,
+     "price": 9.99,
+     "reviews": 429318
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 278.911,
+     "price": 0.0,
+     "reviews": 485650
+    },
+    {
+     "category": "Business",
+     "size_mb": 52.707,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "Finance",
+     "size_mb": 275.417,
+     "price": 0.0,
+     "reviews": 4266290
+    },
+    {
+     "category": "Educational",
+     "size_mb": 43.534,
+     "price": 39.99,
+     "reviews": 2380631
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 48.104,
+     "price": 2.49,
+     "reviews": null
+    },
+    {
+     "category": "adventure",
+     "size_mb": 17.233,
+     "price": 2.49,
+     "reviews": 1829489
+    },
+    {
+     "category": "Word",
+     "size_mb": null,
+     "price": null,
+     "reviews": 3497660
+    },
+    {
+     "category": "Action",
+     "size_mb": 230.975,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "Tools",
+     "size_mb": 297.785,
+     "price": 39.99,
+     "reviews": 742048
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 215.229,
+     "price": 0.0,
+     "reviews": 2026369
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 75.759,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "personalization",
+     "size_mb": 98.508,
+     "price": null,
+     "reviews": 2212127
+    },
+    {
+     "category": "Music",
+     "size_mb": 129.551,
+     "price": 39.99,
+     "reviews": 2018142
+    },
+    {
+     "category": "Social",
+     "size_mb": null,
+     "price": 0.0,
+     "reviews": null
+    },
+    {
+     "category": "Beauty",
+     "size_mb": 8.75,
+     "price": 9.99,
+     "reviews": 3302890
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 263.572,
+     "price": 2.49,
+     "reviews": 4358409
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 166.687,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "lifestyle",
+     "size_mb": 280.579,
+     "price": 0.0,
+     "reviews": 338723
+    },
+    {
+     "category": "Travel_&_Local",
+     "size_mb": 268.425,
+     "price": 0.99,
+     "reviews": 2701245
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 136.099,
+     "price": 0.99,
+     "reviews": null
+    },
+    {
+     "category": "Comics",
+     "size_mb": null,
+     "price": 39.99,
+     "reviews": 1494133
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": 62.165,
+     "price": null,
+     "reviews": 1636977
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 87.07,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "house & home",
+     "size_mb": 264.562,
+     "price": 0.99,
+     "reviews": 4733547
+    },
+    {
+     "category": "Books_&_Reference",
+     "size_mb": 258.948,
+     "price": 0.0,
+     "reviews": 1910092
+    },
+    {
+     "category": "Shopping",
+     "size_mb": 58.48,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "Maps & Navigation",
+     "size_mb": 24.156,
+     "price": null,
+     "reviews": 3329219
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": null,
+     "price": 39.99,
+     "reviews": 1033679
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 123.931,
+     "price": 0.99,
+     "reviews": null
+    },
+    {
+     "category": "house & home",
+     "size_mb": 237.458,
+     "price": 9.99,
+     "reviews": 4388354
+    },
+    {
+     "category": "Events",
+     "size_mb": 86.989,
+     "price": 0.99,
+     "reviews": 4331280
+    }
+   ],
+   "expected": [
+    4.3590762916,
+    4.3207635098,
+    4.3132031068,
+    4.1703187927,
+    4.5861913616,
+    4.3138124395,
+    4.1782083285,
+    4.289337272,
+    4.4077654692,
+    4.1193068031,
+    4.2576892239,
+    4.4710260415,
+    4.4330925088,
+    4.4700392903,
+    4.4018758667,
+    4.1985035182,
+    4.3246397997,
+    4.0934721959,
+    3.7771793908,
+    4.4941155151,
+    4.3166602193,
+    4.2079188842,
+    4.598498461,
+    4.3207635098,
+    4.1807336993,
+    4.238673992,
+    4.598498461,
+    4.1735880174,
+    4.3435864795,
+    4.4634363054,
+    4.1168222958,
+    4.3689088434,
+    4.5021579284,
+    4.2086562537,
+    4.4050710182,
+    4.4046791063,
+    4.1044591893,
+    4.540902912,
+    4.2855554649,
+    4.1538881553,
+    4.3709142463,
+    4.4713937098,
+    4.3182396099,
+    4.4110767198,
+    4.4596856579,
+    4.1985035182,
+    4.3457394309,
+    4.2440379971,
+    4.1090847881,
+    4.7871446639,
+    4.1506101653,
+    4.1538881553,
+    4.1440986935,
+    4.4695497484,
+    4.3330994084,
+    4.2502937638,
+    4.7941134153,
+    4.1090847881,
+    4.2843841939,
+    4.2972056419
+   ]
+  },
+  "m2_tier_without_reviews": {
+   "cases": [
+    {
+     "category": "Sports",
+     "size_mb": null,
+     "price": null
+    },
+    {
+     "category": "Art & Design",
+     "size_mb": 110.139,
+     "price": 2.49
+    },
+    {
+     "category": "Finance",
+     "size_mb": 220.409,
+     "price": 0.99
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 227.695,
+     "price": 9.99
+    },
+    {
+     "category": "simulation",
+     "size_mb": 219.221,
+     "price": 39.99
+    },
+    {
+     "category": "Simulation",
+     "size_mb": 62.17,
+     "price": null
+    },
+    {
+     "category": "Sports",
+     "size_mb": 134.15,
+     "price": 0.0
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": null,
+     "price": 39.99
+    },
+    {
+     "category": "Shopping",
+     "size_mb": 197.857,
+     "price": 2.49
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 284.115,
+     "price": 39.99
+    },
+    {
+     "category": "books & reference",
+     "size_mb": 271.518,
+     "price": null
+    },
+    {
+     "category": "Comics",
+     "size_mb": 170.234,
+     "price": 9.99
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": 244.368,
+     "price": 0.0
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": 238.926,
+     "price": 2.49
+    },
+    {
+     "category": "Education",
+     "size_mb": null,
+     "price": 9.99
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 85.751,
+     "price": null
+    },
+    {
+     "category": "lifestyle",
+     "size_mb": 169.553,
+     "price": 39.99
+    },
+    {
+     "category": "Music_&_Audio",
+     "size_mb": 268.94,
+     "price": 2.49
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 44.087,
+     "price": 2.49
+    },
+    {
+     "category": "Word",
+     "size_mb": 126.367,
+     "price": 0.99
+    },
+    {
+     "category": "Lifestyle",
+     "size_mb": 299.877,
+     "price": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": null,
+     "price": 39.99
+    },
+    {
+     "category": "weather",
+     "size_mb": 42.048,
+     "price": 39.99
+    },
+    {
+     "category": "Word",
+     "size_mb": 79.365,
+     "price": 9.99
+    },
+    {
+     "category": "Education",
+     "size_mb": 236.913,
+     "price": 0.99
+    },
+    {
+     "category": "Sports",
+     "size_mb": 291.511,
+     "price": null
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 177.363,
+     "price": 39.99
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 245.242,
+     "price": 9.99
+    },
+    {
+     "category": "comics",
+     "size_mb": null,
+     "price": 39.99
+    },
+    {
+     "category": "Tools",
+     "size_mb": 125.642,
+     "price": 39.99
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 15.68,
+     "price": null
+    },
+    {
+     "category": "Casino",
+     "size_mb": 195.36,
+     "price": 39.99
+    },
+    {
+     "category": "Tools",
+     "size_mb": 47.117,
+     "price": 9.99
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 242.449,
+     "price": 9.99
+    },
+    {
+     "category": "maps & navigation",
+     "size_mb": 31.547,
+     "price": 0.99
+    },
+    {
+     "category": "Adventure",
+     "size_mb": null,
+     "price": null
+    },
+    {
+     "category": "Beauty",
+     "size_mb": 69.453,
+     "price": 9.99
+    },
+    {
+     "category": "Food & Drink",
+     "size_mb": 192.164,
+     "price": 0.0
+    },
+    {
+     "category": "Maps & Navigation",
+     "size_mb": 164.224,
+     "price": 2.49
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 261.525,
+     "price": 39.99
+    },
+    {
+     "category": "travel & local",
+     "size_mb": 54.145,
+     "price": null
+    },
+    {
+     "category": "Role_Playing",
+     "size_mb": 25.326,
+     "price": 9.99
+    },
+    {
+     "category": "Beauty",
+     "size_mb": null,
+     "price": 9.99
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 213.874,
+     "price": 39.99
+    },
+    {
+     "category": "Tools",
+     "size_mb": 208.519,
+     "price": 0.99
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 77.562,
+     "price": null
+    },
+    {
+     "category": "strategy",
+     "size_mb": 190.018,
+     "price": 39.99
+    },
+    {
+     "category": "Travel_&_Local",
+     "size_mb": 40.919,
+     "price": 0.99
+    },
+    {
+     "category": "House & Home",
+     "size_mb": 151.242,
+     "price": 39.99
+    },
+    {
+     "category": "Dating",
+     "size_mb": null,
+     "price": 9.99
+    },
+    {
+     "category": "Food & Drink",
+     "size_mb": 163.913,
+     "price": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 35.729,
+     "price": 0.99
+    },
+    {
+     "category": "arcade",
+     "size_mb": 53.519,
+     "price": 9.99
+    },
+    {
+     "category": "Educational",
+     "size_mb": 18.812,
+     "price": 2.49
+    },
+    {
+     "category": "Card",
+     "size_mb": 117.121,
+     "price": 0.0
+    },
+    {
+     "category": "Social",
+     "size_mb": 135.354,
+     "price": null
+    },
+    {
+     "category": "Weather",
+     "size_mb": null,
+     "price": 9.99
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 241.396,
+     "price": 0.0
+    },
+    {
+     "category": "parenting",
+     "size_mb": 89.614,
+     "price": 0.0
+    },
+    {
+     "category": "Events",
+     "size_mb": 72.562,
+     "price": 9.99
+    }
+   ],
+   "expected": [
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.025,
+      "10K-1M": 0.325,
+      "1M-100M": 0.1,
+      "Under 10K": 0.55
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.3333333333,
+      "10K-1M": 0.3333333333,
+      "1M-100M": 0.3333333333,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 1.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.3076923077,
+      "1M-100M": 0.4615384615,
+      "Under 10K": 0.2307692308
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 1.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.3571428571,
+      "1M-100M": 0.0,
+      "Under 10K": 0.6428571429
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0869565217,
+      "10K-1M": 0.1739130435,
+      "1M-100M": 0.1304347826,
+      "Under 10K": 0.6086956522
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.25,
+      "1M-100M": 0.0,
+      "Under 10K": 0.75
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 1.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 1.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 1.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 1.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.12,
+      "10K-1M": 0.36,
+      "1M-100M": 0.32,
+      "Under 10K": 0.2
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.0,
+      "1M-100M": 0.0,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0,
+      "1M-100M": 0.0,
+      "Under 10K": 1.0
+     }
+    }
+   ]
+  },
+  "m2_tier_with_reviews": {
+   "cases": [
+    {
+     "category": "Parenting",
+     "size_mb": null,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "Simulation",
+     "size_mb": 248.189,
+     "price": 39.99,
+     "reviews": 4133630
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 34.439,
+     "price": 9.99,
+     "reviews": 1023265
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 203.967,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "business",
+     "size_mb": 199.903,
+     "price": 39.99,
+     "reviews": 1754431
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 197.725,
+     "price": null,
+     "reviews": 2949067
+    },
+    {
+     "category": "Entertainment",
+     "size_mb": 128.681,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "Finance",
+     "size_mb": null,
+     "price": 39.99,
+     "reviews": 4468492
+    },
+    {
+     "category": "Art & Design",
+     "size_mb": 278.055,
+     "price": 2.49,
+     "reviews": 4930756
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 235.064,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "health & fitness",
+     "size_mb": 209.845,
+     "price": null,
+     "reviews": 4657067
+    },
+    {
+     "category": "Maps_&_Navigation",
+     "size_mb": 50.069,
+     "price": 0.0,
+     "reviews": 2930402
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 130.365,
+     "price": 0.99,
+     "reviews": null
+    },
+    {
+     "category": "Books & Reference",
+     "size_mb": 44.783,
+     "price": 0.99,
+     "reviews": 2860105
+    },
+    {
+     "category": "Books & Reference",
+     "size_mb": null,
+     "price": 0.0,
+     "reviews": 3394435
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 295.69,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "productivity",
+     "size_mb": 250.854,
+     "price": 39.99,
+     "reviews": 3159096
+    },
+    {
+     "category": "Casual",
+     "size_mb": 288.413,
+     "price": 0.99,
+     "reviews": 627848
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 106.213,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "Events",
+     "size_mb": 96.564,
+     "price": 0.99,
+     "reviews": 1569059
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 103.639,
+     "price": null,
+     "reviews": 1383512
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": null,
+     "price": 0.0,
+     "reviews": null
+    },
+    {
+     "category": "music & audio",
+     "size_mb": 261.017,
+     "price": 2.49,
+     "reviews": 1923045
+    },
+    {
+     "category": "News_&_Magazines",
+     "size_mb": 79.184,
+     "price": 39.99,
+     "reviews": 327261
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": 164.602,
+     "price": 39.99,
+     "reviews": null
+    },
+    {
+     "category": "Productivity",
+     "size_mb": 241.182,
+     "price": null,
+     "reviews": 264832
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": 15.795,
+     "price": 0.0,
+     "reviews": 48656
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 199.597,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "education",
+     "size_mb": null,
+     "price": 0.99,
+     "reviews": 257403
+    },
+    {
+     "category": "Libraries_&_Demo",
+     "size_mb": 163.921,
+     "price": 0.99,
+     "reviews": 3130069
+    },
+    {
+     "category": "Events",
+     "size_mb": 226.451,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "Personalization",
+     "size_mb": 227.787,
+     "price": 2.49,
+     "reviews": 4812669
+    },
+    {
+     "category": "Action",
+     "size_mb": 248.406,
+     "price": 2.49,
+     "reviews": 1058578
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 1.452,
+     "price": 0.0,
+     "reviews": null
+    },
+    {
+     "category": "racing",
+     "size_mb": 48.068,
+     "price": 39.99,
+     "reviews": 1562687
+    },
+    {
+     "category": "Action",
+     "size_mb": null,
+     "price": null,
+     "reviews": 556756
+    },
+    {
+     "category": "Tools",
+     "size_mb": 96.295,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "Dating",
+     "size_mb": 17.814,
+     "price": 9.99,
+     "reviews": 3426431
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 22.874,
+     "price": 9.99,
+     "reviews": 2900765
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 96.25,
+     "price": 2.49,
+     "reviews": null
+    },
+    {
+     "category": "beauty",
+     "size_mb": 282.739,
+     "price": null,
+     "reviews": 1977887
+    },
+    {
+     "category": "Casino",
+     "size_mb": 195.413,
+     "price": 2.49,
+     "reviews": 4553010
+    },
+    {
+     "category": "Comics",
+     "size_mb": null,
+     "price": 9.99,
+     "reviews": null
+    },
+    {
+     "category": "Casual",
+     "size_mb": 295.938,
+     "price": 0.0,
+     "reviews": 4198843
+    },
+    {
+     "category": "Beauty",
+     "size_mb": 202.038,
+     "price": 0.0,
+     "reviews": 2061271
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 252.054,
+     "price": null,
+     "reviews": null
+    },
+    {
+     "category": "music",
+     "size_mb": 223.716,
+     "price": 0.99,
+     "reviews": 4854893
+    },
+    {
+     "category": "Arcade",
+     "size_mb": 93.139,
+     "price": 2.49,
+     "reviews": 840536
+    },
+    {
+     "category": "News & Magazines",
+     "size_mb": 147.827,
+     "price": 2.49,
+     "reviews": null
+    },
+    {
+     "category": "Trivia",
+     "size_mb": null,
+     "price": 0.99,
+     "reviews": 2621448
+    },
+    {
+     "category": "Education",
+     "size_mb": 232.377,
+     "price": null,
+     "reviews": 2077472
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 197.964,
+     "price": 2.49,
+     "reviews": null
+    },
+    {
+     "category": "music & audio",
+     "size_mb": 47.004,
+     "price": 2.49,
+     "reviews": 3395231
+    },
+    {
+     "category": "Weather",
+     "size_mb": 163.072,
+     "price": 39.99,
+     "reviews": 24821
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 289.849,
+     "price": 0.99,
+     "reviews": null
+    },
+    {
+     "category": "Adventure",
+     "size_mb": 261.585,
+     "price": null,
+     "reviews": 4465087
+    },
+    {
+     "category": "Simulation",
+     "size_mb": null,
+     "price": 9.99,
+     "reviews": 2576938
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 275.33,
+     "price": 0.0,
+     "reviews": null
+    },
+    {
+     "category": "puzzle",
+     "size_mb": 245.412,
+     "price": 2.49,
+     "reviews": 1961354
+    },
+    {
+     "category": "Medical",
+     "size_mb": 111.364,
+     "price": 0.0,
+     "reviews": 4826969
+    }
+   ],
+   "expected": [
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0072251542,
+      "1M-100M": 8.4e-08,
+      "Under 10K": 0.9927747618
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0240825806,
+      "10K-1M": 0.0002994796,
+      "1M-100M": 0.9756179391,
+      "Under 10K": 7e-10
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.2517234755,
+      "10K-1M": 0.0348523291,
+      "1M-100M": 0.7134237088,
+      "Under 10K": 4.866e-07
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 6.89185e-05,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9999310814
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0131888681,
+      "10K-1M": 0.0014721915,
+      "1M-100M": 0.9853389069,
+      "Under 10K": 3.35e-08
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7497161245,
+      "10K-1M": 8.91499e-05,
+      "1M-100M": 0.2501947256,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 8.92891e-05,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9999107108
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0669869034,
+      "10K-1M": 0.0004879581,
+      "1M-100M": 0.9325251368,
+      "Under 10K": 1.7e-09
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7037424186,
+      "10K-1M": 0.0007122093,
+      "1M-100M": 0.2955453713,
+      "Under 10K": 8e-10
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 6.36426e-05,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9999363573
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7865131535,
+      "10K-1M": 2.32975e-05,
+      "1M-100M": 0.213463549,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8713743029,
+      "10K-1M": 2.84772e-05,
+      "1M-100M": 0.1285972199,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 9.53727e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999046273
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8516015917,
+      "10K-1M": 0.0030839376,
+      "1M-100M": 0.145314463,
+      "Under 10K": 7.7e-09
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9309418286,
+      "10K-1M": 1.76743e-05,
+      "1M-100M": 0.0690404971,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0014926836,
+      "1M-100M": 8.9e-09,
+      "Under 10K": 0.9985073075
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0389203015,
+      "10K-1M": 0.0004731621,
+      "1M-100M": 0.9606065324,
+      "Under 10K": 4e-09
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.2887430183,
+      "10K-1M": 0.0504627291,
+      "1M-100M": 0.6607915121,
+      "Under 10K": 2.7404e-06
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 9.04469e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999095531
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.4561476958,
+      "10K-1M": 0.004422316,
+      "1M-100M": 0.5394299649,
+      "Under 10K": 2.34e-08
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.724041647,
+      "10K-1M": 0.000191667,
+      "1M-100M": 0.2757666858,
+      "Under 10K": 1e-10
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0030898733,
+      "1M-100M": 2.06e-08,
+      "Under 10K": 0.9969101061
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.5372828465,
+      "10K-1M": 0.0142108738,
+      "1M-100M": 0.4485061218,
+      "Under 10K": 1.579e-07
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0035483916,
+      "10K-1M": 0.0160587411,
+      "1M-100M": 0.9803904033,
+      "Under 10K": 2.464e-06
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 4.74612e-05,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9999525387
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.2629192252,
+      "10K-1M": 0.0032627232,
+      "1M-100M": 0.7338180154,
+      "Under 10K": 3.61e-08
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.023532403,
+      "10K-1M": 0.0566835611,
+      "1M-100M": 0.9197807143,
+      "Under 10K": 3.3216e-06
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0001022133,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9998977867
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.1481566648,
+      "10K-1M": 0.3578073862,
+      "1M-100M": 0.4939949229,
+      "Under 10K": 4.10261e-05
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.5721498661,
+      "10K-1M": 0.0015363297,
+      "1M-100M": 0.426313801,
+      "Under 10K": 3.2e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0022552387,
+      "1M-100M": 3.25e-08,
+      "Under 10K": 0.9977447288
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8920160327,
+      "10K-1M": 0.000817399,
+      "1M-100M": 0.1071665668,
+      "Under 10K": 1.5e-09
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.2579250825,
+      "10K-1M": 0.040946347,
+      "1M-100M": 0.7011278538,
+      "Under 10K": 7.167e-07
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0031661242,
+      "1M-100M": 2.12e-08,
+      "Under 10K": 0.9968338546
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0209255791,
+      "10K-1M": 0.0008695383,
+      "1M-100M": 0.9782048768,
+      "Under 10K": 5.8e-09
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.4943057604,
+      "10K-1M": 0.001148498,
+      "1M-100M": 0.5045457399,
+      "Under 10K": 1.6e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0001105568,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9998894432
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.549089502,
+      "10K-1M": 0.0007427884,
+      "1M-100M": 0.4501677084,
+      "Under 10K": 1.2e-09
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.5893957843,
+      "10K-1M": 0.0045605683,
+      "1M-100M": 0.4060436338,
+      "Under 10K": 1.36e-08
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0001465631,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9998534368
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.2905239397,
+      "10K-1M": 4.58175e-05,
+      "1M-100M": 0.7094302428,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7248796001,
+      "10K-1M": 0.0020869713,
+      "1M-100M": 0.2730334236,
+      "Under 10K": 5e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0003476727,
+      "1M-100M": 3e-10,
+      "Under 10K": 0.9996523271
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8859639815,
+      "10K-1M": 9.3889e-06,
+      "1M-100M": 0.1140266297,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.3926645407,
+      "10K-1M": 3.58187e-05,
+      "1M-100M": 0.6072996406,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0016688934,
+      "1M-100M": 1.01e-08,
+      "Under 10K": 0.9983310965
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8074739313,
+      "10K-1M": 0.0004466382,
+      "1M-100M": 0.1920794302,
+      "Under 10K": 3e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.6377801273,
+      "10K-1M": 0.0257479838,
+      "1M-100M": 0.3364709464,
+      "Under 10K": 9.425e-07
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 8.59776e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999140224
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8293174444,
+      "10K-1M": 0.0017480878,
+      "1M-100M": 0.1689344601,
+      "Under 10K": 7.8e-09
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7006147102,
+      "10K-1M": 0.0001955988,
+      "1M-100M": 0.2991896909,
+      "Under 10K": 1e-10
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0001129536,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9998870463
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8782900026,
+      "10K-1M": 0.0015692893,
+      "1M-100M": 0.1201407037,
+      "Under 10K": 4.4e-09
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 2.4938e-05,
+      "10K-1M": 0.2262503337,
+      "1M-100M": 0.7722972237,
+      "Under 10K": 0.0014275046
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 6.43096e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999356904
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8564154156,
+      "10K-1M": 1.34334e-05,
+      "1M-100M": 0.143571151,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.6558897625,
+      "10K-1M": 0.0017020712,
+      "1M-100M": 0.3424081635,
+      "Under 10K": 2.8e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0015724616,
+      "1M-100M": 9.4e-09,
+      "Under 10K": 0.998427529
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.5138707981,
+      "10K-1M": 0.0122828106,
+      "1M-100M": 0.4738462658,
+      "Under 10K": 1.256e-07
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8751431212,
+      "10K-1M": 6.76e-06,
+      "1M-100M": 0.1248501187,
+      "Under 10K": 0.0
+     }
+    }
+   ]
+  }
+ }
+}

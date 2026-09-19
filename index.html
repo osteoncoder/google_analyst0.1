@@ -163,8 +163,11 @@
           <h2><span class="stage">07</span>Rating Predictor</h2>
           <p class="section-desc">M1 regression: app profile (category, size, price, review volume) &rarr;
           expected average rating. Inference uses the <em>saved</em> scikit-learn preprocessing + model
-          pipeline &mdash; nothing is retrained per request. Features available at prediction time are exactly
-          the form fields below.</p>
+          pipeline &mdash; nothing is retrained per request. It runs on the FastAPI backend when
+          <code>app.py</code> is serving, and otherwise in this page via
+          <code>ml_inference.js</code> (the same pipeline exported to
+          <code>ml/artifacts/browser/models.js</code>); the result always says which one answered.
+          Features available at prediction time are exactly the form fields below.</p>
         </div>
       </div>
       <div class="card grid-2">
@@ -196,7 +199,8 @@
           <h2><span class="stage">08</span>Install-Tier Classifier</h2>
           <p class="section-desc">M2 four-class classifier (primary version <strong>excludes Reviews</strong>,
           a strong proxy for installs). Inputs available at prediction time: category, size, price.
-          Probabilities are model estimates, not guarantees.</p>
+          Probabilities are model estimates, not guarantees. Like section 07, this works with or
+          without the Python backend.</p>
         </div>
       </div>
       <div class="card grid-2">
@@ -285,9 +289,10 @@
   </main>
 </div>
 
-<!-- load order: data (helpers+loader) → charts (01-06) → ml (07-09 + bootstrap) -->
+<!-- load order: data (helpers+loader) → charts (01-06) → inference engine → ml (07-09 + bootstrap) -->
 <script src="./data.js"></script>
 <script src="./charts.js"></script>
+<script src="./ml_inference.js"></script>
 <script src="./ml_dashboard.js"></script>
 </body>
 </html>

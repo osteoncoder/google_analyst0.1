@@ -55,6 +55,14 @@ class El {
 }
 const docListeners = {};
 const plots = {};
+/* Minimal <script> injection support: ml_dashboard.js / data.js load the
+   browser bundles this way (it is the only route a file:// page has). The
+   stub reads the real file and executes it in the sandbox, like a browser. */
+function makeScriptEl() {
+  const el = { tag: 'script', onload: null, onerror: null, _src: '' };
+  Object.defineProperty(el, 'src', { get: () => el._src, set: (v) => { el._src = v; } });
+  return el;
+}
 const sandbox = {
   console,
   Date, JSON, Math, Promise, setTimeout, clearTimeout,
@@ -64,9 +72,21 @@ const sandbox = {
     getElementById(id) { if (!elements.has(id)) elements.set(id, new El(id)); return elements.get(id); },
     addEventListener(ev, fn) { (docListeners[ev] = docListeners[ev] || []).push(fn); },
     querySelectorAll() { return { forEach() {} }; },
+    createElement(tag) { return makeScriptEl(); },
+    head: {
+      appendChild(el) {
+        try {
+          vm.runInContext(fs.readFileSync(path.join(ROOT, el.src), 'utf8'), sandbox, { filename: el.src });
+          if (el.onload) el.onload();
+        } catch (e) { if (el.onerror) el.onerror(e); }
+      },
+    },
   },
   fetch: async (url) => {
     if (url === 'data/apps.json') return { ok: true, json: async () => appsJson };
+    // A live-backend answer, so the assertions below exercise app.py's route.
+    // The static-host section further down switches the API off on purpose.
+    if (url === 'api/health') return { ok: true, json: async () => ({ ok: true, models_loaded: true, m1_rating: true, m2_tier_without_reviews: true, trained_on_sample_dataset: true }) };
     if (url === 'api/metrics') return { ok: true, json: async () => metricsJson };
     // static mount serves the artifact file too (used by the degraded-hosting path)
     if (url === 'ml/artifacts/metrics.json') return { ok: true, json: async () => metricsJson };
@@ -91,13 +111,13 @@ sandbox.globalThis = sandbox;
 sandbox.addEventListener = () => {}; // window.addEventListener (resize/scroll)
 vm.createContext(sandbox);
 
-/* ---------------- load the three frontend files in order ---------------- */
-for (const f of ['data.js', 'charts.js', 'ml_dashboard.js']) {
+/* ---------------- load the frontend files in order ---------------- */
+for (const f of ['data.js', 'charts.js', 'ml_inference.js', 'ml_dashboard.js']) {
   const code = fs.readFileSync(path.join(ROOT, f), 'utf8');
   try { vm.runInContext(code, sandbox, { filename: f }); }
   catch (e) { fail(`${f} threw at load: ${e.message}`); process.exit(1); }
 }
-ok('data.js + charts.js + ml_dashboard.js load without errors');
+ok('data.js + charts.js + ml_inference.js + ml_dashboard.js load without errors');
 
 const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
 
@@ -270,6 +290,43 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (unavailableHtml.includes('HTTP 503') && unavailableHtml.includes('retry-btn'))
     ok('hosting: unavailable panel shows the real error and a retry button');
   else fail('unavailable panel should include the error detail and a retry button');
+
+  /* ------- regression: a page with NO working fetch must not show 11 rows -------
+     This is the VS Code "Run Active File" / double-click case: fetch() is blocked
+     on file://, so the dataset has to come from the <script> bundle instead of
+     silently collapsing to the embedded 11-row sample. */
+  sandbox.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  const offline = await vm.runInContext('loadApps()', sandbox);
+  if (offline.mode === 'bundle' && offline.rows.length === rows.length)
+    ok(`file:// path: dataset loaded from data/apps_bundle.js (${offline.rows.length.toLocaleString()} rows, not 11)`);
+  else fail(`file:// path: expected ${rows.length} bundle rows, got ${offline.rows.length} (${offline.mode})`);
+
+  /* ------- regression: predictions must work with no backend at all ------- */
+  const mode = await vm.runInContext('detectInference()', sandbox);
+  if (mode === 'browser') ok('hosting: inference falls back to the in-browser exported pipeline');
+  else fail(`detectInference() => ${mode} (expected "browser" when no API answers)`);
+
+  g('rfSize').value = '86';
+  g('rfPrice').value = '0';
+  g('rfReviews').value = '1200';
+  g('rfCategory').value = rows[0].category;
+  (form.listeners['submit'] || [])[0]({ preventDefault() {} });
+  await tick();
+  const rrLocal = elements.get('ratingResult').innerHTML;
+  if (rrLocal.includes('predicted rating') && rrLocal.includes('in your browser'))
+    ok('hosting: rating form predicts with no backend and says the browser engine did it');
+  else fail(`browser-engine rating result missing: ${rrLocal.slice(0, 200)}`);
+
+  g('tfSize').value = '50';
+  g('tfPrice').value = '';
+  g('tfCategory').value = rows[0].category;
+  (tform.listeners['submit'] || [])[0]({ preventDefault() {} });
+  await tick();
+  const trLocal = elements.get('tierResult').innerHTML;
+  if (trLocal.includes('prob-fill') && trLocal.includes('in your browser'))
+    ok('hosting: tier form predicts with no backend and discloses the engine');
+  else fail(`browser-engine tier result missing: ${trLocal.slice(0, 200)}`);
+
   sandbox.fetch = origFetch;
 
   console.log(failures.length ? `\nSMOKE TEST: ${failures.length} FAILURE(S)` : '\nSMOKE TEST: ALL CHECKS PASSED');

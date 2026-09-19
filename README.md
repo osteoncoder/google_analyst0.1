@@ -9,9 +9,11 @@ deterministic **40,000-row stratified sample** of it as the committed default,
 so everything runs out of the box; one command downloads the full 666 MB CSV,
 after which the same pipeline runs at full scale.
 
-**Stack:** plain HTML/CSS/JS + Plotly.js from CDN for the charts; a small
-FastAPI backend added **only** for real ML inference (the models are saved
-scikit-learn pipelines — nothing retrains per request). No build step, no npm.
+**Stack:** plain HTML/CSS/JS + Plotly.js from CDN for the charts. Inference
+runs either through a small FastAPI backend or — on any static host, with no
+Python at all — through `ml_inference.js`, which evaluates the same saved
+scikit-learn pipelines exported to plain JS. Nothing retrains per request.
+No build step, no npm.
 
 ```
 .
@@ -19,7 +21,9 @@ scikit-learn pipelines — nothing retrains per request). No build step, no npm.
 ├── style.css                  # aurora/glass theme + ML section styles
 ├── data.js                    # dataset loader + JS mirror of the cleaning rules
 ├── charts.js                  # KPI strip + charts 01-06 (all data-driven)
+├── ml_inference.js            # evaluates the exported pipelines in the browser
 ├── ml_dashboard.js            # sections 07-09 + bootstrap + unavailable states
+├── browser_export.py          # publishes dataset + fitted models as <script> bundles
 ├── clean.py                   # single-source-of-truth cleaning pipeline (CLI)
 ├── fetch_dataset.py           # downloads the full 2.31M-row dataset + builds the sample
 ├── train_models.py            # reproducible scikit-learn training (M1, M2 A/B)
@@ -33,9 +37,15 @@ scikit-learn pipelines — nothing retrains per request). No build step, no npm.
 │   ├── sample_apps.csv            # 11-row mechanical-test sample (last resort)
 │   ├── apps_cleaned.csv           # output of clean.py (ALL cleaned rows)
 │   ├── apps.json                  # output of clean.py (capped export, feeds the dashboard)
+│   ├── apps_bundle.js             # the same payload as a <script> (works on file://)
 │   └── cleaning_report.json       # provenance: raw/cleaned/removed counts, field stats
 ├── ml/artifacts/              # output of train_models.py (pipelines + metrics)
-└── tests/smoke_frontend.js    # headless Node check of the whole frontend
+│   └── browser/
+│       ├── models.js              # fitted pipelines, flattened for ml_inference.js
+│       └── parity_cases.json      # inputs + sklearn outputs (engine correctness fixture)
+└── tests/
+    ├── smoke_frontend.js          # headless Node check of the whole frontend
+    └── browser_inference.test.js  # JS engine must match scikit-learn exactly
 ```
 
 ## Run it (full version with ML)
@@ -68,21 +78,45 @@ all read from the same cleaned dataset; sections 07-09 call the API.
 So `python clean.py` works in a fresh clone, and silently switches to full
 scale as soon as the full CSV exists. `--raw <path>` overrides everything.
 
-**Static-only mode (no ML):** open `index.html` directly (double-click, VS
-Code Live Server, or any static host). Charts 01-06 still work from
-`data/apps.json`; sections 08-09 read the **measured** metrics snapshot
+**Every other way of opening the page — double-click `index.html`, VS Code
+"Run Active File", Live Server, GitHub Pages — works fully, with no Python
+process at all.** The dashboard is plain HTML/CSS/JS, so both the dataset and
+the models are also published as plain `<script>` bundles:
+
+| What | Where | Why |
+|---|---|---|
+| dataset | `data/apps_bundle.js` | `fetch()` is **blocked** on a `file://` page, so `data/apps.json` is unreachable there — a classic `<script>` tag is not |
+| models | `ml/artifacts/browser/models.js` | a static host has no `/api/predict/*`, so the fitted pipelines are exported and evaluated in the page |
+
+`ml_inference.js` walks those exported numbers — impute → scale → one-hot →
+decision trees — so the forms return the *same* prediction the backend does,
+and the UI states which engine answered. `tests/browser_inference.test.js`
+replays 180 inputs and requires an exact match with scikit-learn (max error
+~5e-11); `python browser_export.py` regenerates the bundles, and `clean.py` /
+`train_models.py` call it automatically. Both bundles are **committed**, so a
+ZIP download works offline straight away.
+
+Sections 08-09 read the **measured** metrics snapshot
 (`ml/artifacts/metrics.json` — the same file the API serves) and label it
 clearly as a snapshot, so the dashboard degrades gracefully instead of going
-blank. Prediction forms (07-08) genuinely need the backend: they fail with an
-actionable message ("run `python app.py` and open the page it serves") rather
-than inventing values, and the unavailable panel shows the underlying error
-plus a **Retry** button. The metrics fetch also retries once automatically,
-which covers opening the page while the server is still starting.
+blank. If neither engine is reachable the forms show an actionable message
+plus a **Retry** button rather than inventing values, and the metrics fetch
+retries once automatically, which covers opening the page while the server is
+still starting.
 
-> If you are looking at a page that says "Model service not available", check
-> the address bar: the dashboard must be served by `python app.py`
-> (`http://localhost:8000`, or the live preview of port 8000). A page opened
-> from a file browser / static viewer has no `/api` routes behind it.
+> **The one thing to avoid:** deleting `data/apps_bundle.js` (or the
+> `ml/artifacts/browser/` folder) and then opening `index.html` off the disk.
+> With no bundle and no `fetch()`, the page falls back to its 11-row
+> `EMBEDDED_SAMPLE` — you will see a warning banner saying so, and only 11
+> records in the header. Re-run `python clean.py` to rebuild the bundle.
+
+### Which engine is answering?
+
+| You opened | Dataset | Predictions |
+|---|---|---|
+| `python app.py` → http://localhost:8000 | `data/apps.json` | FastAPI backend (`/api/predict/*`) |
+| GitHub Pages / Live Server / any static host | `data/apps.json` | **in-browser** exported pipeline |
+| double-click / VS Code "Run Active File" (`file://`) | `data/apps_bundle.js` | **in-browser** exported pipeline |
 
 ## Data pipeline (`clean.py`) — documented rules
 
@@ -352,12 +386,18 @@ interpretation were valid — with legend/margin fixes for mobile.
   correctly capped at 60,000 rows.
 - `python train_models.py` — all 15 candidate pipelines (5×M1, 5×M2×2
   versions) trained; the fixed seed makes runs reproducible.
-- `node --check` on all four JS files.
-- `node tests/smoke_frontend.js` — 19/19 assertions against the **real**
+- `node --check` on every JS file.
+- `node tests/smoke_frontend.js` — assertions against the **real**
   `apps.json` + `metrics.json`: charts render from real values (counts
   cross-checked against the cleaned data), data-gap states correct when
   columns are absent, ML sections render, form submission performs a real
-  inference call.
+  inference call, and — with the API switched off — the dataset still loads
+  from `data/apps_bundle.js` (40,000 rows, never the 11-row fallback) while
+  both prediction forms fall through to the in-browser engine.
+- `node tests/browser_inference.test.js` — 180 parity cases per model: the JS
+  engine must reproduce the sklearn pipeline's own output (max abs error
+  ~5e-11), plus unknown-category encoding, median imputation and the
+  `apps_bundle.js` round-trip.
 - Live API checks (`fastapi.testclient`): `/api/health`, `/api/metrics`,
   valid + invalid (422) + unknown-category predictions, missing-metadata
   → 503 (not 500), dot-directory protection (404).

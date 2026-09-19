@@ -654,6 +654,18 @@ def main() -> None:
                    separators=(",", ":"))
     )
 
+    # Rule 12b: ALSO write the same payload as a <script>-loadable bundle.
+    # fetch() is blocked on file:// pages (VS Code "Run Active File",
+    # double-click), which used to silently drop the dashboard onto its
+    # 11-row fallback. data.js loads this bundle when the fetch fails.
+    try:
+        from browser_export import write_dataset_bundle
+        write_dataset_bundle()
+    except Exception as exc:                                # pragma: no cover
+        print(f"\nWARNING: data/apps_bundle.js could not be regenerated ({exc}).\n"
+              f"         The dashboard still works over http(s); a file:// page will\n"
+              f"         fall back to the 11-row sample.")
+
     # Human-readable summary (used in README / viva)
     print("=== Cleaning report ===")
     for k, v in report.items():
