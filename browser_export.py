@@ -153,7 +153,7 @@ def _tree_arrays(tree) -> dict:
     return {"l": left, "r": right, "f": feats, "t": thr, "v": vals}
 
 
-def _prep_dict(pipe) -> dict:
+def _prep_dict(pipe, meta_defaults: dict | None = None) -> dict:
     """Export the fitted ColumnTransformer: impute -> scale -> one-hot."""
     prep = pipe.named_steps["prep"]
     named = {name: (trans, cols) for name, trans, cols in prep.transformers_}
@@ -175,8 +175,16 @@ def _prep_dict(pipe) -> dict:
             "scale": [_num(v) for v in np.asarray(scaler.scale_).ravel()],
         },
         "cat": {
-            "column": cat_cols[0] if cat_cols else "category",
-            "categories": [str(c) for c in onehot.categories_[0]],
+            # One categorical block (a single OneHotEncoder) over N columns;
+            # the emitted one-hot columns follow this order.
+            "columns": cat_cols,
+            "categories": [[str(c) for c in onehot.categories_[i]]
+                           for i in range(len(cat_cols))],
+            # Prediction-time fallback for a field the caller leaves out: the
+            # training-set mode, so "omitted" means "assume the most common
+            # value" instead of "an unknown category". app.py uses the same
+            # numbers, so the two engines cannot disagree.
+            "defaults": [(meta_defaults or {}).get(c, "__missing__") for c in cat_cols],
             # handle_unknown='ignore' => an unseen category becomes all zeros,
             # which is exactly what ml_inference.js does.
             "handle_unknown": "ignore",
@@ -193,7 +201,32 @@ def _estimator_dict(est):
             f"(supported: {', '.join(SUPPORTED_ESTIMATORS)})"
         )
 
-    if name.startswith("GradientBoosting"):
+    if name == "GradientBoostingClassifier":
+        # Multinomial (loss='log_loss'): one tree per class per stage.
+        #   score_k = log(class_prior_k) + lr * sum over stages of leaf value
+        #   proba   = softmax(score)          — verified against sklearn to 1e-16.
+        init = getattr(est, "init_", None)
+        prior = getattr(init, "class_prior_", None)
+        if prior is None or len(np.asarray(prior).ravel()) != len(est.classes_):
+            raise UnsupportedEstimator(
+                "GradientBoostingClassifier has no usable init_.class_prior_")
+        if getattr(est, "loss", "log_loss") != "log_loss":
+            raise UnsupportedEstimator(
+                f"GradientBoostingClassifier loss={est.loss!r} is not exportable "
+                "(only the multinomial 'log_loss' path is implemented in JS)")
+        return {
+            "family": name,
+            "init": [_num(np.log(p)) for p in np.asarray(prior).ravel()],
+            "learning_rate": _num(est.learning_rate),
+            "n_estimators": int(est.estimators_.shape[0]),
+            "n_classes": int(getattr(est, "n_trees_per_iteration_", None)
+                             or est.estimators_.shape[1]),
+            # estimators_ is (n_estimators, n_classes); ravel() in C order, so
+            # the tree for stage t / class k lives at index t * n_classes + k.
+            "trees": [_tree_arrays(t.tree_) for t in est.estimators_.ravel()],
+        }
+
+    if name == "GradientBoostingRegressor":
         init = getattr(est, "init_", None)
         constant = getattr(init, "constant_", None)
         if constant is None:
@@ -247,7 +280,7 @@ def export_task(task_dir: Path) -> dict | None:
     if getattr(est, "classes_", None) is not None:
         out["classes"] = [str(c) for c in est.classes_]
 
-    out["prep"] = _prep_dict(pipe)
+    out["prep"] = _prep_dict(pipe, meta.get("categorical_defaults") or {})
     out.update(_estimator_dict(est))
     return out
 
@@ -255,23 +288,40 @@ def export_task(task_dir: Path) -> dict | None:
 # --------------------------------------------------------------------------
 # parity fixtures: sklearn's own answers, to prove the JS engine matches
 # --------------------------------------------------------------------------
-def _row_for_task(task: str, case: dict) -> dict:
-    """Build the single-row frame exactly the way app.py does.
+def _cat_value(raw, default: str = "__missing__") -> str:
+    """clean.py's rule 9 normalization, with a documented fallback.
 
-    Crucially the category is normalized with clean.py's rule 9 first — that is
-    what `/api/predict/*` does before it touches the encoder, so the fixtures
-    pin the same behaviour (a hand-typed "education" must score like "Education",
-    which ml_inference.js reproduces with its own normalizeCategory).
+    `app.py` normalizes a hand-typed category with clean_category before the
+    one-hot encoder sees it, so the fixtures must do the same (a hand-typed
+    "education" has to score like "Education"). A value that normalizes away
+    entirely ("" or "___") falls back to the training-set default — the same
+    thing both engines do at prediction time — so the two can never disagree.
     """
     from clean import clean_category
 
-    category = clean_category(case["category"])
+    if raw is None or not str(raw).strip():
+        raw = default
+    return clean_category(raw) or default
+
+
+def _row_for_task(task: str, case: dict, cat_defaults: dict | None = None) -> dict:
+    """Build the single-row frame exactly the way app.py does."""
+    cat_defaults = cat_defaults or {}
     row = {
-        "category": category if category else case["category"],
+        "category": _cat_value(case.get("category"), cat_defaults.get("category", "__missing__")),
+        "content_rating": _cat_value(case.get("content_rating"),
+                                     cat_defaults.get("content_rating", "__missing__")),
         "size_mb": np.nan if case.get("size_mb") is None else float(case["size_mb"]),
         "price": 0.0 if case.get("price") is None else float(case["price"]),
         "price_is_positive": 1.0 if (case.get("price") or 0) > 0 else 0.0,
     }
+    # clean.py rule 13's engineered inputs. A key that is absent or null means
+    # "the caller did not supply it" -> NaN -> the pipeline's median imputer,
+    # which is exactly what ml_inference.js does with a missing input.
+    for col in ("app_age_days", "days_since_update", "developer_app_count",
+                "min_android", "ad_supported", "in_app_purchases", "editors_choice"):
+        v = case.get(col)
+        row[col] = np.nan if v is None else float(v)
     if task == "m1_rating" or task == "m2_tier_with_reviews":
         row["reviews_log"] = float(np.log1p(case.get("reviews") or 0))
     return row
@@ -291,7 +341,10 @@ def make_parity_cases(models: dict, n_cases: int = 60, seed: int = 20240621) -> 
             continue
         pipe = joblib.load(ART / key / "pipeline.joblib")
         meta = json.loads((ART / key / "meta.json").read_text())
-        cats = model["prep"]["cat"]["categories"]
+        cat_defaults = meta.get("categorical_defaults") or {}
+        cats = model["prep"]["cat"]["categories"][0]        # app categories
+        ratings = model["prep"]["cat"]["categories"][-1]    # content ratings
+        num_cols = list(model["prep"]["num"]["columns"])
         rows, expected = [], []
 
         for i in range(n_cases):
@@ -312,10 +365,33 @@ def make_parity_cases(models: dict, n_cases: int = 60, seed: int = 20240621) -> 
                 "size_mb": None if i % 7 == 0 else round(float(rng.uniform(0.5, 300)), 3),
                 "price": None if i % 5 == 0 else round(float(rng.choice([0.0, 0.99, 2.49, 9.99, 39.99])), 2),
             }
+            if "content_rating" in (meta.get("features") or []):
+                # None (=> falls back to the training mode), a real rating, and
+                # an unseen one, so the fallback path is pinned too.
+                r = i % 5
+                case["content_rating"] = (
+                    None if r == 0
+                    else "Unseen Rating 21+" if r == 4
+                    else str(ratings[int(rng.integers(len(ratings)))]))
             if "reviews_log" in (meta.get("features") or []):
                 case["reviews"] = None if i % 3 == 0 else int(rng.integers(0, 5_000_000))
 
-            X = pd.DataFrame([_row_for_task(key, case)])[meta["features"]]
+            # Engineered numeric inputs: some present, some omitted (=> the
+            # imputer's median), so both paths are exercised on every task.
+            for col, sampler in (
+                ("app_age_days", lambda: int(rng.integers(0, 4500))),
+                ("days_since_update", lambda: int(rng.integers(0, 4000))),
+                ("developer_app_count", lambda: int(rng.integers(1, 120))),
+                ("min_android", lambda: round(float(rng.choice([1.0, 4.0, 4.2, 5.0, 8.0])), 1)),
+                ("ad_supported", lambda: int(rng.integers(0, 2))),
+                ("in_app_purchases", lambda: int(rng.integers(0, 2))),
+                ("editors_choice", lambda: int(rng.integers(0, 2))),
+            ):
+                if col not in num_cols:
+                    continue
+                case[col] = None if (i + len(col)) % 4 == 0 else sampler()
+
+            X = pd.DataFrame([_row_for_task(key, case, cat_defaults)])[meta["features"]]
             if key == "m1_rating":
                 expected.append(round(float(pipe.predict(X)[0]), 10))
             else:
@@ -433,8 +509,10 @@ def write_models_bundle(verbose: bool = True) -> dict:
         for key in models:
             m = models[key]
             trees = len(m.get("trees", [])) or (1 if "tree" in m else 0)
+            cats = sum(len(c) for c in m["prep"]["cat"]["categories"])
             print(f"      {key}: {m['sklearn_estimator']} · {trees} tree(s) · "
-                  f"{len(m['prep']['cat']['categories'])} categories")
+                  f"{cats} categorical levels "
+                  f"({', '.join(m['prep']['cat']['columns'])})")
         print(f"  {PARITY_CASES.relative_to(ROOT)}  "
               f"({PARITY_CASES.stat().st_size / 1024:.0f} KB parity fixtures)")
         for s in skipped:

@@ -8,15 +8,19 @@
    Pages) and a file:// page simply do not have. This file removes that
    dependency by reproducing the pipeline's arithmetic in the browser:
 
-       impute (training medians) -> StandardScaler -> one-hot(category)
+       impute (training medians) -> StandardScaler -> one-hot(categoricals)
        -> walk the exported trees
 
-   It is NOT a re-implementation of scikit-learn and it is NOT an
-   approximation. `browser_export.py` flattens the *fitted* artifacts
-   (ml/artifacts/<task>/pipeline.joblib) into ml/artifacts/browser/models.js,
-   and this file walks exactly those numbers. If the bundle is missing
-   or holds an unsupported estimator, it refuses to guess — the caller
-   keeps using the API and shows the honest "unavailable" state.
+   Supported estimators: GradientBoostingRegressor,
+   GradientBoostingClassifier (multinomial: log prior + lr * sum of leaf
+   values, then softmax), DecisionTreeClassifier, DecisionTreeRegressor and
+   LogisticRegression. It is NOT a re-implementation of scikit-learn and it
+   is NOT an approximation. `browser_export.py` flattens the *fitted*
+   artifacts (ml/artifacts/<task>/pipeline.joblib) into
+   ml/artifacts/browser/models.js, and this file walks exactly those numbers.
+   If the bundle is missing or holds an unsupported estimator, it refuses to
+   guess — the caller keeps using the API and shows the honest "unavailable"
+   state.
 
    Correctness is enforced by tests/browser_inference.test.js, which
    replays ml/artifacts/browser/parity_cases.json (inputs + the sklearn
@@ -49,12 +53,39 @@
     return typeof v === 'number' && isFinite(v);
   }
 
+  /* The exported categorical block: one or more columns, one flat list of
+     one-hot categories per column, and a prediction-time fallback per column.
+     Bundles written before `content_rating` existed export a single `column`
+     string and a flat `categories` array — normalize both shapes here so a
+     stale models.js still evaluates instead of throwing. */
+  function catBlock(prep) {
+    const cat = prep.cat || {};
+    if (Array.isArray(cat.categories) && Array.isArray(cat.categories[0])) {
+      const cols = cat.columns || ['category'];
+      return {
+        columns: cols,
+        categories: cat.categories,
+        defaults: cat.defaults || cols.map(() => cat.missing_fill || '__missing__'),
+      };
+    }
+    // legacy: { column: 'category', categories: ['Art And Design', ...] }
+    const col = cat.column || 'category';
+    return {
+      columns: [col],
+      categories: [cat.categories || []],
+      defaults: [cat.missing_fill || '__missing__'],
+    };
+  }
+
   /* impute -> scale -> one-hot, in the exact column order the fitted
-     ColumnTransformer emits (numeric block first, then the one-hot block). */
+     ColumnTransformer emits (numeric block first, then the one-hot blocks). */
   function featureVector(model, inputs) {
     const prep = model.prep;
     const num = prep.num;
-    const out = new Array(num.columns.length + prep.cat.categories.length);
+    const block = catBlock(prep);
+    const total = num.columns.length +
+      block.categories.reduce((s, c) => s + c.length, 0);
+    const out = new Array(total);
 
     for (let i = 0; i < num.columns.length; i++) {
       const key = num.columns[i];
@@ -66,15 +97,20 @@
       out[i] = (Number(v) - num.mean[i]) / (scale === 0 ? 1 : scale);
     }
 
-    const cats = prep.cat.categories;
-    const raw = inputs ? inputs[prep.cat.column] : undefined;
-    const normalized = normalizeCategory(
-      raw === undefined || raw === null || raw === '' ? prep.cat.missing_fill : raw
-    );
-    const idx = normalized === null ? -1 : cats.indexOf(normalized);
-    // handle_unknown='ignore': an unseen category becomes all zeros.
-    const offset = num.columns.length;
-    for (let j = 0; j < cats.length; j++) out[offset + j] = (j === idx ? 1 : 0);
+    let offset = num.columns.length;
+    for (let c = 0; c < block.columns.length; c++) {
+      const cats = block.categories[c];
+      let raw = inputs ? inputs[block.columns[c]] : undefined;
+      if (raw === undefined || raw === null || String(raw).trim() === '') {
+        raw = block.defaults[c];      // omitted -> training-set mode (see app.py)
+      }
+      const normalized = normalizeCategory(raw);
+      const wanted = normalized || prep.cat.missing_fill || '__missing__';
+      const idx = cats.indexOf(wanted);
+      // handle_unknown='ignore': an unseen category becomes all zeros.
+      for (let j = 0; j < cats.length; j++) out[offset + j] = (j === idx ? 1 : 0);
+      offset += cats.length;
+    }
     return out;
   }
 
@@ -104,15 +140,12 @@
   /* ---------------- regression ---------------- */
 
   function predictRegression(model, inputs) {
-    if (model.family === 'GradientBoostingClassifier') {
-      throw new Error('GradientBoostingClassifier is not supported by the browser engine');
-    }
     const x = featureVector(model, inputs);
     if (model.family === 'GradientBoostingRegressor') {
       // sklearn: raw = init.constant_ + learning_rate * sum(tree leaf values)
       let raw = model.init;
       for (let i = 0; i < model.trees.length; i++) {
-        raw += model.learning_rate * model.trees[i].v[traverse(model.trees[i], x)];
+        raw += model.learning_rate * model.trees[i].v[traverse(model.trees[i], x)][0];
       }
       return raw;
     }
@@ -144,7 +177,25 @@
       return softmax(z);
     }
     if (model.family === 'GradientBoostingClassifier') {
-      throw new Error('GradientBoostingClassifier is not supported by the browser engine');
+      /* Multinomial boosting (sklearn loss='log_loss'): one tree per class per
+         stage. For class k,
+
+             score_k = log(class_prior_k) + lr * sum over stages of leaf value
+
+         then softmax — which is exactly how sklearn turns raw scores into
+         probabilities, verified against predict_proba to ~1e-16.
+
+         estimators_ is (n_estimators, n_classes); the export ravel()s it in C
+         order, so stage t / class k sits at index t * n_classes + k. */
+      const K = model.n_classes || (model.classes || []).length;
+      const scores = model.init.slice(0, K);
+      for (let t = 0; t < model.n_estimators; t++) {
+        for (let k = 0; k < K; k++) {
+          const tree = model.trees[t * K + k];
+          scores[k] += model.learning_rate * tree.v[traverse(tree, x)][0];
+        }
+      }
+      return softmax(scores);
     }
     throw new Error('unsupported classifier: ' + model.family);
   }
@@ -166,7 +217,7 @@
   }
 
   const API = {
-    version: 1,
+    version: 2,
     normalizeCategory,
     featureVector,
     traverse,

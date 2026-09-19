@@ -31,10 +31,11 @@ Column aliases understood for the primary dataset (gauthamp10, 24 columns):
     App Name -> app          Rating Count -> reviews      Price     -> price
     Category -> category     Installs     -> installs     Last Updated -> last_updated
     Rating   -> rating       Size         -> size_mb
-    (its extra columns — App Id, Free, Currency, Minimum/Maximum Installs,
-     Minimum Android, Developer *, Released, Content Rating, Privacy Policy,
-     Ad Supported, In App Purchases, Editors Choice, Scraped Time — are not
-     consumed; the raw file keeps them for future work.)
+    Plus, since rule 13, the columns behind the derived app-profile features:
+    Released, Scraped Time, Developer Id, Minimum Android, Content Rating,
+    Ad Supported, In App Purchases, Editors Choice.
+    (Still unconsumed: App Id, Free, Currency, Maximum Installs, Developer
+     Website, Developer Email, Privacy Policy.)
 
 Documented rules
 ----------------
@@ -79,6 +80,15 @@ Documented rules
     install tier with a per-tier floor — the dashboard then shows a clearly
     labelled "N of M rows" note. The cleaned CSV and the ML training always use
     ALL cleaned rows; only the browser payload is capped.
+13. Derived app-profile features (added later than rules 1-12, hence the
+    number): the primary dataset's extra columns become eight model inputs —
+    app_age_days, days_since_update, developer_app_count, min_android,
+    ad_supported, in_app_purchases, editors_choice (numeric) and
+    content_rating (categorical). A dataset without those raw columns simply
+    yields NaN/None, which train_models.py drops from the feature set; a
+    negative date difference (Released after Scraped Time) is NaN, never 0.
+    These columns are written to apps_cleaned.csv for training but are NOT
+    added to apps.json, so the browser payload does not grow.
 
 Install-tier bands (M2 target) — default: log-spaced, left-inclusive, aligned
 with Play's own band structure:
@@ -380,6 +390,67 @@ def parse_sentiment(v):
         return np.nan
 
 
+# --- Rule 13 (derived app-profile features) -------------------------------
+#
+# The primary dataset carries columns the original pipeline never parsed
+# (Released, Scraped Time, Developer Id, Minimum Android, Ad Supported,
+# In App Purchases, Editors Choice, Content Rating). They are turned into
+# model inputs here — one place, one definition — so `clean.py ->
+# apps_cleaned.csv -> train_models.py` stays a single source of truth, and so
+# a dataset that lacks them (the 10,841-row Kaggle export, the 11-row sample)
+# simply yields NaNs that the training pipeline's imputer handles.
+DERIVED_NUMERIC = [
+    "app_age_days",          # Scraped Time - Released, in days
+    "days_since_update",     # Scraped Time - Last Updated, in days
+    "developer_app_count",   # listings published by the same Developer Id
+    "min_android",           # "5.0 and up" -> 5.0
+    "ad_supported",          # True/False -> 1.0/0.0
+    "in_app_purchases",      # True/False -> 1.0/0.0
+    "editors_choice",        # True/False -> 1.0/0.0
+]
+DERIVED_CATEGORICAL = ["content_rating"]     # "Everyone", "Teen", "Mature 17+", ...
+DERIVED_COLUMNS = DERIVED_NUMERIC + DERIVED_CATEGORICAL
+
+
+def parse_min_android(v):
+    """Rule 13: '5.0 and up' -> 5.0. Non-numeric lead ('Varies with device') -> NaN."""
+    if v is None:
+        return np.nan
+    if isinstance(v, (int, float, np.integer, np.floating)) and not isinstance(v, bool):
+        f = float(v)
+        return f if np.isfinite(f) and 0.0 <= f <= 20.0 else np.nan
+    s = str(v).strip()
+    if not s or s.lower() in ("nan", "none"):
+        return np.nan
+    m = re.match(r"(\d+(?:\.\d+)?)", s)
+    if not m:
+        return np.nan
+    try:
+        f = float(m.group(1))
+    except ValueError:
+        return np.nan
+    return f if np.isfinite(f) and 0.0 <= f <= 20.0 else np.nan
+
+
+def parse_bool_flag(v):
+    """Rule 13: True/False (string or real bool) -> 1.0/0.0; anything else -> NaN."""
+    if v is None:
+        return np.nan
+    if isinstance(v, (bool, np.bool_)):
+        return 1.0 if v else 0.0
+    s = str(v).strip().lower()
+    if s in ("true", "1", "1.0", "yes", "y", "t"):
+        return 1.0
+    if s in ("false", "0", "0.0", "no", "n", "f"):
+        return 0.0
+    return np.nan
+
+
+def _date_series(values) -> pd.Series | None:
+    """Timestamps for one raw column, parsed with Rule 8's parser; None if absent."""
+    return pd.to_datetime([parse_last_updated(v) for v in values], errors="coerce")
+
+
 def find_col(df: pd.DataFrame, *names):
     """Case/whitespace-insensitive column lookup."""
     for n in names:
@@ -417,6 +488,12 @@ def _consumed_columns(header: pd.DataFrame) -> set:
         ("Installs", "Minimum Installs"), ("Size",), ("Price",),
         ("Last Updated", "LastUpdated"),
         ("Sentiment_Subjectivity", "sentiment_subjectivity"),
+        # Rule 13: raw columns behind the derived app-profile features.
+        # load_raw() reads with usecols, so a column NOT listed here is never
+        # loaded at all — the derived feature is then silently all-NaN.
+        ("Released",), ("Scraped Time",), ("Developer Id",), ("Content Rating",),
+        ("Minimum Android",), ("Ad Supported",), ("In App Purchases",),
+        ("Editors Choice",),
     ]
     out = set()
     for aliases in wanted:
@@ -526,6 +603,70 @@ def clean(df_raw: pd.DataFrame, tier_bounds: list = None) -> tuple[pd.DataFrame,
         df["price"] > 0, "Paid", np.where(df["price"].isna(), "Unknown", "Free")
     )
 
+    # Rule 13: derived app-profile features.
+    # Placed AFTER the identity/type fields and BEFORE the corrupted-row and
+    # duplicate filters, so every derived column inherits exactly the same
+    # row set as the fields it is computed from.
+    released_col = find_col(df_raw, "Released", "released")
+    scraped_col = find_col(df_raw, "Scraped Time", "scraped time", "ScrapedTime")
+    dev_col = find_col(df_raw, "Developer Id", "developer id", "Developer")
+    content_col = find_col(df_raw, "Content Rating", "content rating")
+    android_col = find_col(df_raw, "Minimum Android", "minimum android")
+    ad_col = find_col(df_raw, "Ad Supported", "ad supported")
+    iap_col = find_col(df_raw, "In App Purchases", "in app purchases")
+    editors_col = find_col(df_raw, "Editors Choice", "editors choice")
+
+    scraped_dt = _date_series(src(scraped_col)) if scraped_col else None
+    released_dt = _date_series(src(released_col)) if released_col else None
+    # df["last_updated"] holds datetime.date objects (Rule 8) -> align the dtype.
+    updated_dt = pd.to_datetime(df["last_updated"], errors="coerce")
+
+    def _day_diff(a, b):
+        """(a - b) in whole days; negative (impossible dates) -> NaN, never 0."""
+        if a is None or b is None:
+            return pd.Series(np.nan, index=df.index, dtype=float)
+        # pd.to_datetime(list) yields a DatetimeIndex, not a Series — align both.
+        left = pd.Series(np.asarray(a), index=df.index)
+        right = pd.Series(np.asarray(b), index=df.index)
+        out = (left - right).dt.days.astype("float64")
+        return out.where(out >= 0)
+
+    df["app_age_days"] = _day_diff(scraped_dt, released_dt)
+    df["days_since_update"] = _day_diff(scraped_dt, updated_dt)
+    def _present(s):
+        """Boolean mask: this date column exists AND parsed for this row."""
+        if s is None:
+            return pd.Series(False, index=df.index)
+        return pd.Series(np.asarray(s), index=df.index).notna()
+
+    both_age = _present(scraped_dt) & _present(released_dt)
+    both_upd = _present(scraped_dt) & _present(updated_dt)
+    report["negative_date_diffs_dropped_to_nan"] = {
+        "app_age_days": int((df["app_age_days"].isna() & both_age).sum()),
+        "days_since_update": int((df["days_since_update"].isna() & both_upd).sum()),
+    }
+
+    if dev_col:
+        dev_key = df[dev_col].astype(str).str.strip()
+        blank = dev_key.isin(("", "nan", "none"))
+        counts = dev_key.value_counts()
+        df["developer_app_count"] = dev_key.map(counts).astype(float)
+        # A blank developer id is "unknown", not a one-app portfolio.
+        df.loc[blank, "developer_app_count"] = np.nan
+        report["developer_portfolio_note"] = (
+            "developer_app_count counts listings per Developer Id over the whole "
+            "cleaned dataset (not per split); the ablation in the README shows how "
+            "much of the model's lift depends on it."
+        )
+    else:
+        df["developer_app_count"] = np.nan
+
+    df["min_android"] = [parse_min_android(v) for v in src(android_col)]
+    df["ad_supported"] = [parse_bool_flag(v) for v in src(ad_col)]
+    df["in_app_purchases"] = [parse_bool_flag(v) for v in src(iap_col)]
+    df["editors_choice"] = [parse_bool_flag(v) for v in src(editors_col)]
+    df["content_rating"] = [clean_category(v) for v in src(content_col)]
+
     # Rule 2: corrupted shifted rows (numeric category + out-of-range numeric rating)
     cat_raw = df[cat_col].astype(str).str.strip()
     rating_raw = (df[rating_col].astype(str).str.strip() if rating_col
@@ -553,6 +694,25 @@ def clean(df_raw: pd.DataFrame, tier_bounds: list = None) -> tuple[pd.DataFrame,
     report["missing_price_unparseable"] = int(df["price"].isna().sum())
     report["missing_last_updated"] = int(df["last_updated"].isna().sum())
 
+    # Rule 13 coverage: a derived column that is entirely NaN is useless as a
+    # model input (and would make the median imputer produce NaN), so it is
+    # reported here and dropped from the feature set by train_models.py.
+    report["derived_features"] = {
+        col: {
+            "non_null": int(df[col].notna().sum()),
+            "mean": (round(float(df[col].mean()), 3) if df[col].notna().any() else None),
+            "median": (round(float(df[col].median()), 3) if df[col].notna().any() else None),
+        }
+        for col in DERIVED_NUMERIC
+    }
+    report["derived_features"]["content_rating"] = {
+        "non_null": int(df["content_rating"].notna().sum()),
+        "values": {str(k): int(v) for k, v in df["content_rating"].value_counts().items()},
+    }
+    report["derived_features_all_nan"] = [
+        c for c in DERIVED_NUMERIC if not df[c].notna().any()
+    ]
+
     # Rule 11: model eligibility
     report["cleaned_rows"] = len(df)
     report["rows_for_m1_rating"] = int(df["rating"].notna().sum())
@@ -571,6 +731,7 @@ def clean(df_raw: pd.DataFrame, tier_bounds: list = None) -> tuple[pd.DataFrame,
     out = df[
         ["app", "category", "rating", "reviews", "installs", "size_mb",
          "price", "type", "last_updated", "sentiment_subjectivity"]
+        + DERIVED_COLUMNS
     ].reset_index(drop=True)
     return out, report
 

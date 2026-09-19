@@ -66,10 +66,17 @@ for (const [task, block] of Object.entries(parity.tasks)) {
     // The pipeline consumes engineered columns, exactly like app.py builds them.
     const row = {
       category: inputs.category,
+      content_rating: inputs.content_rating === undefined ? null : inputs.content_rating,
       size_mb: inputs.size_mb === null || inputs.size_mb === undefined ? null : inputs.size_mb,
       price: inputs.price === null || inputs.price === undefined ? null : inputs.price,
       price_is_positive: (inputs.price || 0) > 0 ? 1 : 0,
     };
+    // clean.py rule 13's inputs: omitted (null) => the imputer's median, which
+    // is the behaviour this test pins — so leave the key off entirely.
+    for (const k of ['app_age_days', 'days_since_update', 'developer_app_count',
+                     'min_android', 'ad_supported', 'in_app_purchases', 'editors_choice']) {
+      if (inputs[k] !== undefined && inputs[k] !== null) row[k] = inputs[k];
+    }
     if ((model.features || []).indexOf('reviews_log') !== -1) {
       row.reviews_log = Math.log1p(inputs.reviews || 0);
     }
@@ -108,10 +115,30 @@ if (m1) {
 
   const unknown = ApexInference.predictRegression(m1, Object.assign({}, base, { category: 'Not A Real Category' }));
   const zeroVec = ApexInference.featureVector(m1, Object.assign({}, base, { category: 'Not A Real Category' }));
-  const catPart = zeroVec.slice(m1.prep.num.columns.length);
+  // The one-hot block is [category..., content_rating...] — slice just the part
+  // this assertion is about.
+  const numLen = m1.prep.num.columns.length;
+  const catLen = m1.prep.cat.categories[0].length;
+  const catPart = zeroVec.slice(numLen, numLen + catLen);
   if (catPart.every((v) => v === 0) && isFinite(unknown)) {
     ok('m1: unseen category -> all-zero one-hot (handle_unknown="ignore"), prediction still finite');
   } else fail('m1: unseen category should encode as all zeros');
+
+  // clean.py rule 13: two categorical columns. Omitted -> the exported
+  // training-set mode; unseen -> all zeros. Both must hold for content_rating.
+  const ratingBlock = (row) =>
+    ApexInference.featureVector(m1, row).slice(numLen + catLen);
+  const defaultRating = ratingBlock(Object.assign({}, base, { content_rating: null }));
+  const expectedDefault = m1.prep.cat.defaults[1];
+  const defaultIdx = m1.prep.cat.categories[1].indexOf(expectedDefault);
+  if (defaultIdx >= 0 && defaultRating[defaultIdx] === 1 &&
+      defaultRating.reduce((a, b) => a + b, 0) === 1) {
+    ok(`content_rating omitted -> training mode "${expectedDefault}" (not an unknown category)`);
+  } else fail('content_rating omitted should fall back to the exported training mode');
+  if (ratingBlock(Object.assign({}, base, { content_rating: 'Unseen Rating 21+' }))
+        .every((v) => v === 0)) {
+    ok('content_rating unseen -> all-zero one-hot (handle_unknown="ignore")');
+  } else fail('unseen content rating should encode as all zeros');
 
   // Must agree with clean.py: clean_category('  books_&_reference ') === 'Books & Reference'
   const messy = ApexInference.normalizeCategory('  books_&_reference ');

@@ -3,6 +3,11 @@
   "dropped_missing_identity": 0,
   "categories_normalized": 0,
   "categories_typo_fixed": 0,
+  "negative_date_diffs_dropped_to_nan": {
+    "app_age_days": 0,
+    "days_since_update": 0
+  },
+  "developer_portfolio_note": "developer_app_count counts listings per Developer Id over the whole cleaned dataset (not per split); the ablation in the README shows how much of the model's lift depends on it.",
   "dropped_corrupted_rows": 0,
   "corrupted_row_apps": [],
   "exact_duplicates_removed": 0,
@@ -12,6 +17,54 @@
   "missing_size_mb": 1576,
   "missing_price_unparseable": 0,
   "missing_last_updated": 0,
+  "derived_features": {
+    "app_age_days": {
+      "non_null": 38673,
+      "mean": 1062.002,
+      "median": 849.0
+    },
+    "days_since_update": {
+      "non_null": 40000,
+      "mean": 545.912,
+      "median": 382.0
+    },
+    "developer_app_count": {
+      "non_null": 39999,
+      "mean": 2.873,
+      "median": 1.0
+    },
+    "min_android": {
+      "non_null": 38913,
+      "mean": 4.355,
+      "median": 4.2
+    },
+    "ad_supported": {
+      "non_null": 40000,
+      "mean": 0.516,
+      "median": 1.0
+    },
+    "in_app_purchases": {
+      "non_null": 40000,
+      "mean": 0.106,
+      "median": 0.0
+    },
+    "editors_choice": {
+      "non_null": 40000,
+      "mean": 0.003,
+      "median": 0.0
+    },
+    "content_rating": {
+      "non_null": 40000,
+      "values": {
+        "Everyone": 34510,
+        "Teen": 3707,
+        "Mature 17+": 1111,
+        "Everyone 10+": 671,
+        "Unrated": 1
+      }
+    }
+  },
+  "derived_features_all_nan": [],
   "cleaned_rows": 40000,
   "rows_for_m1_rating": 22418,
   "rows_for_m2_tier": 39893,
@@ -133,7 +186,7 @@
     "full_csv": "/home/user/google_analyst0.1/data/raw/playstore_full.csv",
     "sidecar": "playstore_sample.meta.json"
   },
-  "generated_at": "2026-09-19T11:06:31+00:00",
+  "generated_at": "2026-09-19T18:08:20+00:00",
   "tier_bounds": [
     [
       0,

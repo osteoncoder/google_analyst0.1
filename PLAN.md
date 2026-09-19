@@ -70,7 +70,44 @@ lifts M2-B substantially:
 
 ---
 
-## Phase 1 — Adopt enriched features + make training faster
+## Phase 1 — Adopt enriched features + make training faster  ✅ DONE
+
+**Status: complete and verified on 2026-09-19.** Every step below was
+implemented and every item in §1.5 passes. Measured outcome (committed 40,000-row
+sample, seed 42, 2-core sandbox):
+
+| Model | Before | After | Predicted in §1.3 |
+|---|---|---|---|
+| M2-B accuracy | 0.6729 (below the 0.7242 baseline) | **0.7682** (above it) | 0.7682 ✓ |
+| M2-B macro-F1 | 0.3067 | **0.5440** | 0.5440 ✓ |
+| M2-B selected model | Decision Tree | **Gradient Boosting**, 0.99 MB | GB ✓ |
+| M1 R² | +0.0506 | **+0.0711** (MAE 0.494, RMSE 0.654) | +0.0711 ✓ |
+| M2-A macro-F1 / accuracy | 0.8275 / 0.9069 | **0.8385 / 0.9077** | 0.8385 ✓ |
+| Full training run | — | **2 min 34 s** (was ~4 min before `n_jobs=-1`) | — |
+
+Rejected by the 10 MB artifact budget, scores recorded and shown struck out in
+section 09: Random Forest at **412 MB** (M1), **176 MB** (M2-A) and **334 MB**
+(M2-B). RF's M2-B validation macro-F1 (0.535) was marginally above GB's (0.530)
+— the budget is what makes GB the selection, and it is visible on the page.
+
+Implementation notes that a fresh session needs:
+
+- `clean.py` rule 13 derives the eight features; `_consumed_columns()` must
+  list the raw columns or `load_raw()` never reads them (silent all-NaN bug —
+  it cost two iterations). The features are written to `apps_cleaned.csv` but
+  deliberately **not** to `apps.json`, so the browser payload is unchanged.
+- `train_models.py` drops any derived column that is entirely NaN (old Kaggle
+  export, 11-row mechanical sample), so those datasets still train.
+- `prep.cat` in the browser bundle is now **multi-column**
+  (`{columns, categories:[[...],[...]], defaults:[...]}`). `ml_inference.js`
+  still accepts the legacy single-column shape, so a stale bundle cannot throw.
+- `GradientBoostingClassifier` inference: `score_k = log(class_prior_k) +
+  lr · Σ_stages leaf_k`, then softmax — verified against sklearn to 1e-16, and
+  the parity suite matches to 5e-11.
+- Categorical defaults (`categorical_defaults` in `meta.json`, `prep.cat.defaults`
+  in the bundle) are what an *omitted* field means: the training-set mode.
+  `app.py` and `ml_inference.js` both read them, so the engines cannot diverge.
+
 
 **Goal:** ship the measured M2-B improvement (acc 0.6729 → 0.7682, macro-F1
 0.3067 → 0.5440, now above the 0.7242 majority baseline) and cut training cost,
@@ -200,11 +237,20 @@ features, defaulting to `None`. Build the row with training medians for
 numeric and the mode for categorical, and append the imputation to the
 returned `assumptions` list so the UI states it.
 
-#### Step 6 — Frontend forms
+#### Step 6 — Frontend forms  ✅ DONE — option 2 (confirmed 2026-09-19)
 
-**Open question (needs your call — see §1.6).** Recommended default: keep the
-form at 3 fields and impute the new features to training medians/modes,
-listing each imputation as an assumption. Least disruptive and still honest.
+The M2 form now asks for **content rating, minimum Android, and the
+ad-supported / in-app-purchase / Editors' Choice flags** (each with
+"Not specified"), while **app age, days since the last update and developer
+portfolio size** stay imputed to their training medians. Every imputation is
+listed under the result with the value actually used, e.g.
+*"app age (days since release) not provided → imputed to the training median
+(842)"*. The M1 form is unchanged (4 fields); its imputations are listed the
+same way.
+
+Locked by a new `tests/smoke_frontend.js` assertion: the tier submit sends
+`content_rating` / `min_android` / `ad_supported` / `in_app_purchases`, and a
+blank Editors' Choice stays `null` (imputed, never guessed as "no").
 
 #### Step 7 — Tests
 
@@ -242,29 +288,31 @@ browser parity.
 | Parity breaks silently | Gate the merge on `tests/browser_inference.test.js`. |
 | Selection rejects everything | Budget must leave at least one candidate; assert and fail loudly otherwise. |
 
-### 1.5 Verification checklist
+### 1.5 Verification checklist — all green (2026-09-19)
 
-- [ ] `python clean.py` — new columns present, no all-NaN columns
-- [ ] `python train_models.py` — M2-B ≈ 0.768 / 0.544; GB selected
-- [ ] `node tests/browser_inference.test.js` — parity at ~1e-11
-- [ ] `node tests/smoke_frontend.js` — all assertions pass
-- [ ] `python app.py` → `/api/health` reports `models_loaded: true`
-- [ ] API prediction == browser-engine prediction for the same input
-- [ ] Static-host check: page on port 8001 (no `/api`) still predicts
-- [ ] README metrics updated
+- [x] `python clean.py` — 8 new columns present, no all-NaN columns
+      (`app_age_days` 38,673/40,000 · `days_since_update` 40,000 ·
+      `developer_app_count` 39,999 · `min_android` 38,913 · flags 40,000 ·
+      `content_rating` 40,000); `apps.json` rows byte-identical to before
+- [x] `python train_models.py` — M2-B **0.7682 / 0.5440**, Gradient Boosting
+      selected, 0.99 MB; RF rejected at 334 MB
+- [x] `node tests/browser_inference.test.js` — parity at **5e-11** (180 cases)
+- [x] `node tests/smoke_frontend.js` — all assertions pass
+- [x] `python app.py` → `/api/health` reports `models_loaded: true`
+- [x] API prediction == browser-engine prediction (4 tier cases + 1 rating
+      case; residual differences are the API's own 4-dp rounding)
+- [x] Static-host / `file://` path still predicts (covered by the smoke test's
+      no-backend section)
+- [x] README metrics + M2-B caveat + viva script updated
+- [x] 11-row mechanical sample still trains (`sample_apps.csv` → the 7 derived
+      columns are all-NaN and are dropped from the feature set)
 
-### 1.6 Open question — form UX
+### 1.6 Open question — form UX  ✅ RESOLVED: option 2
 
-The M2 form currently asks for category / size / price. Options:
-
-1. **Impute everything** (recommended default): form unchanged; new features
-   take training medians/modes and each is listed as an assumption.
-2. **Expose the intuitive ones**: add content rating, minimum Android, ad /
-   IAP / Editors' Choice as optional inputs; impute age, days-since-update and
-   portfolio size.
-3. **Expose all ~10**: most accurate for real apps, longest form.
-
-Recommend option 2 as the balance; say the word and I will build it.
+The user chose **option 2** — expose content rating, minimum Android and the
+ad / IAP / Editors' Choice flags; impute app age, days-since-update and
+developer portfolio size to training medians and list each as an assumption.
+Implemented (see Step 6).
 
 ## Phase 2 — Optimise and professionalise the website
 

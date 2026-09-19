@@ -145,18 +145,105 @@ async function detectInference(){
   return INFERENCE.mode;
 }
 
+/* ---------------- imputation bookkeeping (mirrors app.py) ----------------
+   Both models take inputs this page does not ask for. Whatever is left out is
+   handed to the pipeline as "missing", so the fitted median imputer fills it in
+   — the same in Python and in the browser — and each one is reported, with the
+   exact value that was used, instead of being silently assumed. */
+const FEATURE_LABELS = {
+  app_age_days: 'app age (days since release)',
+  days_since_update: 'days since last update',
+  developer_app_count: 'developer portfolio size (listings by this developer)',
+  min_android: 'minimum Android version',
+  ad_supported: 'ad-supported flag',
+  in_app_purchases: 'in-app-purchase flag',
+  editors_choice: "Editors' Choice flag",
+};
+const FLAG_COLS = ['ad_supported', 'in_app_purchases', 'editors_choice'];
+const COUNT_COLS = ['developer_app_count', 'app_age_days', 'days_since_update'];
+
+function fmtMedian(col, v){
+  if(v === null || v === undefined || !isFinite(Number(v))) return 'unknown';
+  if(FLAG_COLS.indexOf(col) !== -1) return `${Math.round(v)} (${Number(v) >= 0.5 ? 'yes' : 'no'})`;
+  if(COUNT_COLS.indexOf(col) !== -1) return Math.round(Number(v)).toLocaleString();
+  if(col === 'min_android') return Number(v).toFixed(1);
+  return Number(v).toFixed(2);
+}
+
+/* One-hot levels of categorical column `i` (handles the legacy single-column
+   bundle shape, where `categories` is a flat array). */
+function catLevels(model, i){
+  const c = (model.prep && model.prep.cat && model.prep.cat.categories) || [];
+  return Array.isArray(c[i]) ? c[i] : (i === 0 ? c : []);
+}
+
+function catDefault(model, i){
+  const d = (model.prep && model.prep.cat && model.prep.cat.defaults) || [];
+  return d[i] || ((model.prep.cat || {}).missing_fill) || '__missing__';
+}
+
+function imputationNotes(model, row){
+  const notes = [];
+  const cols = (model.prep && model.prep.num && model.prep.num.columns) || [];
+  Object.keys(FEATURE_LABELS).forEach(col=>{
+    const i = cols.indexOf(col);
+    if(i === -1) return;                       // model was not fitted with it
+    const v = row[col];
+    if(v === null || v === undefined){
+      notes.push(`${FEATURE_LABELS[col]} not provided → imputed to the training median `
+        + `(${fmtMedian(col, model.prep.num.medians[i])})`);
+    }
+  });
+  if(catLevels(model, 1).length && !row.content_rating){
+    notes.push(`content rating not provided → assumed “${catDefault(model, 1)}” `
+      + `(the most common value in training)`);
+  }
+  return notes;
+}
+
+/* "Not specified" (empty select) => null => the imputer. Yes/No => 1/0. */
+function flagOrNull(v){
+  if(v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return isFinite(n) ? (n ? 1 : 0) : null;
+}
+
+/* A number the caller supplied, or null (= "not provided" -> imputer). */
+function numOrNothing(v){
+  if(v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
+/* Build the model row from either form. Fields the form does not have stay
+   null, which is what makes the imputation above happen (and be reported).
+   Anything the caller DID supply is passed straight through, so the browser
+   engine and the API can never disagree about the same request. */
+function modelRow(inputs, withReviews){
+  const price = inputs.price === null || inputs.price === undefined ? 0 : inputs.price;
+  const row = {
+    category: inputs.category,
+    content_rating: inputs.content_rating || null,
+    size_mb: numOrNothing(inputs.size_mb),
+    price: price,
+    price_is_positive: price > 0 ? 1 : 0,
+    app_age_days: numOrNothing(inputs.app_age_days),
+    days_since_update: numOrNothing(inputs.days_since_update),
+    developer_app_count: numOrNothing(inputs.developer_app_count),
+    min_android: numOrNothing(inputs.min_android),
+    ad_supported: flagOrNull(inputs.ad_supported),
+    in_app_purchases: flagOrNull(inputs.in_app_purchases),
+    editors_choice: flagOrNull(inputs.editors_choice),
+  };
+  if(withReviews) row.reviews_log = Math.log1p(inputs.reviews || 0);
+  return row;
+}
+
 /* Mirrors app.py's response shape field-for-field, so the renderers below
    cannot tell (or care) which engine answered. */
 function localRating(model, inputs){
   const category = String(inputs.category || '');
-  const price = inputs.price === null ? 0 : inputs.price;
-  const row = {
-    category: category,
-    size_mb: inputs.size_mb === null ? null : inputs.size_mb,
-    price: price,
-    price_is_positive: price > 0 ? 1 : 0,
-    reviews_log: Math.log1p(inputs.reviews || 0),
-  };
+  const row = modelRow(inputs, true);
   const raw = ApexInference.predictRegression(model, row);
   // Play ratings live on [1, 5]; say so when extrapolation was clipped.
   const pred = Math.min(5, Math.max(1, raw));
@@ -165,13 +252,19 @@ function localRating(model, inputs){
   if(inputs.size_mb === null) assumptions.push('size omitted → imputed to the training-set median');
   if(inputs.price === null) assumptions.push('price omitted → treated as free ($0)');
   if(inputs.reviews === null) assumptions.push('reviews omitted → treated as 0');
+  assumptions.push(...imputationNotes(model, row));
   assumptions.push('listed price is a price tag, not observed revenue');
 
   const categoryUsed = ApexInference.normalizeCategory(category) || category.trim();
-  const cats = model.prep.cat.categories;
+  const cats = catLevels(model, 0);
   if(cats.indexOf(categoryUsed) === -1){
     assumptions.push(`category ${categoryUsed} was not seen in training → encoded as an unknown `
       + `category (the model knows ${cats.length} categories)`);
+  }
+  const ratings = catLevels(model, 1);
+  if(ratings.length && row.content_rating && ratings.indexOf(row.content_rating) === -1){
+    assumptions.push(`content rating ${row.content_rating} was not seen in training → `
+      + `encoded as an unknown rating (the model knows ${ratings.length})`);
   }
   if(pred !== raw){
     assumptions.push(`raw prediction ${raw.toFixed(3)} clipped to the rating domain [1, 5]`);
@@ -192,13 +285,7 @@ function localRating(model, inputs){
 
 function localTier(model, inputs){
   const category = String(inputs.category || '');
-  const price = inputs.price === null ? 0 : inputs.price;
-  const row = {
-    category: category,
-    size_mb: inputs.size_mb === null ? null : inputs.size_mb,
-    price: price,
-    price_is_positive: price > 0 ? 1 : 0,
-  };
+  const row = modelRow(inputs, false);
   const out = ApexInference.tier(model, row);
   const probabilities = {};
   Object.keys(out.probabilities).forEach(k=>{
@@ -208,13 +295,19 @@ function localTier(model, inputs){
   const assumptions = [];
   if(inputs.size_mb === null) assumptions.push('size omitted → imputed to the training-set median');
   if(inputs.price === null) assumptions.push('price omitted → treated as free ($0)');
+  assumptions.push(...imputationNotes(model, row));
   assumptions.push('listed price is a price tag, not observed revenue');
 
   const categoryUsed = ApexInference.normalizeCategory(category) || category.trim();
-  const cats = model.prep.cat.categories;
+  const cats = catLevels(model, 0);
   if(cats.indexOf(categoryUsed) === -1){
     assumptions.push(`category ${categoryUsed} was not seen in training → encoded as an unknown `
       + `category (the model knows ${cats.length} categories)`);
+  }
+  const ratings = catLevels(model, 1);
+  if(ratings.length && row.content_rating && ratings.indexOf(row.content_rating) === -1){
+    assumptions.push(`content rating ${row.content_rating} was not seen in training → `
+      + `encoded as an unknown rating (the model knows ${ratings.length})`);
   }
 
   return {
@@ -463,12 +556,31 @@ function renderRatingModelCard(){
 /* ================================================================
    SECTION 08 — Install-Tier Classifier (M2, without Reviews)
    ================================================================ */
+/* Content rating is not in apps.json — the only authoritative list is the one
+   the fitted encoder was trained on, so read it out of the exported pipeline
+   when the bundle is reachable (API-only mode keeps the static fallback list). */
+async function refreshContentRatings(){
+  const sel = document.getElementById('tfContentRating');
+  if(!sel) return;
+  try{
+    const models = await ensureBrowserModels();
+    const m = models.m2_tier_without_reviews || models.m1_rating;
+    const cats = catLevels(m, 1);
+    if(!cats.length) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Not specified</option>'
+      + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    sel.value = cats.indexOf(current) === -1 ? '' : current;
+  }catch(err){ /* bundle unavailable — the static list in index.html stands */ }
+}
+
 function initTierForm(){
   const sel = document.getElementById('tfCategory');
   const custom = document.getElementById('tfCategoryCustom');
   const form = document.getElementById('tierForm');
   const result = document.getElementById('tierResult');
   wireCategoryPair(sel, custom);
+  refreshContentRatings();
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -483,6 +595,11 @@ function initTierForm(){
         category: cat,
         size_mb: numOrNull(document.getElementById('tfSize')),
         price: numOrNull(document.getElementById('tfPrice')),
+        content_rating: document.getElementById('tfContentRating').value || null,
+        min_android: numOrNull(document.getElementById('tfAndroid')),
+        ad_supported: flagOrNull(document.getElementById('tfAd').value),
+        in_app_purchases: flagOrNull(document.getElementById('tfIap').value),
+        editors_choice: flagOrNull(document.getElementById('tfEditors').value),
       });
       const order = out.tier_order || Object.keys(out.probabilities);
       const bars = order.map(t=>{
@@ -559,17 +676,35 @@ function tableHTML(headers, rows, selectedRow){
   return `<table class="metric-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
 
+/* A candidate can score well and still be unshippable. The training run
+   measures every fitted pipeline and excludes anything over the artifact
+   budget; the tables show the size and say why the row is struck out, instead
+   of quietly dropping it. */
+function sizeCell(name, r){
+  if(r.artifact_mb === undefined) return '';
+  if(r.rejected){
+    return `${r.artifact_mb >= 100 ? Math.round(r.artifact_mb) : r.artifact_mb.toFixed(1)} MB`
+      + `<span class="tiny"> · excluded: over the shipping budget</span>`;
+  }
+  return r.artifact_mb >= 100 ? `${Math.round(r.artifact_mb)} MB` : `${r.artifact_mb.toFixed(1)} MB`;
+}
+
+function candidateNameCell(name, r){
+  return r.rejected ? `<s>${name}</s>` : name;
+}
+
 function renderPerfM1(){
   const el = document.getElementById('perfM1');
   const m = METRICS.models.m1_rating;
   const rows = Object.entries(m.candidates).map(([name, r])=>{
-    if(!r.val) return [name, 'FAILED', r.error, '', '', ''];
-    return [name,
+    if(!r.val) return [name, 'FAILED', r.error, '', '', '', ''];
+    return [candidateNameCell(name, r),
       r.val.mae?.toFixed(3), r.val.rmse?.toFixed(3), r.val.r2?.toFixed(3),
-      r.test.mae?.toFixed(3), r.test.rmse?.toFixed(3), r.test.r2?.toFixed(3)];
+      r.test.mae?.toFixed(3), r.test.rmse?.toFixed(3), r.test.r2?.toFixed(3),
+      sizeCell(name, r)];
   });
   el.innerHTML = tableHTML(
-    ['Model','MAE (val)','RMSE (val)','R² (val)','MAE (test)','RMSE (test)','R² (test)'],
+    ['Model','MAE (val)','RMSE (val)','R² (val)','MAE (test)','RMSE (test)','R² (test)','Artifact'],
     rows, rows.findIndex(r=>r[0]===m.model));
 }
 
@@ -577,13 +712,44 @@ function renderPerfM2(version){
   const el = document.getElementById(version === 'with_reviews' ? 'perfM2a' : 'perfM2b');
   const m = METRICS.models.m2_tier[version];
   const rows = Object.entries(m.candidates).map(([name, r])=>{
-    if(!r.val) return [name, 'FAILED', r.error, '', '', ''];
-    return [name, r.val.accuracy?.toFixed(3), r.val['macro_f1']?.toFixed(3),
-            r.test.accuracy?.toFixed(3), r.test['macro_f1']?.toFixed(3), r.test['weighted_f1']?.toFixed(3)];
+    if(!r.val) return [name, 'FAILED', r.error, '', '', '', ''];
+    return [candidateNameCell(name, r),
+            r.val.accuracy?.toFixed(3), r.val['macro_f1']?.toFixed(3),
+            r.test.accuracy?.toFixed(3), r.test['macro_f1']?.toFixed(3),
+            r.test['weighted_f1']?.toFixed(3), sizeCell(name, r)];
   });
   el.innerHTML = tableHTML(
-    ['Model','Acc (val)','Macro-F1 (val)','Acc (test)','Macro-F1 (test)','Weighted-F1 (test)'],
+    ['Model','Acc (val)','Macro-F1 (val)','Acc (test)','Macro-F1 (test)','Weighted-F1 (test)','Artifact'],
     rows, rows.findIndex(r=>r[0]===m.model));
+}
+
+/* One line saying what the struck-out rows mean. */
+function renderBudgetNote(){
+  const el = document.getElementById('perfBudget');
+  if(!el) return;
+  const budget = METRICS.artifact_budget_mb;
+  const rejected = [];
+  for(const key of ['m1_rating']){
+    Object.entries((METRICS.models[key].candidates)).forEach(([n, r])=>{
+      if(r.rejected) rejected.push([key, n, r.artifact_mb]);
+    });
+  }
+  for(const v of ['with_reviews', 'without_reviews']){
+    Object.entries(METRICS.models.m2_tier[v].candidates).forEach(([n, r])=>{
+      if(r.rejected) rejected.push(['m2 ' + v, n, r.artifact_mb]);
+    });
+  }
+  if(!rejected.length || budget === undefined){
+    el.innerHTML = '';
+    return;
+  }
+  const biggest = rejected.reduce((a, b)=>(b[2] > a[2] ? b : a));
+  el.innerHTML = `<p class="chart-note">Selection is not only about score: every candidate is `
+    + `also measured, and anything over the <strong>${budget} MB</strong> shipping budget is `
+    + `excluded — it has to be committed to git, served by the API and exported to the browser `
+    + `bundle. The largest rejected candidate here is <strong>${biggest[1]}</strong> at `
+    + `${Math.round(biggest[2])} MB. Its scores stay in the table (struck out) so the trade-off `
+    + `is visible rather than hidden.</p>`;
 }
 
 function renderPerClass(){
@@ -708,6 +874,7 @@ function renderML(){
     renderPerfM1();
     renderPerfM2('with_reviews');
     renderPerfM2('without_reviews');
+    renderBudgetNote();
     renderPerClass();
     renderImportance();
     renderCompare();

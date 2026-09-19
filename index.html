@@ -167,7 +167,9 @@
           <code>app.py</code> is serving, and otherwise in this page via
           <code>ml_inference.js</code> (the same pipeline exported to
           <code>ml/artifacts/browser/models.js</code>); the result always says which one answered.
-          Features available at prediction time are exactly the form fields below.</p>
+          The form asks for only what a user can know; the model's other inputs (content rating,
+          app age, time since the last update, developer portfolio size…) are imputed to their
+          training medians, and every imputation is listed with the value used.</p>
         </div>
       </div>
       <div class="card grid-2">
@@ -198,7 +200,10 @@
         <div>
           <h2><span class="stage">08</span>Install-Tier Classifier</h2>
           <p class="section-desc">M2 four-class classifier (primary version <strong>excludes Reviews</strong>,
-          a strong proxy for installs). Inputs available at prediction time: category, size, price.
+          a strong proxy for installs). Inputs available at prediction time: category, size, price,
+          content rating, minimum Android, and the ad / in-app-purchase / Editors' Choice flags.
+          App age, days since last update and developer portfolio size are imputed to their
+          training medians — every imputation is stated, with the value used, under the result.
           Probabilities are model estimates, not guarantees. Like section 07, this works with or
           without the Python backend.</p>
         </div>
@@ -216,6 +221,47 @@
             <label>Price ($) <span class="field-hint">empty → $0 (free)</span>
               <input id="tfPrice" type="number" min="0" step="0.01" placeholder="e.g. 1.99">
             </label>
+            <label>Content rating
+              <span class="field-hint">blank → the most common rating in training</span>
+              <select id="tfContentRating">
+                <option value="">Not specified</option>
+                <option value="Everyone">Everyone</option>
+                <option value="Everyone 10+">Everyone 10+</option>
+                <option value="Teen">Teen</option>
+                <option value="Mature 17+">Mature 17+</option>
+                <option value="Adults only 18+">Adults only 18+</option>
+                <option value="Unrated">Unrated</option>
+              </select>
+            </label>
+            <label>Minimum Android <span class="field-hint">e.g. 5.0 · empty → training median</span>
+              <input id="tfAndroid" type="number" min="1" max="20" step="0.1" placeholder="e.g. 5.0">
+            </label>
+            <div class="form-row">
+              <label>Ad-supported
+                <select id="tfAd">
+                  <option value="">Not specified</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+              <label>In-app purchases
+                <select id="tfIap">
+                  <option value="">Not specified</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+              <label>Editors' Choice
+                <select id="tfEditors">
+                  <option value="">Not specified</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+            </div>
+            <p class="field-hint">App age, days since last update and developer
+            portfolio size have no field here — they are imputed to their training
+            medians, and every imputation is listed with the result.</p>
             <button type="submit">Predict install tier</button>
             <div id="tierResult" class="ml-result"></div>
           </form>
@@ -254,6 +300,7 @@
             <div class="table-wrap" id="perfM2b"></div>
           </div>
         </div>
+        <div id="perfBudget"></div>
 
         <div class="grid-2">
           <div>

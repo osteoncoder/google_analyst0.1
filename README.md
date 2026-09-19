@@ -109,9 +109,16 @@ this reproduces them from the sample CSV, ~2 min total):
 
 ```bash
 .venv/bin/python clean.py          # 1. clean  -> data/apps_cleaned.csv, apps.json, apps_bundle.js
-.venv/bin/python train_models.py   # 2. train  -> ml/artifacts/ (~90 s)
+.venv/bin/python train_models.py   # 2. train  -> ml/artifacts/ (~2.5 min)
 .venv/bin/python app.py            # 3. serve  -> http://localhost:8000
 ```
+
+Training flags worth knowing:
+
+| Flag | Effect |
+|---|---|
+| `--max-artifact-mb N` | selection budget for a candidate's serialized size (default **10**). Oversized candidates are fitted, scored, recorded and then excluded. |
+| `--fast` | cheaper fits: gradient-boosting early stopping + a depth-capped decision tree. Changes the fitted model, so the numbers differ — intended for the optional full-scale run. |
 
 #### Do I need to retrain?
 
@@ -186,7 +193,7 @@ What to expect:
 | Download | three `.tar.gz` parts, **~666 MB**; `--cleanup` deletes them afterwards |
 | Full CSV | written to `data/raw/playstore_full.csv` (git-ignored) |
 | `clean.py` | 2,312,944 → 2,312,222 rows, **~80 s, ~3.0 GB peak RAM** |
-| `train_models.py` | trains all 15 candidate pipelines on the full set (slower than the sample) |
+| `train_models.py` | all 15 candidate pipelines on the full set — **use `--fast`** (early stopping + depth cap); without it the exact Gradient Boosting runs dominate, and `RandomForest(n_jobs=-1)` still wants plenty of RAM |
 | Browser payload | capped at **60,000 rows** (rule 12) — raise with `--max-json-rows 0`, but the page gets slow |
 | Sample banners | disappear, because `is_sample` is now false |
 
@@ -341,13 +348,57 @@ inference can never drift from training.
   No test-set tuning. (Candidate tables in section 09 also list each
   candidate's test score for transparency — selection never uses it.)
 
+**Where the compute goes, and what was done about it.** On the committed 40k
+sample the whole run is ~2.5 min. Two levers are on by default because they
+cannot change a result: `RandomForest(n_jobs=-1)` (measured bit-identical at a
+fixed `random_state`, ~1.9× faster here and it scales with cores), and the
+artifact-size budget, which stops an unshippable 334 MB forest from being
+selected. `--fast` adds the levers that *do* change the model — gradient-boosting
+early stopping and a depth-capped decision tree — for the optional full-scale
+run. `HistGradientBoosting` was benchmarked at ~14× faster than exact
+`GradientBoosting` with metrics inside noise (accuracy +0.0005), and **rejected
+on purpose**: it exposes no public accessor for its binned trees, so it can
+never be exported to `ml_inference.js`, and adopting it would silently kill the
+no-backend prediction path (GitHub Pages, Live Server, `file://`).
+
 ### M1 — Rating regression (`m1_rating/`)
 
-- Target: `Rating`. Inputs: `category, size_mb, price, price_is_positive,
-  log1p(reviews)`. **Rating itself and Installs are excluded from inputs.**
+- Target: `Rating`. Inputs: `category`, `content_rating`, `size_mb`, `price`,
+  `price_is_positive`, `log1p(reviews)`, plus the seven engineered app-profile
+  features below. **Rating itself and Installs are excluded from inputs.**
 - Candidates: mean-prediction baseline, Linear Regression, Decision Tree,
   Random Forest, Gradient Boosting.
 - Reported: actual MAE / RMSE / R² (validation + final test), per candidate.
+
+### Engineered app-profile features (`clean.py` rule 13)
+
+The primary dataset carries columns the pipeline originally never parsed. They
+are turned into model inputs in **one** place (`clean.py`), so
+`clean.py → apps_cleaned.csv → train_models.py` stays a single source of truth,
+and a dataset that lacks them (the older 10,841-row Kaggle export, the 11-row
+mechanical sample) simply yields NaNs — `train_models.py` then drops those
+columns from the feature set instead of feeding all-NaN inputs to the imputer.
+
+| Feature | Definition | Coverage on the 40k sample |
+|---|---|---|
+| `app_age_days` | `Scraped Time − Released`, in days | 38,673 / 40,000 (mean 1,062) |
+| `days_since_update` | `Scraped Time − Last Updated`, in days | 40,000 (mean 546) |
+| `developer_app_count` | listings sharing the app's `Developer Id` | 39,999 (mean 2.87) |
+| `min_android` | `"5.0 and up"` → `5.0` | 38,913 (mean 4.36) |
+| `ad_supported` | `True/False` → `1/0` | 40,000 (51.6 % true) |
+| `in_app_purchases` | `True/False` → `1/0` | 40,000 (10.6 % true) |
+| `editors_choice` | `True/False` → `1/0` | 40,000 (0.27 % true) |
+| `content_rating` | `Everyone` / `Everyone 10+` / `Teen` / `Mature 17+` / `Unrated` (categorical) | 40,000 |
+
+A negative date difference (released *after* the scrape) is `NaN`, never `0`.
+These columns are written to `apps_cleaned.csv` for training but deliberately
+**not** to `apps.json`, so the browser payload does not grow.
+
+> **Leakage note, stated up front.** `developer_app_count` is counted over the
+> whole cleaned frame, while the train/test split is grouped by *app name* — so
+> in principle a developer's other listings can straddle the split. An ablation
+> with it removed costs ~0.015 macro-F1 (0.5492 → 0.5344), i.e. the lift from
+> the engineered features is real and does not rest on that one column.
 
 ### M2 — Four-class install-tier classification (`m2_tier_*/`)
 
@@ -368,6 +419,15 @@ inference can never drift from training.
   Tree, Random Forest, Gradient Boosting; ranked by **validation macro-F1**
   (chosen for class imbalance — see the results below, where plain accuracy is
   actively misleading).
+- **Artifact-size budget.** Every fitted candidate is also *measured*, and
+  anything over `--max-artifact-mb` (default **10 MB**) is excluded from
+  selection, however good its validation score: the winner has to be committed
+  to git, loaded by the API and exported into the browser bundle. Rejected
+  candidates keep their scores in the section-09 tables, struck out and with
+  their size, so the trade-off is visible rather than hidden. This is why
+  version B ships **Gradient Boosting (1.0 MB)** and not the marginally better
+  **Random Forest (334 MB)** — and it generalises: it catches the next
+  oversized model instead of special-casing today's.
 - Two versions, **same split, same protocol**:
   - **A — with Reviews** (`m2_tier_with_reviews/`)
   - **B — without Reviews** (`m2_tier_without_reviews/`) ← **primary dashboard
@@ -387,11 +447,22 @@ evaluation is in-sample-time. Section 09 states all of this on the page.
 
 ### Features available at prediction time
 
-Exactly what the forms ask for (that is deliberate):
+The forms ask for what a user can actually know, and **disclose every value the
+model had to assume**:
 
 - M1: category, size (MB), price ($), review count.
-- M2: category, size (MB), price ($).
+- M2: category, size (MB), price ($), content rating, minimum Android, and the
+  ad-supported / in-app-purchase / Editors' Choice flags.
+- Not asked for (either form): app age, days since the last update, developer
+  portfolio size — imputed to their training medians.
 - Omitted fields: size → training median (imputer), price → $0, reviews → 0.
+- Every imputation is listed under the result **with the value used** (e.g.
+  *"app age (days since release) not provided → imputed to the training median
+  (842)"*), and a content rating the model never saw is reported as an unknown
+  category. Nothing is silently assumed.
+- Both engines agree by construction: a field the caller leaves out is passed
+  to the pipeline as missing, so the fitted imputer fills it — the browser
+  engine (`ml_inference.js`) walks the very same exported numbers.
 - **Category normalization**: an incoming category is passed through
   `clean.py`'s own `clean_category()` (trim, underscores/hyphens → spaces,
   title case, the one documented typo fix) *before* encoding — the same
@@ -489,39 +560,52 @@ measured in a 2-core / 3.8 GB sandbox: **80 s wall, 3.0 GB peak RSS**):
 **M1 — Rating regression** (n=22,418; test n=4,482; selected by validation R²;
 training ratings: mean 4.10, median 4.20):
 
-| Model | MAE (test) | RMSE (test) | R² (test) |
-|---|---|---|---|
-| Mean baseline | 0.522 | 0.679 | −0.000 |
-| Linear Regression | 0.511 | 0.671 | +0.024 |
-| Decision Tree | 0.675 | 0.909 | −0.793 |
-| Random Forest | 0.529 | 0.703 | −0.071 |
-| **Gradient Boosting (selected)** | **0.503** | **0.661** | **+0.051** |
+| Model | MAE (test) | RMSE (test) | R² (test) | Artifact |
+|---|---|---|---|---|
+| Mean baseline | 0.522 | 0.679 | −0.000 | 0.003 MB |
+| Linear Regression | 0.507 | 0.667 | +0.035 | 0.005 MB |
+| Decision Tree | 0.684 | 0.923 | −0.849 | 1.5 MB |
+| ~~Random Forest~~ | 0.499 | 0.659 | +0.059 | **412 MB — excluded** |
+| **Gradient Boosting (selected)** | **0.494** | **0.654** | **+0.071** | **0.26 MB** |
 
 Honest reading: ratings in this dataset are high and tightly clustered
 (median 4.2), so "always predict the mean" already achieves MAE 0.52 — the
-model adds only ~0.02 MAE and R² ≈ 0.05. Rating is driven by app *quality*,
+model adds only ~0.03 MAE and R² ≈ 0.07. Rating is driven by app *quality*,
 which none of these features capture. A defensible negative result, not a
-failure.
+failure. (The engineered features moved R² from +0.051 to +0.071.)
 
 **M2 — Install-tier classification** (n=39,893; test n=7,967):
 
 | Version | Model (selected) | Accuracy (test) | Macro-F1 (test) | Weighted-F1 (test) |
 |---|---|---|---|---|
-| A — with Reviews | Logistic Regression | 0.907 | 0.827 | 0.906 |
-| **B — without Reviews (primary)** | **Decision Tree** | **0.673** | **0.307** | **0.637** |
-| Baseline — class prior | Dummy | 0.724 | 0.210 | 0.318 |
+| A — with Reviews | Logistic Regression | 0.908 | 0.838 | 0.907 |
+| **B — without Reviews (primary)** | **Gradient Boosting** | **0.768** | **0.544** | **0.740** |
+| Baseline — class prior | Dummy | 0.724 | 0.210 | 0.608 |
+
+Version B candidates (validation macro-F1 is the selection metric):
+
+| Candidate | Acc (val) | Macro-F1 (val) | Acc (test) | Macro-F1 (test) | Artifact |
+|---|---|---|---|---|---|
+| Dummy (class prior) | 0.731 | 0.211 | 0.724 | 0.210 | 0.004 MB |
+| Logistic Regression | 0.762 | 0.482 | 0.763 | 0.494 | 0.006 MB |
+| Decision Tree | 0.690 | 0.459 | 0.689 | 0.459 | 0.97 MB |
+| ~~Random Forest~~ | 0.770 | 0.535 | 0.763 | 0.531 | **334 MB — excluded** |
+| **Gradient Boosting (selected)** | **0.772** | **0.530** | **0.769** | **0.538** | **1.06 MB** |
 
 Two honest observations, both stated on the page:
 
-- **Accuracy is misleading here.** 72.6% of the sample is `Under 10K`, so the
-  do-nothing baseline scores 72.4% accuracy — *higher* than model B's 67.3%.
-  On macro-F1 (the documented selection metric, chosen for exactly this
-  reason) B improves 0.210 → 0.307, i.e. it carries real signal about the
-  minority tiers, but the feature set is genuinely weak for this task.
-- **The A→B gap is large** (macro-F1 0.827 → 0.307): Reviews acts as a strong
+- **Accuracy is still the wrong headline.** 72.6 % of the sample is
+  `Under 10K`, so the do-nothing baseline scores 72.4 % accuracy. Model B now
+  clears it (0.768) *and* more than doubles its macro-F1 (0.210 → 0.544), so
+  the improvement is real rather than an artefact of the majority class — but
+  the headline number to quote remains **macro-F1**, chosen up front for
+  exactly this imbalance.
+- **The A→B gap is large** (macro-F1 0.838 → 0.544): Reviews acts as a strong
   proxy for install volume, which is precisely why the without-Reviews model
-  is the primary one. Random-Forest importances for B are dominated by
-  `size_mb` (0.79).
+  is the primary one. Random-Forest importances for B are now led by
+  `app_age_days` (0.24) and `days_since_update` (0.19) — the engineered
+  features — with `size_mb` third (0.16); on the old feature set `size_mb`
+  alone carried 0.79 of the importance mass.
 
 Full per-class P/R/F1/support, confusion matrices and per-candidate
 validation/test scores are rendered in sections 09/08 from
@@ -581,9 +665,11 @@ interpretation were valid — with legend/margin fixes for mobile.
   training on the full 1.23M M1 rows).
 - **M1's near-zero R²** is a genuine finding (see results), not a bug — the
   feature set cannot encode app quality.
-- **M2-B is weak but honest:** 0.307 macro-F1 on 4 imbalanced bands is what
-  category+size+price alone can achieve; plain accuracy is below the
-  majority-class baseline and the page says so rather than quoting accuracy.
+- **M2-B's remaining weakness is the minority tiers:** at 0.544 macro-F1 the
+  model is comfortably above the 0.210 baseline, but per-class F1 shows where
+  it still struggles — `10K-1M` 0.376 and `1M-100M` 0.365 against `Under 10K`
+  0.876. That is the honest picture: the engineered features lifted the model
+  a long way, they did not make the middle bands easy.
 - **Browser payload cap:** for full-scale runs `apps.json` carries 60,000 of
   2.31M rows (rule 12). Chart shapes are stable, but exact KPI counts refer to
   the exported rows; `apps_cleaned.csv` and training use every row.
@@ -617,15 +703,33 @@ interpretation were valid — with legend/margin fixes for mobile.
 > are chosen on a validation slice — by macro-F1 for the classifier, precisely
 > because the tiers are imbalanced — and the test set is used exactly once.
 >
-> The measured results are honest. The regressor reaches R² ≈ 0.05 with
-> MAE ≈ 0.50, and in this dataset the median rating is 4.2, so predicting the
+> The measured results are honest. The regressor reaches R² ≈ 0.07 with
+> MAE ≈ 0.49, and in this dataset the median rating is 4.2, so predicting the
 > mean already gives MAE 0.52: rating is driven by app quality, which these
 > profile features can't capture, and I can explain why that's expected. The
-> tier classifier reaches 0.83 macro-F1 *with* Reviews but 0.31 *without* —
-> and in the without-Reviews model accuracy (67%) is actually below the
-> do-nothing baseline (72%), because 73% of apps sit in the lowest band; that
-> is exactly why I select and report macro-F1 instead of hiding behind
-> accuracy, and why the without-Reviews model is the primary one.
+> tier classifier reaches 0.84 macro-F1 *with* Reviews but 0.54 *without*, and
+> 73% of apps sit in the lowest band, so the do-nothing baseline scores 72.4%
+> accuracy on accuracy alone — which is exactly why I select and report
+> macro-F1 instead of hiding behind accuracy, and why the without-Reviews
+> model is the primary one.
+>
+> The without-Reviews model originally sat below that baseline on accuracy
+> (0.673) at 0.307 macro-F1. I added the app-profile features the dataset was
+> already carrying but the pipeline never parsed — app age, days since the last
+> update, developer portfolio size, minimum Android version, the ad/IAP/Editors'
+> Choice flags and content rating — and it now reaches 0.768 accuracy at 0.544
+> macro-F1, above the baseline on both. I checked that this isn't leakage: the
+> one feature computed across the whole frame rather than per split, developer
+> portfolio size, is worth about 0.015 macro-F1 in an ablation, so the lift does
+> not rest on it.
+>
+> One more design decision worth defending: model selection is not only about
+> score. Every candidate is measured after fitting, and anything that cannot be
+> shipped — over a 10 MB budget, because it has to be committed, served and
+> exported into the browser bundle — is excluded. Random Forest scored slightly
+> higher and was rejected at 334 MB; Gradient Boosting gets 99% of the lift in
+> 1 MB. Their scores stay in the tables, struck out, so the trade-off is
+> visible.
 >
 > Inference runs through a FastAPI endpoint that loads the saved pipelines
 > once — no retraining per request — and if the models are absent the UI shows

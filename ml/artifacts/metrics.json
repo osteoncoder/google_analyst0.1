@@ -1,17 +1,20 @@
 {
-  "generated_at": "2026-09-19T11:02:27+00:00",
+  "generated_at": "2026-09-19T18:10:56+00:00",
   "seed": 42,
   "dataset": {
     "source": "data/playstore_sample.csv",
     "is_sample": true,
     "rows_cleaned": 40000,
-    "md5": "70da7d6862fa",
+    "md5": "7bb2de92ec61",
     "full_dataset_rows": 2312944,
     "sample_note": "trained on a 40,000-row stratified sample of the 2,312,944-row Google-Playstore dataset (full-scale proportions differ; see data/playstore_sample.meta.json)"
   },
   "small_dataset_warning": false,
   "trained_on_sample": true,
   "protocol": "80/20 GroupShuffleSplit on app name (leakage guard), fit BEFORE preprocessing; 75/25 train/val for model selection; selected model refit on train+val; test set used exactly once; no test-set tuning.",
+  "selection": "best validation metric among candidates whose serialized pipeline fits the 10 MB shipping budget; oversized candidates are reported with their scores and the reason they were excluded.",
+  "artifact_budget_mb": 10.0,
+  "fast_mode": false,
   "models": {
     "m1_rating": {
       "task": "regression",
@@ -21,9 +24,38 @@
         "size_mb",
         "price",
         "price_is_positive",
+        "app_age_days",
+        "days_since_update",
+        "developer_app_count",
+        "min_android",
+        "ad_supported",
+        "in_app_purchases",
+        "editors_choice",
         "reviews_log",
-        "category"
+        "category",
+        "content_rating"
       ],
+      "numeric_features": [
+        "size_mb",
+        "price",
+        "price_is_positive",
+        "app_age_days",
+        "days_since_update",
+        "developer_app_count",
+        "min_android",
+        "ad_supported",
+        "in_app_purchases",
+        "editors_choice",
+        "reviews_log"
+      ],
+      "categorical_features": [
+        "category",
+        "content_rating"
+      ],
+      "categorical_defaults": {
+        "category": "Education",
+        "content_rating": "Everyone"
+      },
       "n_total": 22418,
       "n_train": 13454,
       "n_val": 4482,
@@ -39,283 +71,358 @@
             "mae": 0.5220632658642764,
             "rmse": 0.6788481527575122,
             "r2": -2.498217671176306e-05
-          }
+          },
+          "artifact_mb": 0.003,
+          "artifact_size_basis": "measured"
         },
         "Linear Regression": {
           "val": {
-            "mae": 0.49354531220430686,
-            "rmse": 0.6436599649321387,
-            "r2": 0.024595903621257742
+            "mae": 0.491345427699421,
+            "rmse": 0.6406993305356178,
+            "r2": 0.03354837403357758
           },
           "test": {
-            "mae": 0.5108941203432359,
-            "rmse": 0.6706262700139518,
-            "r2": 0.024051969700725317
-          }
+            "mae": 0.5070715972933196,
+            "rmse": 0.666730176940899,
+            "r2": 0.035358831061825136
+          },
+          "artifact_mb": 0.005,
+          "artifact_size_basis": "measured"
         },
         "Decision Tree": {
           "val": {
-            "mae": 0.6786051613862859,
-            "rmse": 0.9132600095994683,
-            "r2": -0.9636336348750925
+            "mae": 0.6583444890673806,
+            "rmse": 0.8900473542045172,
+            "r2": -0.8650814717878548
           },
           "test": {
-            "mae": 0.6748363825673063,
-            "rmse": 0.9090816703495682,
-            "r2": -0.7933760717829916
-          }
+            "mae": 0.684359660865685,
+            "rmse": 0.9229932584311362,
+            "r2": -0.8486837604909783
+          },
+          "artifact_mb": 1.547,
+          "artifact_size_basis": "measured"
         },
         "Random Forest": {
           "val": {
-            "mae": 0.5266426536835171,
-            "rmse": 0.6906377984093734,
-            "r2": -0.12298063601026343
+            "mae": 0.4899789528484308,
+            "rmse": 0.6417567418247547,
+            "r2": 0.030355674699767743
           },
           "test": {
-            "mae": 0.5289191029764937,
-            "rmse": 0.702559152455603,
-            "r2": -0.07110330665646347
+            "mae": 0.4990598691060539,
+            "rmse": 0.6586251260739446,
+            "r2": 0.05866944078576608
+          },
+          "artifact_mb": 411.675,
+          "artifact_size_basis": "estimated from tree node count",
+          "rejected": {
+            "reason": "artifact 412 MB exceeds the 10 MB shipping budget",
+            "note": "excluded from selection: it cannot be served by the API, exported to the browser bundle, or committed to git at a sensible size. Its validation score is recorded anyway."
           }
         },
         "Gradient Boosting": {
           "val": {
-            "mae": 0.4892044086527573,
-            "rmse": 0.6370852062236084,
-            "r2": 0.04442094611020819
+            "mae": 0.48217207258501243,
+            "rmse": 0.6316273101015486,
+            "r2": 0.06072366615174196
           },
           "test": {
-            "mae": 0.5028309796388337,
-            "rmse": 0.6616335807235698,
-            "r2": 0.05005021856591052
-          }
+            "mae": 0.4944154756254712,
+            "rmse": 0.6550590695887868,
+            "r2": 0.06883531569640444
+          },
+          "artifact_mb": 0.275,
+          "artifact_size_basis": "measured"
         }
       },
       "test_metrics": {
-        "mae": 0.5026500995353128,
-        "rmse": 0.6614524874414675,
-        "r2": 0.0505701618879576
+        "mae": 0.4936109817227824,
+        "rmse": 0.6542534302626993,
+        "r2": 0.07112433544678487
       },
       "rf_feature_importances": [
         [
+          "num__app_age_days",
+          0.17276675571367814
+        ],
+        [
+          "num__days_since_update",
+          0.1614270483193767
+        ],
+        [
           "num__size_mb",
-          0.3764746612285841
+          0.1485820807465933
         ],
         [
           "num__reviews_log",
-          0.3148575410183066
+          0.14626129364624388
         ],
         [
-          "cat__category_Entertainment",
-          0.014164041058768355
+          "num__min_android",
+          0.06467629441363665
         ],
         [
-          "cat__category_Lifestyle",
-          0.01395650497313075
+          "num__developer_app_count",
+          0.030748172976733948
         ],
         [
-          "cat__category_Business",
-          0.01296963681906535
+          "num__ad_supported",
+          0.015051124720814857
         ],
         [
           "cat__category_Education",
-          0.012435078337107094
-        ],
-        [
-          "cat__category_Finance",
-          0.012424999217909558
-        ],
-        [
-          "cat__category_Travel & Local",
-          0.01146101648787262
-        ],
-        [
-          "cat__category_Music & Audio",
-          0.011438042279638145
-        ],
-        [
-          "cat__category_Books & Reference",
-          0.010876406142280559
+          0.012137873700788077
         ],
         [
           "cat__category_Tools",
-          0.00948094126792585
+          0.011377198848177426
+        ],
+        [
+          "num__in_app_purchases",
+          0.010614052263005071
+        ],
+        [
+          "cat__category_Entertainment",
+          0.010471788297313349
+        ],
+        [
+          "cat__category_Music & Audio",
+          0.010336489844759104
+        ],
+        [
+          "cat__category_Books & Reference",
+          0.010291040144917366
+        ],
+        [
+          "cat__category_Business",
+          0.009693939795594155
+        ],
+        [
+          "cat__category_Lifestyle",
+          0.009692563722385744
+        ],
+        [
+          "cat__category_Finance",
+          0.008807260308197435
         ],
         [
           "cat__category_Health & Fitness",
-          0.009420262735828907
+          0.00786870363154459
         ],
         [
-          "cat__category_Personalization",
-          0.008949178191366132
+          "cat__content_rating_Everyone",
+          0.007227003984710782
         ],
         [
-          "cat__category_Productivity",
-          0.008705736781553133
+          "cat__category_Travel & Local",
+          0.007139445016849028
+        ],
+        [
+          "cat__content_rating_Teen",
+          0.006863467700790499
         ],
         [
           "cat__category_Shopping",
-          0.00865217838576984
+          0.006702703234221988
         ],
         [
-          "cat__category_Communication",
-          0.008454263741926234
-        ],
-        [
-          "cat__category_News & Magazines",
-          0.008100791943372413
-        ],
-        [
-          "cat__category_Arcade",
-          0.007852477446079455
-        ],
-        [
-          "cat__category_Social",
-          0.00731384601054468
-        ],
-        [
-          "cat__category_Sports",
-          0.007240920973081723
-        ],
-        [
-          "cat__category_Medical",
-          0.007123241721665635
-        ],
-        [
-          "cat__category_Food & Drink",
-          0.00673879041214279
-        ],
-        [
-          "cat__category_Casual",
-          0.00636112975298516
-        ],
-        [
-          "cat__category_Puzzle",
-          0.006336914998781868
-        ],
-        [
-          "cat__category_Photography",
-          0.006099148987938884
-        ],
-        [
-          "cat__category_Maps & Navigation",
-          0.0056514090101448
+          "cat__category_Productivity",
+          0.0065696092822078505
         ],
         [
           "cat__category_Simulation",
-          0.005412834927540465
+          0.006150717966202812
         ],
         [
-          "num__price",
-          0.00524547904790473
+          "cat__category_Personalization",
+          0.005727952088928303
+        ],
+        [
+          "cat__category_Communication",
+          0.005392299022359401
+        ],
+        [
+          "cat__category_Social",
+          0.005254074154058521
+        ],
+        [
+          "cat__category_Arcade",
+          0.005205031889889148
         ],
         [
           "cat__category_Auto & Vehicles",
-          0.005191681458887397
+          0.004767592490247571
+        ],
+        [
+          "cat__category_Food & Drink",
+          0.004753594368326298
+        ],
+        [
+          "cat__category_Photography",
+          0.004630763455638619
+        ],
+        [
+          "cat__category_Medical",
+          0.004568447058411284
+        ],
+        [
+          "cat__category_Puzzle",
+          0.004564460518243013
+        ],
+        [
+          "cat__category_News & Magazines",
+          0.0045539729555915945
+        ],
+        [
+          "cat__category_Sports",
+          0.004453705282798917
+        ],
+        [
+          "cat__content_rating_Mature 17+",
+          0.004391647709506249
+        ],
+        [
+          "cat__category_Maps & Navigation",
+          0.0042630194919559584
         ],
         [
           "cat__category_Art & Design",
-          0.004873217683200269
-        ],
-        [
-          "cat__category_Action",
-          0.004430859166663832
-        ],
-        [
-          "cat__category_House & Home",
-          0.004283501396134848
+          0.0038262548452177793
         ],
         [
           "cat__category_Video Players & Editors",
-          0.004120572239100494
+          0.003656542352055055
+        ],
+        [
+          "cat__category_Casual",
+          0.0035797374136735194
         ],
         [
           "cat__category_Beauty",
-          0.004032851578939246
+          0.003285990607526425
         ],
         [
-          "cat__category_Educational",
-          0.0037595552541588467
+          "num__price",
+          0.0032274822859891914
         ],
         [
-          "cat__category_Adventure",
-          0.003706907805046795
-        ],
-        [
-          "cat__category_Dating",
-          0.0034201167664853517
+          "cat__category_House & Home",
+          0.0030564024482982325
         ],
         [
           "cat__category_Strategy",
-          0.0033580870675321206
+          0.0028904643021333853
+        ],
+        [
+          "cat__category_Action",
+          0.002549864766781163
         ],
         [
           "cat__category_Board",
-          0.0031394220990909973
+          0.002480244436205819
         ],
         [
-          "cat__category_Events",
-          0.0028853016909768134
+          "cat__category_Dating",
+          0.002332097218121905
         ],
         [
-          "cat__category_Trivia",
-          0.0028639128329241447
+          "cat__category_Adventure",
+          0.002209257850290417
+        ],
+        [
+          "cat__category_Educational",
+          0.0020880632031195783
+        ],
+        [
+          "cat__content_rating_Everyone 10+",
+          0.0020122675331263338
         ],
         [
           "cat__category_Card",
-          0.0028313119922061367
-        ],
-        [
-          "cat__category_Libraries & Demo",
-          0.0025322016038729655
-        ],
-        [
-          "cat__category_Word",
-          0.0025265048864593184
-        ],
-        [
-          "cat__category_Role Playing",
-          0.0025202450970672487
-        ],
-        [
-          "num__price_is_positive",
-          0.0025190712106718514
-        ],
-        [
-          "cat__category_Racing",
-          0.0025119408757250136
+          0.0019156599683563301
         ],
         [
           "cat__category_Parenting",
-          0.0024522851328330547
+          0.001846269691019543
         ],
         [
-          "cat__category_Weather",
-          0.00235006752123371
+          "cat__category_Role Playing",
+          0.0017584895157030833
         ],
         [
-          "cat__category_Comics",
-          0.0020997259946062357
+          "cat__category_Racing",
+          0.0017467336955162853
+        ],
+        [
+          "cat__category_Events",
+          0.00171052994456994
+        ],
+        [
+          "cat__category_Trivia",
+          0.0014836146025016667
+        ],
+        [
+          "cat__category_Libraries & Demo",
+          0.0014018531054730912
+        ],
+        [
+          "num__price_is_positive",
+          0.001248940795704732
         ],
         [
           "cat__category_Casino",
-          0.0018595339625689536
+          0.0012131917877870669
+        ],
+        [
+          "cat__category_Word",
+          0.0011665164883069101
+        ],
+        [
+          "cat__category_Comics",
+          0.0011440190439136828
+        ],
+        [
+          "cat__category_Weather",
+          0.0011146005081696306
         ],
         [
           "cat__category_Music",
-          0.0015336507843984983
+          0.0009936898737986563
+        ],
+        [
+          "num__editors_choice",
+          7.495384156503862e-05
+        ],
+        [
+          "cat__content_rating_Unrated",
+          3.079110377910209e-06
         ]
       ],
       "importances_from": "Random Forest candidate",
+      "artifact_budget_mb": 10.0,
       "dataset": {
         "source": "data/playstore_sample.csv",
         "is_sample": true,
         "rows_cleaned": 40000,
-        "md5": "70da7d6862fa",
+        "md5": "7bb2de92ec61",
         "full_dataset_rows": 2312944,
         "sample_note": "trained on a 40,000-row stratified sample of the 2,312,944-row Google-Playstore dataset (full-scale proportions differ; see data/playstore_sample.meta.json)"
       },
       "target": "Rating",
-      "inputs_note": "category, size_mb, price, price_is_positive, log1p(reviews). Rating (target) and Installs are excluded from the inputs."
+      "inputs_note": "category, content_rating, size_mb, price, price_is_positive, log1p(reviews) + the engineered app-profile features. Rating (target) and Installs are excluded from the inputs.",
+      "engineered_features": [
+        "app_age_days",
+        "days_since_update",
+        "developer_app_count",
+        "min_android",
+        "ad_supported",
+        "in_app_purchases",
+        "editors_choice"
+      ],
+      "engineered_features_dropped_all_nan": [],
+      "derived_from": "clean.py rule 13 \u2014 Released / Scraped Time / Developer Id / Minimum Android / Ad Supported / In App Purchases / Editors Choice / Content Rating",
+      "artifact_size_mb": 0.263
     },
     "m2_tier": {
       "with_reviews": {
@@ -326,9 +433,38 @@
           "size_mb",
           "price",
           "price_is_positive",
+          "app_age_days",
+          "days_since_update",
+          "developer_app_count",
+          "min_android",
+          "ad_supported",
+          "in_app_purchases",
+          "editors_choice",
           "reviews_log",
-          "category"
+          "category",
+          "content_rating"
         ],
+        "numeric_features": [
+          "size_mb",
+          "price",
+          "price_is_positive",
+          "app_age_days",
+          "days_since_update",
+          "developer_app_count",
+          "min_android",
+          "ad_supported",
+          "in_app_purchases",
+          "editors_choice",
+          "reviews_log"
+        ],
+        "categorical_features": [
+          "category",
+          "content_rating"
+        ],
+        "categorical_defaults": {
+          "category": "Education",
+          "content_rating": "Everyone"
+        },
         "n_total": 39893,
         "n_train": 23966,
         "n_val": 7960,
@@ -344,112 +480,126 @@
               "accuracy": 0.7242374796033638,
               "macro_f1": 0.2100167431025697,
               "weighted_f1": 0.608407986796449
-            }
+            },
+            "artifact_mb": 0.004,
+            "artifact_size_basis": "measured"
           },
           "Logistic Regression": {
             "val": {
-              "accuracy": 0.9097989949748744,
-              "macro_f1": 0.8284939801213935,
-              "weighted_f1": 0.9083447884808723
+              "accuracy": 0.9129396984924623,
+              "macro_f1": 0.8419797275238994,
+              "weighted_f1": 0.9117296487344938
             },
             "test": {
-              "accuracy": 0.9062382327099284,
-              "macro_f1": 0.8242502126912331,
-              "weighted_f1": 0.9050977580235726
-            }
+              "accuracy": 0.9068658215137442,
+              "macro_f1": 0.8301666974157644,
+              "weighted_f1": 0.905939943866113
+            },
+            "artifact_mb": 0.006,
+            "artifact_size_basis": "measured"
           },
           "Decision Tree": {
             "val": {
-              "accuracy": 0.871608040201005,
-              "macro_f1": 0.7679621045379867,
-              "weighted_f1": 0.8712214557137888
+              "accuracy": 0.8709798994974874,
+              "macro_f1": 0.7820091881297546,
+              "weighted_f1": 0.8713880135814926
             },
             "test": {
-              "accuracy": 0.8680808334379315,
-              "macro_f1": 0.7545348639891787,
-              "weighted_f1": 0.868213377732976
-            }
+              "accuracy": 0.8732270616292205,
+              "macro_f1": 0.7900164309110802,
+              "weighted_f1": 0.873780392958616
+            },
+            "artifact_mb": 0.395,
+            "artifact_size_basis": "measured"
           },
           "Random Forest": {
             "val": {
-              "accuracy": 0.8967336683417085,
-              "macro_f1": 0.8049894619677279,
-              "weighted_f1": 0.895905089503043
+              "accuracy": 0.910929648241206,
+              "macro_f1": 0.8315360442496992,
+              "weighted_f1": 0.9101175456075359
             },
             "test": {
-              "accuracy": 0.895694740805824,
-              "macro_f1": 0.8126880945979178,
-              "weighted_f1": 0.8952970763705911
+              "accuracy": 0.9113844609012175,
+              "macro_f1": 0.8387101514716642,
+              "weighted_f1": 0.9109264944462734
+            },
+            "artifact_mb": 175.789,
+            "artifact_size_basis": "estimated from tree node count",
+            "rejected": {
+              "reason": "artifact 176 MB exceeds the 10 MB shipping budget",
+              "note": "excluded from selection: it cannot be served by the API, exported to the browser bundle, or committed to git at a sensible size. Its validation score is recorded anyway."
             }
           },
           "Gradient Boosting": {
             "val": {
-              "accuracy": 0.9074120603015076,
-              "macro_f1": 0.8142148275913245,
-              "weighted_f1": 0.9062449174000092
+              "accuracy": 0.9094221105527638,
+              "macro_f1": 0.8336226119787421,
+              "weighted_f1": 0.9085935756485335
             },
             "test": {
-              "accuracy": 0.9041044307769549,
-              "macro_f1": 0.8082882629874454,
-              "weighted_f1": 0.903247782452009
-            }
+              "accuracy": 0.9095016944897703,
+              "macro_f1": 0.8353311280085112,
+              "weighted_f1": 0.9092601429515983
+            },
+            "artifact_mb": 1.04,
+            "artifact_size_basis": "measured"
           }
         },
         "test_metrics": {
-          "accuracy": 0.9068658215137442,
-          "macro_f1": 0.8274981596749122,
-          "weighted_f1": 0.9056486619614689,
+          "accuracy": 0.9077444458390862,
+          "macro_f1": 0.8384765185041885,
+          "weighted_f1": 0.9068439086057346,
           "per_class": {
             "Under 10K": {
-              "precision": 0.9435662077171512,
-              "recall": 0.9620450606585789,
-              "f1": 0.9527160387882948,
+              "precision": 0.946181445412609,
+              "recall": 0.959792027729636,
+              "f1": 0.9529381398950357,
               "support": 5770
             },
             "10K-1M": {
-              "precision": 0.8088694565896315,
-              "recall": 0.7653664302600472,
-              "f1": 0.7865168539325843,
+              "precision": 0.8001218769043267,
+              "recall": 0.7760047281323877,
+              "f1": 0.7878787878787878,
               "support": 1692
             },
             "1M-100M": {
-              "precision": 0.7763496143958869,
-              "recall": 0.7365853658536585,
-              "f1": 0.7559449311639549,
+              "precision": 0.7921052631578948,
+              "recall": 0.7341463414634146,
+              "f1": 0.7620253164556962,
               "support": 410
             },
             "100M+": {
-              "precision": 0.8191489361702128,
-              "recall": 0.8105263157894737,
-              "f1": 0.8148148148148148,
+              "precision": 0.8602150537634409,
+              "recall": 0.8421052631578947,
+              "f1": 0.851063829787234,
               "support": 95
             }
           },
           "confusion": {
             "matrix": [
               [
-                5551,
-                219,
+                5538,
+                232,
                 0,
                 0
               ],
               [
-                328,
-                1295,
-                69,
+                313,
+                1313,
+                66,
                 0
               ],
               [
-                4,
-                87,
-                302,
-                17
+                2,
+                94,
+                301,
+                13
               ],
               [
                 0,
-                0,
-                18,
-                77
+                2,
+                13,
+                80
               ]
             ],
             "labels": [
@@ -463,214 +613,259 @@
         "rf_feature_importances": [
           [
             "num__reviews_log",
-            0.7740742980314439
+            0.5585057577364245
+          ],
+          [
+            "num__app_age_days",
+            0.09433031913136214
+          ],
+          [
+            "num__days_since_update",
+            0.0750073517220073
           ],
           [
             "num__size_mb",
-            0.1429036430447342
+            0.060671483728182
           ],
           [
-            "cat__category_Business",
-            0.0036000605072892275
+            "num__min_android",
+            0.032899263218635816
+          ],
+          [
+            "num__in_app_purchases",
+            0.024302957367915108
+          ],
+          [
+            "num__developer_app_count",
+            0.02218923761937591
+          ],
+          [
+            "num__ad_supported",
+            0.018710191581868797
+          ],
+          [
+            "cat__content_rating_Everyone",
+            0.005064758226517802
           ],
           [
             "cat__category_Education",
-            0.0030201566872850136
+            0.004425836257612859
           ],
           [
-            "num__price",
-            0.0027519600967027156
-          ],
-          [
-            "cat__category_Music & Audio",
-            0.0026133491723829643
-          ],
-          [
-            "cat__category_Tools",
-            0.002553517931739588
-          ],
-          [
-            "cat__category_Simulation",
-            0.0024562056462039254
-          ],
-          [
-            "cat__category_Lifestyle",
-            0.002397684478233347
-          ],
-          [
-            "cat__category_Personalization",
-            0.0022486936321220482
+            "cat__content_rating_Teen",
+            0.004059574644934855
           ],
           [
             "cat__category_Entertainment",
-            0.002173362359416512
+            0.0036862083387910805
           ],
           [
-            "cat__category_Finance",
-            0.002152946058466002
+            "cat__category_Music & Audio",
+            0.003616151634788942
           ],
           [
-            "cat__category_Social",
-            0.0021329445626744803
-          ],
-          [
-            "cat__category_Food & Drink",
-            0.002110999561853378
-          ],
-          [
-            "cat__category_Health & Fitness",
-            0.0020772335433736975
-          ],
-          [
-            "cat__category_Photography",
-            0.0020423935312111558
+            "cat__category_Tools",
+            0.003303760828802103
           ],
           [
             "cat__category_Books & Reference",
-            0.0019832654598458885
+            0.003145331872995355
           ],
           [
-            "cat__category_Puzzle",
-            0.0019536995895456173
+            "cat__category_Lifestyle",
+            0.003105550766229882
           ],
           [
-            "num__price_is_positive",
-            0.00192877349933905
+            "cat__category_Personalization",
+            0.0028524125052534345
+          ],
+          [
+            "cat__category_Business",
+            0.0028302052396853234
+          ],
+          [
+            "num__editors_choice",
+            0.0028294593140231164
+          ],
+          [
+            "cat__category_Photography",
+            0.0027700316077102524
           ],
           [
             "cat__category_Arcade",
-            0.0018584008463616612
+            0.0026497633107563606
           ],
           [
-            "cat__category_Communication",
-            0.0018570649077590477
+            "num__price",
+            0.0026459543123301065
           ],
           [
-            "cat__category_Productivity",
-            0.0018519059814906113
+            "cat__category_Finance",
+            0.0026181173912155835
           ],
           [
             "cat__category_Casual",
-            0.0018012808318400375
+            0.0026174909433812864
           ],
           [
-            "cat__category_Sports",
-            0.0017602466764985803
+            "cat__category_Simulation",
+            0.0025509684596261182
           ],
           [
-            "cat__category_Adventure",
-            0.0017186131706173613
+            "cat__category_Health & Fitness",
+            0.002419426702023338
           ],
           [
-            "cat__category_Shopping",
-            0.0016855343772252266
+            "cat__category_Puzzle",
+            0.002399284913406868
           ],
           [
             "cat__category_News & Magazines",
-            0.0016150932646839425
+            0.0023832694193282604
+          ],
+          [
+            "cat__category_Social",
+            0.002379528989722226
+          ],
+          [
+            "cat__category_Sports",
+            0.0022744500768524427
+          ],
+          [
+            "cat__category_Productivity",
+            0.0022736739877792927
+          ],
+          [
+            "cat__content_rating_Mature 17+",
+            0.0020559323777528367
+          ],
+          [
+            "num__price_is_positive",
+            0.002042536900277057
+          ],
+          [
+            "cat__category_Communication",
+            0.002041227681186639
           ],
           [
             "cat__category_Travel & Local",
-            0.0015513828000808677
+            0.0019471962108654599
+          ],
+          [
+            "cat__category_Shopping",
+            0.0019410368305134654
+          ],
+          [
+            "cat__content_rating_Everyone 10+",
+            0.0019329535737694673
           ],
           [
             "cat__category_Video Players & Editors",
-            0.0015336633239225303
+            0.001893279005703226
           ],
           [
-            "cat__category_Educational",
-            0.0015318117820627827
+            "cat__category_Food & Drink",
+            0.0018789645116316911
           ],
           [
             "cat__category_Racing",
-            0.001500450945955895
-          ],
-          [
-            "cat__category_Role Playing",
-            0.0014611500186892203
-          ],
-          [
-            "cat__category_Maps & Navigation",
-            0.001452246668107836
+            0.001789191415448863
           ],
           [
             "cat__category_Action",
-            0.0013174494266937203
+            0.0017412538188064895
           ],
           [
-            "cat__category_Weather",
-            0.0012831646336430994
+            "cat__category_Adventure",
+            0.0017188662185055857
+          ],
+          [
+            "cat__category_Educational",
+            0.001596081941389611
           ],
           [
             "cat__category_Board",
-            0.0012193896295231792
+            0.0015082670249347524
           ],
           [
-            "cat__category_Art & Design",
-            0.0011739445613648378
+            "cat__category_Maps & Navigation",
+            0.0014613474544366257
           ],
           [
-            "cat__category_House & Home",
-            0.0011688178804464349
-          ],
-          [
-            "cat__category_Comics",
-            0.0011575830645631623
-          ],
-          [
-            "cat__category_Medical",
-            0.0011519476828581365
+            "cat__category_Role Playing",
+            0.0013645906810194643
           ],
           [
             "cat__category_Beauty",
-            0.0011146626143313362
+            0.0013532250544192757
           ],
           [
-            "cat__category_Auto & Vehicles",
-            0.0011062510043862862
+            "cat__category_Medical",
+            0.0013442521322037818
           ],
           [
-            "cat__category_Card",
-            0.0010926515290631184
+            "cat__category_House & Home",
+            0.0012910504891509226
           ],
           [
-            "cat__category_Casino",
-            0.0010712762657280393
+            "cat__category_Art & Design",
+            0.0012503762893953502
           ],
           [
             "cat__category_Events",
-            0.0010617530089141861
+            0.0011430220795965492
           ],
           [
-            "cat__category_Dating",
-            0.0009310186286681072
+            "cat__category_Weather",
+            0.0011160212763354294
           ],
           [
-            "cat__category_Music",
-            0.0008798917839430753
+            "cat__category_Auto & Vehicles",
+            0.00110819446450434
+          ],
+          [
+            "cat__category_Comics",
+            0.0010993102268637906
+          ],
+          [
+            "cat__category_Card",
+            0.0010828632588343477
           ],
           [
             "cat__category_Word",
-            0.0008763007561232624
+            0.0009642204839571042
           ],
           [
-            "cat__category_Strategy",
-            0.0008231011862784516
+            "cat__category_Music",
+            0.0009496109094844527
           ],
           [
             "cat__category_Trivia",
-            0.0007777715729454985
-          ],
-          [
-            "cat__category_Parenting",
-            0.0007727114043910018
+            0.0009434944022963487
           ],
           [
             "cat__category_Libraries & Demo",
-            0.0006662803769768689
+            0.0008203764470764318
+          ],
+          [
+            "cat__category_Strategy",
+            0.0008199222543779662
+          ],
+          [
+            "cat__category_Parenting",
+            0.0008055267888050133
+          ],
+          [
+            "cat__category_Dating",
+            0.0007494118081271726
+          ],
+          [
+            "cat__category_Casino",
+            0.0007286241387920138
           ]
         ],
         "importances_from": "Random Forest candidate",
+        "artifact_budget_mb": 10.0,
         "target": "install tier (4 bands)",
         "tier_bounds": [
           [
@@ -706,27 +901,67 @@
           "1M-100M": 1916,
           "100M+": 493
         },
+        "engineered_features": [
+          "app_age_days",
+          "days_since_update",
+          "developer_app_count",
+          "min_android",
+          "ad_supported",
+          "in_app_purchases",
+          "editors_choice"
+        ],
+        "engineered_features_dropped_all_nan": [],
+        "derived_from": "clean.py rule 13 \u2014 Released / Scraped Time / Developer Id / Minimum Android / Ad Supported / In App Purchases / Editors Choice / Content Rating",
         "dataset": {
           "source": "data/playstore_sample.csv",
           "is_sample": true,
           "rows_cleaned": 40000,
-          "md5": "70da7d6862fa",
+          "md5": "7bb2de92ec61",
           "full_dataset_rows": 2312944,
           "sample_note": "trained on a 40,000-row stratified sample of the 2,312,944-row Google-Playstore dataset (full-scale proportions differ; see data/playstore_sample.meta.json)"
         },
         "version": "with_reviews",
-        "inputs_note": "Base inputs + log1p(reviews)."
+        "inputs_note": "Base inputs + the engineered app-profile features + log1p(reviews).",
+        "artifact_size_mb": 0.007
       },
       "without_reviews": {
         "task": "classification",
-        "model": "Decision Tree",
+        "model": "Gradient Boosting",
         "selection_metric": "validation macro_f1",
         "features": [
           "size_mb",
           "price",
           "price_is_positive",
-          "category"
+          "app_age_days",
+          "days_since_update",
+          "developer_app_count",
+          "min_android",
+          "ad_supported",
+          "in_app_purchases",
+          "editors_choice",
+          "category",
+          "content_rating"
         ],
+        "numeric_features": [
+          "size_mb",
+          "price",
+          "price_is_positive",
+          "app_age_days",
+          "days_since_update",
+          "developer_app_count",
+          "min_android",
+          "ad_supported",
+          "in_app_purchases",
+          "editors_choice"
+        ],
+        "categorical_features": [
+          "category",
+          "content_rating"
+        ],
+        "categorical_defaults": {
+          "category": "Education",
+          "content_rating": "Everyone"
+        },
         "n_total": 39893,
         "n_train": 23966,
         "n_val": 7960,
@@ -742,112 +977,126 @@
               "accuracy": 0.7242374796033638,
               "macro_f1": 0.2100167431025697,
               "weighted_f1": 0.608407986796449
-            }
+            },
+            "artifact_mb": 0.004,
+            "artifact_size_basis": "measured"
           },
           "Logistic Regression": {
             "val": {
-              "accuracy": 0.7301507537688442,
-              "macro_f1": 0.22849438187281781,
-              "weighted_f1": 0.6297982268849943
+              "accuracy": 0.7615577889447236,
+              "macro_f1": 0.4817772181412959,
+              "weighted_f1": 0.7261401679656582
             },
             "test": {
-              "accuracy": 0.7253671394502322,
-              "macro_f1": 0.2336905119222596,
-              "weighted_f1": 0.6235438162654603
-            }
+              "accuracy": 0.7630224676791766,
+              "macro_f1": 0.4938872289164103,
+              "weighted_f1": 0.7267256838691182
+            },
+            "artifact_mb": 0.006,
+            "artifact_size_basis": "measured"
           },
           "Decision Tree": {
             "val": {
-              "accuracy": 0.6655778894472362,
-              "macro_f1": 0.3066408929789827,
-              "weighted_f1": 0.6383253265133951
+              "accuracy": 0.6902010050251256,
+              "macro_f1": 0.45853721773987755,
+              "weighted_f1": 0.693223057666883
             },
             "test": {
-              "accuracy": 0.656457888791264,
-              "macro_f1": 0.31106303193653273,
-              "weighted_f1": 0.6296501187535619
-            }
+              "accuracy": 0.6892180243504455,
+              "macro_f1": 0.458895466211077,
+              "weighted_f1": 0.6905571145289959
+            },
+            "artifact_mb": 0.969,
+            "artifact_size_basis": "measured"
           },
           "Random Forest": {
             "val": {
-              "accuracy": 0.6919597989949748,
-              "macro_f1": 0.29788551653074025,
-              "weighted_f1": 0.6452493116942134
+              "accuracy": 0.7694723618090452,
+              "macro_f1": 0.5346764337530001,
+              "weighted_f1": 0.744318703323362
             },
             "test": {
-              "accuracy": 0.681937994226183,
-              "macro_f1": 0.29745262367248587,
-              "weighted_f1": 0.6368500384815867
+              "accuracy": 0.7628969499184135,
+              "macro_f1": 0.5305373803508437,
+              "weighted_f1": 0.7384333353034274
+            },
+            "artifact_mb": 333.676,
+            "artifact_size_basis": "estimated from tree node count",
+            "rejected": {
+              "reason": "artifact 334 MB exceeds the 10 MB shipping budget",
+              "note": "excluded from selection: it cannot be served by the API, exported to the browser bundle, or committed to git at a sensible size. Its validation score is recorded anyway."
             }
           },
           "Gradient Boosting": {
             "val": {
-              "accuracy": 0.7298994974874372,
-              "macro_f1": 0.2442177594753355,
-              "weighted_f1": 0.6319836827092982
+              "accuracy": 0.7723618090452261,
+              "macro_f1": 0.5302330180016986,
+              "weighted_f1": 0.7447890040245093
             },
             "test": {
-              "accuracy": 0.7258692104932848,
-              "macro_f1": 0.25006317488850843,
-              "weighted_f1": 0.6264530859945373
-            }
+              "accuracy": 0.7687962846742814,
+              "macro_f1": 0.5382613477200712,
+              "weighted_f1": 0.7415036145313882
+            },
+            "artifact_mb": 1.057,
+            "artifact_size_basis": "measured"
           }
         },
         "test_metrics": {
-          "accuracy": 0.6729007154512363,
-          "macro_f1": 0.30673856027047236,
-          "weighted_f1": 0.6368937860321049,
+          "accuracy": 0.7681686958704657,
+          "macro_f1": 0.544002967586561,
+          "weighted_f1": 0.7399825759861891,
           "per_class": {
             "Under 10K": {
-              "precision": 0.752429361638511,
-              "recall": 0.8722703639514732,
-              "f1": 0.8079300104342243,
+              "precision": 0.8170512436320048,
+              "recall": 0.9450606585788561,
+              "f1": 0.876406300225008,
               "support": 5770
             },
             "10K-1M": {
-              "precision": 0.2802734375,
-              "recall": 0.16962174940898345,
-              "f1": 0.211340206185567,
+              "precision": 0.509090909090909,
+              "recall": 0.2978723404255319,
+              "f1": 0.37583892617449666,
               "support": 1692
             },
             "1M-100M": {
-              "precision": 0.18032786885245902,
-              "recall": 0.08048780487804878,
-              "f1": 0.11129848229342328,
+              "precision": 0.4978902953586498,
+              "recall": 0.28780487804878047,
+              "f1": 0.36476043276661513,
               "support": 410
             },
             "100M+": {
-              "precision": 0.11267605633802817,
-              "recall": 0.08421052631578947,
-              "f1": 0.0963855421686747,
+              "precision": 0.6818181818181818,
+              "recall": 0.47368421052631576,
+              "f1": 0.5590062111801242,
               "support": 95
             }
           },
           "confusion": {
             "matrix": [
               [
-                5033,
-                610,
-                90,
-                37
+                5453,
+                301,
+                15,
+                1
               ],
               [
-                1331,
-                287,
-                55,
-                19
+                1107,
+                504,
+                75,
+                6
               ],
               [
-                267,
                 103,
-                33,
-                7
+                175,
+                118,
+                14
               ],
               [
-                58,
-                24,
-                5,
-                8
+                11,
+                10,
+                29,
+                45
               ]
             ],
             "labels": [
@@ -860,211 +1109,256 @@
         },
         "rf_feature_importances": [
           [
+            "num__app_age_days",
+            0.23641609833540583
+          ],
+          [
+            "num__days_since_update",
+            0.19285115425545324
+          ],
+          [
             "num__size_mb",
-            0.79353970638844
+            0.15508814428009265
           ],
           [
-            "cat__category_Business",
-            0.013824940778710059
+            "num__min_android",
+            0.07508631096927695
           ],
           [
-            "cat__category_Simulation",
-            0.009107501718634418
+            "num__developer_app_count",
+            0.04591800630324651
           ],
           [
-            "num__price",
-            0.007899613298051056
+            "num__in_app_purchases",
+            0.0361279989190335
           ],
           [
-            "cat__category_Food & Drink",
-            0.007305889542664379
+            "num__ad_supported",
+            0.032315961485382114
+          ],
+          [
+            "cat__content_rating_Everyone",
+            0.00863733153076981
           ],
           [
             "cat__category_Education",
-            0.006259319415866988
-          ],
-          [
-            "cat__category_Personalization",
-            0.005957948227920487
-          ],
-          [
-            "cat__category_Photography",
-            0.005438140924872373
-          ],
-          [
-            "cat__category_Music & Audio",
-            0.005192633189291159
-          ],
-          [
-            "cat__category_Health & Fitness",
-            0.005143685751086327
-          ],
-          [
-            "cat__category_Role Playing",
-            0.00489457172793003
-          ],
-          [
-            "cat__category_Video Players & Editors",
-            0.004821562533323779
-          ],
-          [
-            "cat__category_Racing",
-            0.004353505255091372
-          ],
-          [
-            "cat__category_Casino",
-            0.0043473143038194745
-          ],
-          [
-            "cat__category_Lifestyle",
-            0.0042021876433630655
-          ],
-          [
-            "cat__category_Tools",
-            0.004166495470769812
-          ],
-          [
-            "cat__category_Card",
-            0.003959938136953199
-          ],
-          [
-            "cat__category_Productivity",
-            0.003932810761286023
-          ],
-          [
-            "cat__category_Arcade",
-            0.0038986655774014395
+            0.008256757665328393
           ],
           [
             "cat__category_Entertainment",
-            0.0038622414825826216
+            0.00804536129625075
           ],
           [
-            "cat__category_Action",
-            0.0038355727780912978
+            "cat__category_Tools",
+            0.008028829178714407
           ],
           [
-            "cat__category_Adventure",
-            0.003831392791143794
+            "cat__category_Music & Audio",
+            0.007483098281699017
           ],
           [
-            "cat__category_Casual",
-            0.0038076329628191964
-          ],
-          [
-            "cat__category_Shopping",
-            0.003739338997089075
-          ],
-          [
-            "cat__category_Music",
-            0.0037192041256194595
-          ],
-          [
-            "cat__category_Communication",
-            0.003664199093515054
-          ],
-          [
-            "cat__category_Strategy",
-            0.0036625179398690165
-          ],
-          [
-            "cat__category_Puzzle",
-            0.0036360397341506324
-          ],
-          [
-            "cat__category_Weather",
-            0.0036187024317831953
-          ],
-          [
-            "cat__category_Sports",
-            0.003540102210993311
-          ],
-          [
-            "cat__category_Board",
-            0.003511043699122552
+            "cat__content_rating_Teen",
+            0.0070186307960315025
           ],
           [
             "cat__category_Books & Reference",
-            0.0034923946180886204
+            0.006966257869115102
           ],
           [
-            "num__price_is_positive",
-            0.0034764137162756133
+            "cat__category_Lifestyle",
+            0.006946179949674709
           ],
           [
-            "cat__category_Comics",
-            0.003463625097055866
+            "cat__category_Personalization",
+            0.006314355927128102
           ],
           [
-            "cat__category_Finance",
-            0.003457434071115353
+            "cat__category_Business",
+            0.005592204937036346
           ],
           [
-            "cat__category_Travel & Local",
-            0.003447304589982741
+            "cat__category_Productivity",
+            0.0054255530980562424
           ],
           [
-            "cat__category_Word",
-            0.0034420373153776396
+            "cat__category_Photography",
+            0.005358603395747816
           ],
           [
-            "cat__category_Social",
-            0.0033627589746890885
+            "cat__category_Casual",
+            0.005349717732739795
           ],
           [
-            "cat__category_Parenting",
-            0.0030444333649507272
+            "cat__category_Sports",
+            0.005022410806927811
           ],
           [
-            "cat__category_Medical",
-            0.002959458790362984
-          ],
-          [
-            "cat__category_Educational",
-            0.0028477549112524408
-          ],
-          [
-            "cat__category_Auto & Vehicles",
-            0.0027392594769667044
-          ],
-          [
-            "cat__category_Maps & Navigation",
-            0.0026742676600738165
-          ],
-          [
-            "cat__category_Trivia",
-            0.0026395539273129736
-          ],
-          [
-            "cat__category_Dating",
-            0.002586063517807455
-          ],
-          [
-            "cat__category_Art & Design",
-            0.002481574173958812
+            "cat__category_Puzzle",
+            0.0049369143201392915
           ],
           [
             "cat__category_News & Magazines",
-            0.002432518924557033
+            0.004900508273471511
           ],
           [
-            "cat__category_Libraries & Demo",
-            0.0023130643944717696
+            "cat__category_Health & Fitness",
+            0.0048250366910908135
+          ],
+          [
+            "cat__category_Simulation",
+            0.0047765648399793565
+          ],
+          [
+            "cat__category_Finance",
+            0.004757719549734877
+          ],
+          [
+            "cat__category_Communication",
+            0.0047269618504037604
+          ],
+          [
+            "cat__category_Travel & Local",
+            0.004681140402303706
+          ],
+          [
+            "cat__category_Arcade",
+            0.0045697562852778
+          ],
+          [
+            "cat__category_Social",
+            0.00456675619541164
+          ],
+          [
+            "cat__category_Shopping",
+            0.004470030161658079
+          ],
+          [
+            "cat__content_rating_Mature 17+",
+            0.004081348943335054
+          ],
+          [
+            "cat__category_Video Players & Editors",
+            0.004002053311363319
+          ],
+          [
+            "num__editors_choice",
+            0.003779589395151071
+          ],
+          [
+            "cat__category_Action",
+            0.003652327949733894
+          ],
+          [
+            "cat__category_Food & Drink",
+            0.003547165045249203
+          ],
+          [
+            "cat__category_Adventure",
+            0.0034068164522131836
+          ],
+          [
+            "num__price",
+            0.0032432848657831747
+          ],
+          [
+            "cat__content_rating_Everyone 10+",
+            0.003234456607915555
+          ],
+          [
+            "cat__category_Racing",
+            0.003181195896483294
+          ],
+          [
+            "cat__category_Educational",
+            0.0031432080429493283
+          ],
+          [
+            "cat__category_Board",
+            0.002996569870253952
+          ],
+          [
+            "cat__category_Maps & Navigation",
+            0.0029273157413806767
+          ],
+          [
+            "cat__category_Medical",
+            0.002926476028144493
+          ],
+          [
+            "cat__category_Art & Design",
+            0.002886739341627346
+          ],
+          [
+            "cat__category_Trivia",
+            0.002773829525919754
+          ],
+          [
+            "cat__category_Role Playing",
+            0.0027111838403535643
           ],
           [
             "cat__category_House & Home",
-            0.0021736647479789904
+            0.002638366143025569
+          ],
+          [
+            "cat__category_Card",
+            0.0025801518684491972
+          ],
+          [
+            "num__price_is_positive",
+            0.002488786020738985
+          ],
+          [
+            "cat__category_Word",
+            0.002471614651405351
+          ],
+          [
+            "cat__category_Auto & Vehicles",
+            0.0024347769980859846
           ],
           [
             "cat__category_Beauty",
-            0.0021545555448505647
+            0.0023598855749201535
+          ],
+          [
+            "cat__category_Music",
+            0.0022903754533350907
+          ],
+          [
+            "cat__category_Strategy",
+            0.0021585266327857925
+          ],
+          [
+            "cat__category_Weather",
+            0.0020178102610024728
           ],
           [
             "cat__category_Events",
-            0.0021374432906161337
+            0.0019912428239497967
+          ],
+          [
+            "cat__category_Comics",
+            0.0019735588915569383
+          ],
+          [
+            "cat__category_Libraries & Demo",
+            0.0018288448558019257
+          ],
+          [
+            "cat__category_Parenting",
+            0.0018093553514088613
+          ],
+          [
+            "cat__category_Casino",
+            0.001662501844706235
+          ],
+          [
+            "cat__category_Dating",
+            0.0013402861883894306
           ]
         ],
         "importances_from": "Random Forest candidate",
+        "artifact_budget_mb": 10.0,
         "target": "install tier (4 bands)",
         "tier_bounds": [
           [
@@ -1100,16 +1394,28 @@
           "1M-100M": 1916,
           "100M+": 493
         },
+        "engineered_features": [
+          "app_age_days",
+          "days_since_update",
+          "developer_app_count",
+          "min_android",
+          "ad_supported",
+          "in_app_purchases",
+          "editors_choice"
+        ],
+        "engineered_features_dropped_all_nan": [],
+        "derived_from": "clean.py rule 13 \u2014 Released / Scraped Time / Developer Id / Minimum Android / Ad Supported / In App Purchases / Editors Choice / Content Rating",
         "dataset": {
           "source": "data/playstore_sample.csv",
           "is_sample": true,
           "rows_cleaned": 40000,
-          "md5": "70da7d6862fa",
+          "md5": "7bb2de92ec61",
           "full_dataset_rows": 2312944,
           "sample_note": "trained on a 40,000-row stratified sample of the 2,312,944-row Google-Playstore dataset (full-scale proportions differ; see data/playstore_sample.meta.json)"
         },
         "version": "without_reviews",
-        "inputs_note": "Base inputs only \u2014 no Reviews (primary dashboard model)."
+        "inputs_note": "Base inputs + the engineered app-profile features \u2014 no Reviews (primary dashboard model).",
+        "artifact_size_mb": 0.993
       }
     }
   }

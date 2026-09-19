@@ -269,6 +269,9 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .table-wrap{overflow-x:auto;}
 
 .ml-form{display:flex;flex-direction:column;gap:14px;padding:6px 4px 10px;}
+/* Three yes/no flag selects side by side instead of three full-width rows. */
+.ml-form .form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (max-width:520px){ .ml-form .form-row{grid-template-columns:1fr;} }
 .ml-form label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-low);display:flex;flex-direction:column;gap:6px;}
 .ml-form .field-hint{text-transform:none;letter-spacing:0;font-size:10px;opacity:.75;}
 .ml-form input,.ml-form select{

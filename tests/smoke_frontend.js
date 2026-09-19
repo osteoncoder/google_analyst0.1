@@ -200,6 +200,12 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   const pM2a = elements.get('perfM2a'), pM2b = elements.get('perfM2b');
   if (pM2a && pM2b && pM2b.innerHTML.length > 50) ok('section 09: both M2 version tables rendered');
   else fail('section 09 M2 tables missing');
+  // A candidate that scores well can still be unshippable — the table must show
+  // it struck out with its size, not quietly drop it.
+  const pBudget = elements.get('perfBudget');
+  if (pBudget && /shipping budget/.test(pBudget.innerHTML) && /<s>/.test(pM1.innerHTML))
+    ok('section 09: oversized candidates struck out with the shipping-budget reason');
+  else fail(`section 09 artifact-budget rejection not surfaced (budget=${pBudget ? pBudget.innerHTML.slice(0, 80) : 'none'})`);
   const pSum = elements.get('perfSummary');
   if (pSum && pSum.innerHTML.includes('lower bounds') && pSum.innerHTML.includes('not observed revenue'))
     ok('section 09: limitation notes present (install bands, price ≠ revenue)');
@@ -263,12 +269,37 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   g('tfSize').value = '50';
   g('tfPrice').value = '';
   g('tfCategory').value = rows[0].category;
+  // The M2 form asks for the inputs a user can actually know (option 2):
+  // content rating, minimum Android, and the ad / IAP / Editors' Choice flags.
+  // The rating form's 422 case above makes runInference fall through to the
+  // browser engine, which flips the recorded mode; reset it so this submit
+  // exercises the API route (and its payload) rather than the bundle.
+  vm.runInContext('INFERENCE.mode = "api";', sandbox);
+  let tierPayload = null;
+  const tierFetch = sandbox.fetch;
+  sandbox.fetch = async (url, opts) => {
+    if (url === 'api/predict/tier') tierPayload = JSON.parse(opts.body);
+    return tierFetch(url, opts);
+  };
+  g('tfContentRating').value = 'Teen';
+  g('tfAndroid').value = '8.0';
+  g('tfAd').value = '1';
+  g('tfIap').value = '0';
+  g('tfEditors').value = '';
   (tform.listeners['submit'] || [])[0]({ preventDefault() {} });
   await tick();
+  sandbox.fetch = tierFetch;
   const tr = elements.get('tierResult');
   if (tr && tr.innerHTML.includes('prob-fill') && tr.innerHTML.includes('model estimates, not guarantees'))
     ok('section 08: submit → tier + probability bars + disclaimer rendered');
   else fail('tier form submission did not render result');
+
+  const payloadOk = tierPayload && tierPayload.content_rating === 'Teen'
+    && tierPayload.min_android === 8 && tierPayload.ad_supported === 1
+    && tierPayload.in_app_purchases === 0 && tierPayload.editors_choice === null;
+  if (payloadOk) ok('section 08: content rating / min Android / ad / IAP sent; '
+    + 'a blank Editors\' Choice stays null (imputed, not guessed)');
+  else fail(`tier form payload wrong: ${JSON.stringify(tierPayload)}`);
 
   /* ---------------- hosting-mode resilience (static / dead backend) ---------------- */
   // Metrics fall back to the static ml/artifacts/metrics.json when api/* is unreachable,
