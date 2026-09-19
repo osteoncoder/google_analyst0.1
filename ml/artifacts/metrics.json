@@ -1,0 +1,927 @@
+{
+  "generated_at": "2026-09-17T15:11:30+00:00",
+  "seed": 42,
+  "dataset": {
+    "source": "data/play_store.csv",
+    "is_sample": false,
+    "rows_cleaned": 10355,
+    "md5": "725f6a903af8"
+  },
+  "small_dataset_warning": false,
+  "protocol": "80/20 GroupShuffleSplit on app name (leakage guard), fit BEFORE preprocessing; 75/25 train/val for model selection; selected model refit on train+val; test set used exactly once; no test-set tuning.",
+  "models": {
+    "m1_rating": {
+      "task": "regression",
+      "model": "Gradient Boosting",
+      "selection_metric": "validation r2",
+      "features": [
+        "size_mb",
+        "price",
+        "price_is_positive",
+        "reviews_log",
+        "category"
+      ],
+      "n_total": 8890,
+      "n_train": 5323,
+      "n_val": 1769,
+      "n_test": 1798,
+      "candidates": {
+        "Mean baseline (train mean)": {
+          "val": {
+            "mae": 0.36133710307361006,
+            "rmse": 0.5106689684227875,
+            "r2": -0.00253641447021824
+          },
+          "test": {
+            "mae": 0.3824929676387045,
+            "rmse": 0.5383408421988425,
+            "r2": -2.0221466386027842e-05
+          }
+        },
+        "Linear Regression": {
+          "val": {
+            "mae": 0.35216988709852115,
+            "rmse": 0.49778007384756257,
+            "r2": 0.04743145693807571
+          },
+          "test": {
+            "mae": 0.3653630628513041,
+            "rmse": 0.5237437181327003,
+            "r2": 0.05347568089450927
+          }
+        },
+        "Decision Tree": {
+          "val": {
+            "mae": 0.45565291124929336,
+            "rmse": 0.6778296842398029,
+            "r2": -0.7662915367239298
+          },
+          "test": {
+            "mae": 0.4781423804226919,
+            "rmse": 0.7192993439190687,
+            "r2": -0.7853092335127476
+          }
+        },
+        "Random Forest": {
+          "val": {
+            "mae": 0.3669317813250544,
+            "rmse": 0.5212952824857793,
+            "r2": -0.044693300163773264
+          },
+          "test": {
+            "mae": 0.37543987322774863,
+            "rmse": 0.547888165996354,
+            "r2": -0.03580490421664906
+          }
+        },
+        "Gradient Boosting": {
+          "val": {
+            "mae": 0.3475251481402672,
+            "rmse": 0.4929875615958289,
+            "r2": 0.06568538199665086
+          },
+          "test": {
+            "mae": 0.3614197601302042,
+            "rmse": 0.5291150081641437,
+            "r2": 0.03396183696444943
+          }
+        }
+      },
+      "test_metrics": {
+        "mae": 0.3582026884424852,
+        "rmse": 0.5265142921162804,
+        "r2": 0.04343507601127827
+      },
+      "rf_feature_importances": [
+        [
+          "num__reviews_log",
+          0.3969856551616931
+        ],
+        [
+          "num__size_mb",
+          0.30904805042687705
+        ],
+        [
+          "cat__category_Family",
+          0.02343280840553033
+        ],
+        [
+          "num__price",
+          0.021700211272764922
+        ],
+        [
+          "cat__category_Finance",
+          0.01719577446012195
+        ],
+        [
+          "cat__category_Lifestyle",
+          0.01546720217284332
+        ],
+        [
+          "cat__category_Health And Fitness",
+          0.014813915249362309
+        ],
+        [
+          "cat__category_Tools",
+          0.014567768273917956
+        ],
+        [
+          "cat__category_Productivity",
+          0.013479327261214556
+        ],
+        [
+          "cat__category_Business",
+          0.013244027231160456
+        ],
+        [
+          "cat__category_Dating",
+          0.011576768213611
+        ],
+        [
+          "cat__category_Medical",
+          0.011556555229959733
+        ],
+        [
+          "cat__category_Photography",
+          0.010301500959458868
+        ],
+        [
+          "cat__category_Sports",
+          0.009173763286904196
+        ],
+        [
+          "cat__category_News And Magazines",
+          0.008818509897877252
+        ],
+        [
+          "cat__category_Game",
+          0.008811199778191147
+        ],
+        [
+          "cat__category_Communication",
+          0.008349063583181122
+        ],
+        [
+          "cat__category_Shopping",
+          0.008266350104971749
+        ],
+        [
+          "cat__category_Video Players",
+          0.00793988564393083
+        ],
+        [
+          "cat__category_Social",
+          0.007553073675480569
+        ],
+        [
+          "num__price_is_positive",
+          0.007240016768882244
+        ],
+        [
+          "cat__category_Travel And Local",
+          0.007017401065009757
+        ],
+        [
+          "cat__category_Maps And Navigation",
+          0.006999520947210435
+        ],
+        [
+          "cat__category_Books And Reference",
+          0.006677688582558212
+        ],
+        [
+          "cat__category_Food And Drink",
+          0.006031610826549791
+        ],
+        [
+          "cat__category_Personalization",
+          0.005681029888306869
+        ],
+        [
+          "cat__category_Comics",
+          0.004172703691304983
+        ],
+        [
+          "cat__category_Parenting",
+          0.004033063167165686
+        ],
+        [
+          "cat__category_Auto And Vehicles",
+          0.003960036944786101
+        ],
+        [
+          "cat__category_House And Home",
+          0.002858629812617332
+        ],
+        [
+          "cat__category_Beauty",
+          0.002515583301271883
+        ],
+        [
+          "cat__category_Entertainment",
+          0.002222961835380401
+        ],
+        [
+          "cat__category_Events",
+          0.0020792520305027667
+        ],
+        [
+          "cat__category_Libraries And Demo",
+          0.0019192774835571217
+        ],
+        [
+          "cat__category_Education",
+          0.0016492961992306905
+        ],
+        [
+          "cat__category_Art And Design",
+          0.001489509557655598
+        ],
+        [
+          "cat__category_Weather",
+          0.0011710076089577436
+        ]
+      ],
+      "importances_from": "Random Forest candidate",
+      "dataset": {
+        "source": "data/play_store.csv",
+        "is_sample": false,
+        "rows_cleaned": 10355,
+        "md5": "725f6a903af8"
+      },
+      "target": "Rating",
+      "inputs_note": "category, size_mb, price, price_is_positive, log1p(reviews). Rating (target) and Installs are excluded from the inputs."
+    },
+    "m2_tier": {
+      "with_reviews": {
+        "task": "classification",
+        "model": "Logistic Regression",
+        "selection_metric": "validation macro_f1",
+        "features": [
+          "size_mb",
+          "price",
+          "price_is_positive",
+          "reviews_log",
+          "category"
+        ],
+        "n_total": 10355,
+        "n_train": 6205,
+        "n_val": 2084,
+        "n_test": 2066,
+        "candidates": {
+          "Dummy baseline (class prior)": {
+            "val": {
+              "accuracy": 0.3584452975047985,
+              "macro_f1": 0.1319321794418933,
+              "weighted_f1": 0.1891618772420236
+            },
+            "test": {
+              "accuracy": 0.34462729912875123,
+              "macro_f1": 0.12814974802015838,
+              "weighted_f1": 0.17665560617686887
+            }
+          },
+          "Logistic Regression": {
+            "val": {
+              "accuracy": 0.8939539347408829,
+              "macro_f1": 0.8733641316456219,
+              "weighted_f1": 0.8939186881337506
+            },
+            "test": {
+              "accuracy": 0.9075508228460794,
+              "macro_f1": 0.8865423612620525,
+              "weighted_f1": 0.9072830537823563
+            }
+          },
+          "Decision Tree": {
+            "val": {
+              "accuracy": 0.8440499040307101,
+              "macro_f1": 0.8276725314525294,
+              "weighted_f1": 0.8441145404779086
+            },
+            "test": {
+              "accuracy": 0.8480154888673765,
+              "macro_f1": 0.8262271277170031,
+              "weighted_f1": 0.8480058555666108
+            }
+          },
+          "Random Forest": {
+            "val": {
+              "accuracy": 0.8833973128598849,
+              "macro_f1": 0.8574056718669658,
+              "weighted_f1": 0.8836218805661206
+            },
+            "test": {
+              "accuracy": 0.8896418199419167,
+              "macro_f1": 0.863470735032873,
+              "weighted_f1": 0.8892375227901869
+            }
+          },
+          "Gradient Boosting": {
+            "val": {
+              "accuracy": 0.8905950095969289,
+              "macro_f1": 0.8651338889200132,
+              "weighted_f1": 0.8907752235676881
+            },
+            "test": {
+              "accuracy": 0.9012584704743466,
+              "macro_f1": 0.8744471664885056,
+              "weighted_f1": 0.9013111282391151
+            }
+          }
+        },
+        "test_metrics": {
+          "accuracy": 0.9056147144240078,
+          "macro_f1": 0.8855456749507895,
+          "weighted_f1": 0.9053067293380884,
+          "per_class": {
+            "Under 10K": {
+              "precision": 0.9452495974235104,
+              "recall": 0.9317460317460318,
+              "f1": 0.938449240607514,
+              "support": 630
+            },
+            "10K-1M": {
+              "precision": 0.8685446009389671,
+              "recall": 0.8740157480314961,
+              "f1": 0.8712715855572999,
+              "support": 635
+            },
+            "1M-100M": {
+              "precision": 0.9045020463847203,
+              "recall": 0.9311797752808989,
+              "f1": 0.9176470588235294,
+              "support": 712
+            },
+            "100M+": {
+              "precision": 0.9041095890410958,
+              "recall": 0.7415730337078652,
+              "f1": 0.8148148148148148,
+              "support": 89
+            }
+          },
+          "confusion": {
+            "matrix": [
+              [
+                587,
+                43,
+                0,
+                0
+              ],
+              [
+                33,
+                555,
+                47,
+                0
+              ],
+              [
+                1,
+                41,
+                663,
+                7
+              ],
+              [
+                0,
+                0,
+                23,
+                66
+              ]
+            ],
+            "labels": [
+              "Under 10K",
+              "10K-1M",
+              "1M-100M",
+              "100M+"
+            ]
+          }
+        },
+        "rf_feature_importances": [
+          [
+            "num__reviews_log",
+            0.7799017857506708
+          ],
+          [
+            "num__size_mb",
+            0.11591656661403059
+          ],
+          [
+            "num__price",
+            0.015864974438582737
+          ],
+          [
+            "num__price_is_positive",
+            0.011306725364228543
+          ],
+          [
+            "cat__category_Game",
+            0.005763798105303518
+          ],
+          [
+            "cat__category_Medical",
+            0.0055452593488764905
+          ],
+          [
+            "cat__category_Business",
+            0.004746899503370904
+          ],
+          [
+            "cat__category_Family",
+            0.004285307105809435
+          ],
+          [
+            "cat__category_Communication",
+            0.004208924097942617
+          ],
+          [
+            "cat__category_Productivity",
+            0.0037747176701869506
+          ],
+          [
+            "cat__category_Tools",
+            0.0030708297850790167
+          ],
+          [
+            "cat__category_Photography",
+            0.0029642340969207033
+          ],
+          [
+            "cat__category_Lifestyle",
+            0.0025416301782359746
+          ],
+          [
+            "cat__category_Books And Reference",
+            0.0023383520375236245
+          ],
+          [
+            "cat__category_Personalization",
+            0.0023319222791584582
+          ],
+          [
+            "cat__category_Social",
+            0.0022249474781066464
+          ],
+          [
+            "cat__category_Sports",
+            0.0021590347906898315
+          ],
+          [
+            "cat__category_Entertainment",
+            0.0021454949708582067
+          ],
+          [
+            "cat__category_Parenting",
+            0.002089360150079514
+          ],
+          [
+            "cat__category_Education",
+            0.0020408839705969898
+          ],
+          [
+            "cat__category_Travel And Local",
+            0.002013126749138906
+          ],
+          [
+            "cat__category_Finance",
+            0.002006547031654929
+          ],
+          [
+            "cat__category_Dating",
+            0.0019648293980631354
+          ],
+          [
+            "cat__category_News And Magazines",
+            0.001811502462438313
+          ],
+          [
+            "cat__category_Health And Fitness",
+            0.0017708429547092566
+          ],
+          [
+            "cat__category_Video Players",
+            0.0017389972978217594
+          ],
+          [
+            "cat__category_Beauty",
+            0.0017359678365428469
+          ],
+          [
+            "cat__category_Auto And Vehicles",
+            0.0014946330295049033
+          ],
+          [
+            "cat__category_Art And Design",
+            0.0014194148526035762
+          ],
+          [
+            "cat__category_Shopping",
+            0.0013105076480974598
+          ],
+          [
+            "cat__category_Food And Drink",
+            0.0012749057208500867
+          ],
+          [
+            "cat__category_Weather",
+            0.001224524015297407
+          ],
+          [
+            "cat__category_Comics",
+            0.0011996678262852546
+          ],
+          [
+            "cat__category_Maps And Navigation",
+            0.0010201919037649597
+          ],
+          [
+            "cat__category_Events",
+            0.001006326265253618
+          ],
+          [
+            "cat__category_House And Home",
+            0.0009215101798538122
+          ],
+          [
+            "cat__category_Libraries And Demo",
+            0.0008648570918681921
+          ]
+        ],
+        "importances_from": "Random Forest candidate",
+        "target": "install tier (4 bands)",
+        "tier_bounds": [
+          [
+            0,
+            10000,
+            "Under 10K"
+          ],
+          [
+            10000,
+            1000000,
+            "10K-1M"
+          ],
+          [
+            1000000,
+            100000000,
+            "1M-100M"
+          ],
+          [
+            100000000,
+            null,
+            "100M+"
+          ]
+        ],
+        "labels": [
+          "Under 10K",
+          "10K-1M",
+          "1M-100M",
+          "100M+"
+        ],
+        "class_counts_full_data": {
+          "Under 10K": 3150,
+          "10K-1M": 3153,
+          "1M-100M": 3573,
+          "100M+": 479
+        },
+        "dataset": {
+          "source": "data/play_store.csv",
+          "is_sample": false,
+          "rows_cleaned": 10355,
+          "md5": "725f6a903af8"
+        },
+        "version": "with_reviews",
+        "inputs_note": "Base inputs + log1p(reviews)."
+      },
+      "without_reviews": {
+        "task": "classification",
+        "model": "Gradient Boosting",
+        "selection_metric": "validation macro_f1",
+        "features": [
+          "size_mb",
+          "price",
+          "price_is_positive",
+          "category"
+        ],
+        "n_total": 10355,
+        "n_train": 6205,
+        "n_val": 2084,
+        "n_test": 2066,
+        "candidates": {
+          "Dummy baseline (class prior)": {
+            "val": {
+              "accuracy": 0.3584452975047985,
+              "macro_f1": 0.1319321794418933,
+              "weighted_f1": 0.1891618772420236
+            },
+            "test": {
+              "accuracy": 0.34462729912875123,
+              "macro_f1": 0.12814974802015838,
+              "weighted_f1": 0.17665560617686887
+            }
+          },
+          "Logistic Regression": {
+            "val": {
+              "accuracy": 0.4904030710172745,
+              "macro_f1": 0.36076215400275125,
+              "weighted_f1": 0.46735473061359617
+            },
+            "test": {
+              "accuracy": 0.489351403678606,
+              "macro_f1": 0.3615556138642605,
+              "weighted_f1": 0.4653821098449065
+            }
+          },
+          "Decision Tree": {
+            "val": {
+              "accuracy": 0.4692898272552783,
+              "macro_f1": 0.40966274139508246,
+              "weighted_f1": 0.4687800979381269
+            },
+            "test": {
+              "accuracy": 0.4554695062923524,
+              "macro_f1": 0.35849368225341605,
+              "weighted_f1": 0.4520262522656235
+            }
+          },
+          "Random Forest": {
+            "val": {
+              "accuracy": 0.4870441458733205,
+              "macro_f1": 0.4200644134575879,
+              "weighted_f1": 0.482351593007686
+            },
+            "test": {
+              "accuracy": 0.46708615682478216,
+              "macro_f1": 0.36007519049271197,
+              "weighted_f1": 0.4578066043391838
+            }
+          },
+          "Gradient Boosting": {
+            "val": {
+              "accuracy": 0.5283109404990403,
+              "macro_f1": 0.4452775915702868,
+              "weighted_f1": 0.5133559960805241
+            },
+            "test": {
+              "accuracy": 0.5062923523717329,
+              "macro_f1": 0.38152153521313137,
+              "weighted_f1": 0.4855836572621257
+            }
+          }
+        },
+        "test_metrics": {
+          "accuracy": 0.5096805421103582,
+          "macro_f1": 0.38310410572472164,
+          "weighted_f1": 0.4875825337159154,
+          "per_class": {
+            "Under 10K": {
+              "precision": 0.5315870570107858,
+              "recall": 0.5476190476190477,
+              "f1": 0.5394839718530101,
+              "support": 630
+            },
+            "10K-1M": {
+              "precision": 0.455188679245283,
+              "recall": 0.30393700787401573,
+              "f1": 0.364494806421152,
+              "support": 635
+            },
+            "1M-100M": {
+              "precision": 0.5282631038026722,
+              "recall": 0.7219101123595506,
+              "f1": 0.6100890207715134,
+              "support": 712
+            },
+            "100M+": {
+              "precision": 0.05,
+              "recall": 0.011235955056179775,
+              "f1": 0.01834862385321101,
+              "support": 89
+            }
+          },
+          "confusion": {
+            "matrix": [
+              [
+                345,
+                137,
+                145,
+                3
+              ],
+              [
+                205,
+                193,
+                234,
+                3
+              ],
+              [
+                94,
+                91,
+                514,
+                13
+              ],
+              [
+                5,
+                3,
+                80,
+                1
+              ]
+            ],
+            "labels": [
+              "Under 10K",
+              "10K-1M",
+              "1M-100M",
+              "100M+"
+            ]
+          }
+        },
+        "rf_feature_importances": [
+          [
+            "num__size_mb",
+            0.7217618205818233
+          ],
+          [
+            "num__price",
+            0.04288638461542048
+          ],
+          [
+            "num__price_is_positive",
+            0.019387593492053146
+          ],
+          [
+            "cat__category_Medical",
+            0.015745141981819286
+          ],
+          [
+            "cat__category_Game",
+            0.014525308680911047
+          ],
+          [
+            "cat__category_Business",
+            0.012576065635139784
+          ],
+          [
+            "cat__category_Family",
+            0.010394069664807033
+          ],
+          [
+            "cat__category_Communication",
+            0.009735894070665298
+          ],
+          [
+            "cat__category_Photography",
+            0.009185883088084481
+          ],
+          [
+            "cat__category_Tools",
+            0.009126049469905832
+          ],
+          [
+            "cat__category_Productivity",
+            0.008668389507327264
+          ],
+          [
+            "cat__category_Entertainment",
+            0.007939214940672614
+          ],
+          [
+            "cat__category_Lifestyle",
+            0.00688898038790559
+          ],
+          [
+            "cat__category_Personalization",
+            0.006680607702897429
+          ],
+          [
+            "cat__category_Health And Fitness",
+            0.006678740935210258
+          ],
+          [
+            "cat__category_Education",
+            0.0064842053609224775
+          ],
+          [
+            "cat__category_Sports",
+            0.006114575272303995
+          ],
+          [
+            "cat__category_Finance",
+            0.005670257913380788
+          ],
+          [
+            "cat__category_Books And Reference",
+            0.0055034384526265285
+          ],
+          [
+            "cat__category_Social",
+            0.005436429117364893
+          ],
+          [
+            "cat__category_Dating",
+            0.005214025517619894
+          ],
+          [
+            "cat__category_News And Magazines",
+            0.005091766908506865
+          ],
+          [
+            "cat__category_Travel And Local",
+            0.0049806694449024465
+          ],
+          [
+            "cat__category_Shopping",
+            0.004763865371009086
+          ],
+          [
+            "cat__category_Art And Design",
+            0.004434645177292457
+          ],
+          [
+            "cat__category_Video Players",
+            0.004429212429004682
+          ],
+          [
+            "cat__category_Parenting",
+            0.0043964582606746015
+          ],
+          [
+            "cat__category_Maps And Navigation",
+            0.004318134529181542
+          ],
+          [
+            "cat__category_Weather",
+            0.004287298085868162
+          ],
+          [
+            "cat__category_Auto And Vehicles",
+            0.004237420767218413
+          ],
+          [
+            "cat__category_Events",
+            0.004118493916655628
+          ],
+          [
+            "cat__category_Libraries And Demo",
+            0.003989678177544567
+          ],
+          [
+            "cat__category_Food And Drink",
+            0.003816958394195509
+          ],
+          [
+            "cat__category_Comics",
+            0.0036844757303079773
+          ],
+          [
+            "cat__category_Beauty",
+            0.003575224776831461
+          ],
+          [
+            "cat__category_House And Home",
+            0.0032726216419451727
+          ]
+        ],
+        "importances_from": "Random Forest candidate",
+        "target": "install tier (4 bands)",
+        "tier_bounds": [
+          [
+            0,
+            10000,
+            "Under 10K"
+          ],
+          [
+            10000,
+            1000000,
+            "10K-1M"
+          ],
+          [
+            1000000,
+            100000000,
+            "1M-100M"
+          ],
+          [
+            100000000,
+            null,
+            "100M+"
+          ]
+        ],
+        "labels": [
+          "Under 10K",
+          "10K-1M",
+          "1M-100M",
+          "100M+"
+        ],
+        "class_counts_full_data": {
+          "Under 10K": 3150,
+          "10K-1M": 3153,
+          "1M-100M": 3573,
+          "100M+": 479
+        },
+        "dataset": {
+          "source": "data/play_store.csv",
+          "is_sample": false,
+          "rows_cleaned": 10355,
+          "md5": "725f6a903af8"
+        },
+        "version": "without_reviews",
+        "inputs_note": "Base inputs only \u2014 no Reviews (primary dashboard model)."
+      }
+    }
+  }
+}

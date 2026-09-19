@@ -1,211 +1,406 @@
 /* ================================================================
-   charts.js — Plotly rendering, KPI strip, nav scroll-spy
-   Expects data.js to have run first (df_app, CATEGORIES, PURPLE_SCALE
-   must already exist as globals since both files load without IIFE
-   wrappers, in order, as plain <script> tags).
+   charts.js — Plotly rendering for KPI strip + charts 01-06
+   All values are computed from DF (cleaned rows) — there are no
+   hardcoded chart values anywhere in this file.
+   Depends on data.js (PURPLE_SCALE, loadApps, helpers).
+   Bootstrapping happens in ml_dashboard.js.
    ================================================================ */
 
-/* ================================================================
-   PLOTLY DARK THEME DEFAULTS
-   ================================================================ */
+let DF = [];          // cleaned rows (set by bootstrap in ml_dashboard.js)
+let APP_SOURCE = '';  // human-readable dataset source
+let APP_IS_SAMPLE = false;
+
+/* ---------------- shared Plotly theme (aurora, unchanged) ---------------- */
 const FONT = {family:'Inter, sans-serif', color:'#b1a8cf', size:12};
-const layoutBase = {
-  paper_bgcolor:'rgba(0,0,0,0)',
-  plot_bgcolor:'rgba(0,0,0,0)',
-  font:FONT,
-  margin:{t:20,l:56,r:24,b:56},
-  legend:{orientation:'h', y:-0.22, font:{color:'#b1a8cf', size:11}, bgcolor:'rgba(0,0,0,0)'},
-  xaxis:{gridcolor:'rgba(168,85,247,0.08)', zerolinecolor:'rgba(168,85,247,0.15)', linecolor:'rgba(168,85,247,0.2)', tickfont:{color:'#8f86ac'}},
-  yaxis:{gridcolor:'rgba(168,85,247,0.08)', zerolinecolor:'rgba(168,85,247,0.15)', linecolor:'rgba(168,85,247,0.2)', tickfont:{color:'#8f86ac'}},
-  hoverlabel:{bgcolor:'#181432', bordercolor:'#a855f7', font:{color:'#f3f0ff', family:'Inter, sans-serif'}}
+const AX = {
+  gridcolor:'rgba(168,85,247,0.08)', zerolinecolor:'rgba(168,85,247,0.15)',
+  linecolor:'rgba(168,85,247,0.2)', tickfont:{color:'#8f86ac'},
 };
+const layoutBase = {
+  paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:FONT,
+  margin:{t:16,l:60,r:24,b:64},
+  xaxis:{...AX}, yaxis:{...AX},
+  hoverlabel:{bgcolor:'#181432', bordercolor:'#a855f7', font:{color:'#f3f0ff', family:'Inter, sans-serif'}},
+};
+const legendV = {orientation:'v', x:1.02, y:1, font:{color:'#b1a8cf', size:11}, bgcolor:'rgba(0,0,0,0)'};
+const legendH = {orientation:'h', y:-0.22, x:0.5, font:{color:'#b1a8cf', size:11}, bgcolor:'rgba(0,0,0,0)'};
 const CONFIG = {displayModeBar:false, responsive:true};
 
-/* ================================================================
-   KPI STRIP
-   ================================================================ */
-const totalInstalls = df_app.reduce((s,d)=>s+d.installs_clean,0);
-const avgRating = df_app.reduce((s,d)=>s+d.rating,0)/df_app.length;
-const totalRevenue = df_app.reduce((s,d)=>s+d.revenue,0);
-const totalReviews = df_app.reduce((s,d)=>s+d.reviews,0);
-
-function fmtCompact(n){
-  if(n>=1e9) return (n/1e9).toFixed(1)+'B';
-  if(n>=1e6) return (n/1e6).toFixed(1)+'M';
-  if(n>=1e3) return (n/1e3).toFixed(1)+'K';
-  return Math.round(n);
+function gap(el, title, bodyHTML){
+  el.innerHTML = `<div class="data-gap"><h3>${title}</h3><p>${bodyHTML}</p></div>`;
+}
+function banner(el, html){
+  el.insertAdjacentHTML('afterbegin', `<div class="gap-banner">${html}</div>`);
 }
 
-const kpis = [
-  {label:'Total Apps Tracked', value:df_app.length.toLocaleString(), delta:'+4.2% vs last sync', glow:'var(--purple-neon)', icon:'▣'},
-  {label:'Total Installs', value:fmtCompact(totalInstalls)+'+', delta:'+18.6% MoM', glow:'var(--cyan)', icon:'▣'},
-  {label:'Average Rating', value:avgRating.toFixed(2)+' / 5', delta:'stable', glow:'var(--pink)', icon:'▣'},
-  {label:'Est. Revenue (Paid)', value:'$'+fmtCompact(totalRevenue), delta:'+6.1% MoM', glow:'var(--amber)', icon:'▣'},
-];
-const kpiGrid = document.getElementById('kpiGrid');
-kpiGrid.innerHTML = kpis.map(k=>`
-  <div class="kpi-card" style="--kpi-glow:${k.glow}">
-    <div class="kpi-label"><span class="ico"></span>${k.label}</div>
-    <div class="kpi-value">${k.value}</div>
-    <div class="kpi-delta">${k.delta}</div>
-  </div>
-`).join('');
+/* ================================================================
+   KPI STRIP — actual computed values only (no invented deltas)
+   ================================================================ */
+function renderKPIs(){
+  const n = DF.length;
+  const cats = new Set(DF.map(d=>d.category)).size;
+  const inst = DF.filter(d=>isFinite(d.installs));
+  const sumInst = sum(inst.map(d=>d.installs));
+  const rated = DF.filter(d=>isFinite(d.rating));
+  const avgR = rated.length ? sum(rated.map(d=>d.rating))/rated.length : NaN;
+  const sumRev = sum(DF.map(d=>d.reviews));
+
+  const kpis = [
+    {label:'Apps in dataset',      value:n.toLocaleString(),        note:`across ${cats} categories`,          glow:'var(--purple-neon)'},
+    {label:'Reported installs',    value:fmtCompact(sumInst),       note:'sum of band lower bounds',           glow:'var(--cyan)'},
+    {label:'Average rating',       value:isNaN(avgR)?'—':avgR.toFixed(2)+' / 5', note:`mean of ${rated.length} app ratings`, glow:'var(--pink)'},
+    {label:'Total reviews',        value:fmtCompact(sumRev),        note:'sum of review counts',               glow:'var(--amber)'},
+  ];
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
+    <div class="kpi-card" style="--kpi-glow:${k.glow}">
+      <div class="kpi-label"><span class="ico"></span>${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-note">${k.note}</div>
+    </div>`).join('');
+}
 
 /* ================================================================
-   CHART 1 — Quality Benchmark (scatter: size vs rating vs installs)
+   CHART 1 — Quality Benchmark (kept: valid data-driven scatter)
+   Size vs rating, bubble area ∝ reported installs (band lower bound).
    ================================================================ */
-const df_task1 = df_app.filter(d=> d.installs_clean>=1000 && d.rating!=null && d.size_mb!=null);
-const cats1 = [...new Set(df_task1.map(d=>d.category))];
-const traces1 = cats1.map((cat,i)=>{
-  const rows = df_task1.filter(d=>d.category===cat);
-  return {
-    x:rows.map(d=>d.size_mb), y:rows.map(d=>d.rating),
-    text:rows.map(d=>`${d.app}<br>Installs: ${d.installs_clean.toLocaleString()}`),
-    mode:'markers', type:'scatter', name:cat,
+function renderChart1(){
+  const el = document.getElementById('chart1');
+  const rows = DF.filter(d => isFinite(d.installs) && d.installs>=1000 && isFinite(d.rating) && isFinite(d.size_mb));
+  if(!rows.length){
+    gap(el, 'No apps to plot', 'Filter requires ≥1,000 reported installs and known size and rating.');
+    return;
+  }
+  const cats = [...new Set(rows.map(d=>d.category))].sort();
+  const traces = cats.map((cat,i)=>{
+    const r = rows.filter(d=>d.category===cat);
+    const sizes = r.map(d=>Math.sqrt(d.installs)/9);
+    return {
+      x:r.map(d=>d.size_mb), y:r.map(d=>d.rating), mode:'markers', type:'scatter', name:cat,
+      marker:{
+        size:sizes, sizemode:'area',
+        sizeref: 2.0*Math.max(...sizes)/(40**2), sizemin:4,
+        color:PURPLE_SCALE[i%PURPLE_SCALE.length], opacity:0.75,
+        line:{width:1, color:'rgba(255,255,255,0.25)'},
+      },
+      customdata: r.map(d=>`${d.app}<br>Installs (band lower bound): ${d.installs.toLocaleString()}`),
+      hovertemplate: '%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra>'+cat+'</extra>',
+    };
+  });
+  const ymin = Math.min(2.3, Math.floor(Math.min(...rows.map(d=>d.rating))*10)/10 - 0.25);
+  Plotly.newPlot(el, traces, {
+    ...layoutBase,
+    margin:{t:16,l:60,r:130,b:56},
+    legend:legendV,
+    xaxis:{...AX, title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
+    yaxis:{...AX, title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
+  }, CONFIG);
+}
+
+/* ================================================================
+   CHART 2 — Feature Correlation (replaces fabricated "Global Reach")
+   No location data exists in the dataset, so no map is shown.
+   Pearson matrix over genuine numeric columns; log1p for skew.
+   ================================================================ */
+function renderChart2(){
+  const el = document.getElementById('chart2');
+  const cols = [
+    {label:'Rating',           get:d=>isFinite(d.rating)   ? d.rating : NaN},
+    {label:'log1p(Reviews)',   get:d=>isFinite(d.reviews)  ? Math.log1p(d.reviews) : NaN},
+    {label:'log1p(Installs)',  get:d=>isFinite(d.installs) ? Math.log1p(d.installs) : NaN},
+    {label:'Size (MB)',        get:d=>isFinite(d.size_mb)  ? d.size_mb : NaN},
+  ];
+  if(DF.some(d=>isNum(d.price) && d.price>0) || DF.some(d=>d.price===0)) cols.push({label:'Price ($)', get:d=>isNum(d.price)?d.price:NaN});
+  if(DF.some(d=>isFinite(d.sentiment))) cols.push({label:'Subjectivity', get:d=>isFinite(d.sentiment)?d.sentiment:NaN});
+
+  // keep columns with >=3 valid values and non-zero variance
+  const kept = cols.filter(c=>{
+    const vals = DF.map(c.get).filter(isFinite);
+    return vals.length>=3 && (Math.max(...vals) - Math.min(...vals)) > 0;
+  });
+  const dropped = cols.filter(c=>!kept.includes(c)).map(c=>c.label);
+  if(kept.length < 2){
+    gap(el, 'Not enough numeric columns', 'A correlation matrix needs at least two non-constant numeric columns.');
+    return;
+  }
+
+  const labels = kept.map(c=>c.label);
+  const z = kept.map(a => kept.map(b => {
+    const pairs = DF.map(d=>[a.get(d), b.get(d)]).filter(p=>isFinite(p[0]) && isFinite(p[1]));
+    return pearson(pairs);
+  }));
+
+  const ann = [];
+  z.forEach((row,i)=>row.forEach((v,j)=>{
+    ann.push({x:labels[j], y:labels[i],
+      text: isFinite(v) ? v.toFixed(2) : '—',
+      showarrow:false, font:{color:'#e9e4f7', size:11, family:'JetBrains Mono'}});
+  }));
+
+  Plotly.newPlot(el, [{
+    type:'heatmap', x:labels, y:labels, z:z.map(r=>r.map(v=>isFinite(v)?v:null)),
+    colorscale:[[0,'#2dd4ea'],[0.5,'#141126'],[1,'#f472b6']],
+    zmin:-1, zmax:1, zmid:0,
+    hovertemplate:'%{y} × %{x}<br>r = %{z}<extra></extra>',
+    colorbar:{title:{text:'Pearson r', side:'right', font:{color:'#8f86ac'}}, tickfont:{color:'#8f86ac'},
+              len:0.8, thickness:14, outlinewidth:0},
+    xgap:2, ygap:2,
+  }], {
+    ...layoutBase,
+    margin:{t:16,l:130,r:80,b:96},
+    xaxis:{...AX, tickangle:-28},
+    yaxis:{...AX, autorange:'reversed'},
+    annotations:ann,
+  }, CONFIG);
+  const note = document.getElementById('chart2note');
+  if(note){
+    note.textContent = `Pearson r on ${DF.length} cleaned apps (log1p applied to skewed Reviews/Installs).`
+      + ` Correlation = association, not causation.`
+      + (dropped.length ? ` Constant/absent columns excluded: ${dropped.join(', ')}.` : '');
+  }
+}
+
+/* ================================================================
+   CHART 3 — Apps by Last-Updated Month (replaces fabricated
+   "Category Trajectory"). Snapshot of each app's latest update
+   date only — NOT update history, NOT monthly install history.
+   ================================================================ */
+function renderChart3(){
+  const el = document.getElementById('chart3');
+  const dated = DF.filter(d=>d.last_updated);
+  if(!dated.length){
+    gap(el, 'No “Last Updated” column in the current dataset',
+      'This section needs a real update-date column. The 11-row sample has none, so a '
+      + 'last-updated-month chart cannot be computed honestly. Once the full dataset is '
+      + 'loaded (<code>data/play_store.csv</code> → <code>python clean.py</code>), this section '
+      + 'renders <em>Apps by Last-Updated Month</em> — a snapshot of each app’s latest '
+      + 'update date, not a full update or install history.');
+    return;
+  }
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = new Map(); // 'YYYY-MM' -> {category -> count}
+  dated.forEach(d=>{
+    const dt = d.last_updated;
+    const key = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth()+1).padStart(2,'0')}`;
+    if(!months.has(key)) months.set(key, {});
+    const bucket = months.get(key);
+    bucket[d.category] = (bucket[d.category]||0) + 1;
+  });
+  const sortedKeys = [...months.keys()].sort();
+  const xLabels = sortedKeys.map(k=>{
+    const [yy, mm] = k.split('-');
+    return MONTHS[parseInt(mm,10)-1] + ' ’' + yy.slice(2);
+  });
+  const catCount = {};
+  dated.forEach(d=>{ catCount[d.category] = (catCount[d.category]||0)+1; });
+  const topCats = Object.entries(catCount).sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+  const cats = [...topCats];
+  if(Object.keys(catCount).length > 8) cats.push('Other');
+
+  const countFor = (cat, k) => {
+    const m = months.get(k);
+    if(cat === 'Other') return Object.entries(m).filter(([c])=>!topCats.includes(c)).reduce((s,[,v])=>s+v,0);
+    return m[cat] || 0;
+  };
+  const traces = cats.map((cat,i)=>({
+    x:xLabels,
+    y:sortedKeys.map(k=>countFor(cat, k)),
+    type:'bar', name:cat, stackgroup:'one',
+    marker:{color:PURPLE_SCALE[i%PURPLE_SCALE.length], line:{width:0}},
+    customdata:xLabels.map((lab,j)=>`${lab} · ${sortedKeys[j]}`),
+    hovertemplate: cat + '<br>%{x}<br>%{y} apps<extra></extra>',
+  }));
+
+  Plotly.newPlot(el, traces, {
+    ...layoutBase,
+    margin:{t:16,l:60,r:24,b:78},
+    legend:legendH,
+    barmode:'stack',
+    xaxis:{...AX, title:{text:'Month of each app’s latest update (snapshot)', font:{color:'#8f86ac', size:12}}},
+    yaxis:{...AX, title:{text:'Number of apps', font:{color:'#8f86ac', size:12}}},
+  }, CONFIG);
+}
+
+/* ================================================================
+   CHART 4 — Rating Distribution (replaces fabricated
+   "Market Expansion" cumulative-install projection)
+   ================================================================ */
+function renderChart4(){
+  const el = document.getElementById('chart4');
+  const ratings = DF.filter(d=>isFinite(d.rating)).map(d=>d.rating);
+  if(!ratings.length){
+    gap(el, 'No valid ratings in the current dataset', 'A rating distribution needs at least one app with a rating in 1–5.');
+    return;
+  }
+  const BIN = 0.25, LO = 1, HI = 5;
+  const nb = Math.round((HI-LO)/BIN);
+  const counts = new Array(nb).fill(0);
+  ratings.forEach(r=>{
+    let i = Math.floor((r-LO)/BIN);
+    i = Math.max(0, Math.min(nb-1, i));
+    counts[i] += 1;
+  });
+  const centers = counts.map((_,i)=> LO + (i+0.5)*BIN);
+  const total = ratings.length;
+  Plotly.newPlot(el, [{
+    x:centers, y:counts, type:'bar',
+    marker:{color:centers.map((_,i)=>PURPLE_SCALE[(i*2)%PURPLE_SCALE.length]),
+            line:{color:'rgba(5,4,12,0.6)', width:1}},
+    text:counts.map(c=>c||''), textposition:'outside',
+    textfont:{color:'#b1a8cf', family:'JetBrains Mono', size:11},
+    customdata: centers.map((c,i)=>`${(LO+i*BIN).toFixed(2)}–${(LO+(i+1)*BIN).toFixed(2)} · ${counts[i]} apps (${(100*counts[i]/total).toFixed(1)}%)`),
+    hovertemplate: '%{customdata}<extra></extra>',
+  }], {
+    ...layoutBase,
+    margin:{t:30,l:60,r:24,b:56},
+    bargap:0.12,
+    xaxis:{...AX, title:{text:'App rating (1–5)', font:{color:'#8f86ac', size:12}}},
+    yaxis:{...AX, title:{text:'Number of apps', font:{color:'#8f86ac', size:12}}},
+  }, CONFIG);
+}
+
+/* ================================================================
+   CHART 5 — Category scatter: total reviews (log) vs avg rating
+   (replaces the shared-log-axis grouped bar). Categories with a
+   zero total review count are excluded from the log axis and
+   counted in the note.
+   ================================================================ */
+function renderChart5(){
+  const el = document.getElementById('chart5');
+  const byCat = new Map();
+  DF.forEach(d=>{
+    if(!byCat.has(d.category)) byCat.set(d.category, {n:0, sumRev:0, sumRating:0, nRating:0});
+    const o = byCat.get(d.category);
+    o.n += 1;
+    o.sumRev += d.reviews;
+    if(isFinite(d.rating)){ o.sumRating += d.rating; o.nRating += 1; }
+  });
+  let zeroRev = 0, noRating = 0;
+  const pts = [];
+  for(const [cat, o] of byCat){
+    if(o.sumRev <= 0){ zeroRev += 1; continue; }
+    if(o.nRating === 0){ noRating += 1; continue; }
+    pts.push({cat, n:o.n, sumRev:o.sumRev, avg:o.sumRating/o.nRating});
+  }
+  if(!pts.length){
+    gap(el, 'No category has both reviews and a rating', 'A reviews-vs-rating scatter needs at least one such category.');
+    return;
+  }
+  const order = [...pts].sort((a,b)=>b.sumRev-a.sumRev).map(p=>p.cat);
+  Plotly.newPlot(el, [{
+    x:pts.map(p=>p.sumRev), y:pts.map(p=>p.avg), type:'scatter', mode:'markers+text',
+    text:pts.map(p=>p.cat), textposition:'top center',
+    textfont:{color:'#cfc6e8', size:11},
+    customdata:pts.map(p=>`${p.n} app${p.n>1?'s':''} · Σ reviews ${p.sumRev.toLocaleString()} · avg rating ${p.avg.toFixed(2)} (unweighted mean of app ratings)`),
     marker:{
-      size:rows.map(d=>Math.sqrt(d.installs_clean)/9), sizemode:'area', sizeref:2.0*Math.max(...df_task1.map(d=>Math.sqrt(d.installs_clean)/9))/(40**2), sizemin:3,
-      color:PURPLE_SCALE[i%PURPLE_SCALE.length], opacity:0.75,
-      line:{width:1, color:'rgba(255,255,255,0.25)'}
+      size:pts.map(p=>10+3*Math.sqrt(p.n)),
+      color:pts.map(p=>PURPLE_SCALE[order.indexOf(p.cat)%PURPLE_SCALE.length]),
+      opacity:0.85, line:{width:1.5, color:'rgba(5,4,12,0.5)'},
     },
-    hovertemplate:'%{text}<br>Size: %{x} MB<br>Rating: %{y}<extra>'+cat+'</extra>'
-  };
-});
-Plotly.newPlot('chart1', traces1, {...layoutBase,
-  xaxis:{...layoutBase.xaxis, title:{text:'App Size (MB)', font:{color:'#8f86ac'}}},
-  yaxis:{...layoutBase.yaxis, title:{text:'Rating (1–5)', font:{color:'#8f86ac'}}, range:[2.3,5.05]},
-}, CONFIG);
+    hovertemplate:'%{text}<br>%{customdata}<br>Total reviews: %{x:,.0f}<extra></extra>',
+  }], {
+    ...layoutBase,
+    margin:{t:16,l:70,r:24,b:64},
+    xaxis:{...AX, type:'log', title:{text:'Total reviews per category (log scale)', font:{color:'#8f86ac', size:12}}},
+    yaxis:{...AX, title:{text:'Average rating (unweighted mean of apps)', font:{color:'#8f86ac', size:12}}},
+  }, CONFIG);
+  const note = document.getElementById('chart5note');
+  if(note){
+    note.textContent = `x = Σ review counts per category (log scale); y = unweighted mean of the category’s app ratings. `
+      + (zeroRev ? `${zeroRev} categor${zeroRev>1?'ies':'y'} with zero total reviews excluded from the log axis. ` : '')
+      + (noRating ? `${noRating} with no ratings excluded.` : '');
+  }
+}
 
 /* ================================================================
-   CHART 2 — Global Reach (choropleth, top 5 categories → markets)
+   CHART 6 — Pricing Mix (replaces fabricated revenue estimate).
+   A Price column is required; listed price is a price tag, NOT
+   observed revenue, so no revenue is ever estimated. Without
+   pricing data this section shows an explicit data gap.
    ================================================================ */
-const catTotals = CATEGORIES.map(c=>({category:c, installs: df_app.filter(d=>d.category===c).reduce((s,d)=>s+d.installs_clean,0)}));
-catTotals.sort((a,b)=>b.installs-a.installs);
-const top5 = catTotals.slice(0,5);
-const countryCodes = ['USA','IND','DEU','FRA','GBR'];
-const tier = top5.map(c=> c.installs>1000000 ? 'High Scale (>1M Installs)' : 'Standard Scale (≤1M)');
-Plotly.newPlot('chart2', [{
-  type:'choropleth',
-  locations: countryCodes,
-  z: top5.map((c,i)=> tier[i].startsWith('High') ? 1 : 0),
-  text: top5.map((c,i)=>`${c.category}<br>${tier[i]}<br>${c.installs.toLocaleString()} installs`),
-  hovertemplate:'%{text}<extra></extra>',
-  colorscale:[[0,'#2dd4ea'],[1,'#a855f7']],
-  showscale:false,
-  marker:{line:{color:'#05040c', width:1.4}}
-}], {...layoutBase,
-  geo:{
-    projection:{type:'natural earth'}, bgcolor:'rgba(0,0,0,0)',
-    showland:true, landcolor:'#120f24', showocean:true, oceancolor:'#05040c',
-    showcountries:true, countrycolor:'rgba(168,85,247,0.18)', showframe:false,
-    lakecolor:'#05040c'
-  },
-  margin:{t:10,l:10,r:10,b:10}
-}, CONFIG);
+function renderChart6(){
+  const el = document.getElementById('chart6');
+  const el6b = document.getElementById('chart6b');
+  const hasPricing = DF.some(d=>isNum(d.price) && d.price>0);
 
-/* ================================================================
-   CHART 3 — Category Trajectory (line, monthly growth, top 4 cats)
-   ================================================================ */
-const catCounts = CATEGORIES.map(c=>({category:c,count:df_app.filter(d=>d.category===c).length}));
-catCounts.sort((a,b)=>b.count-a.count);
-const top4 = catCounts.slice(0,4).map(c=>c.category);
-const months = ['2026-01-31','2026-02-28','2026-03-31','2026-04-30'];
-const growthFactors = [1.0,1.18,1.42,1.75];
-const traces3 = top4.map((cat,i)=>{
-  const base = df_app.filter(d=>d.category===cat).reduce((s,d)=>s+d.installs_clean,0) || 250000;
-  return {
-    x:months, y:growthFactors.map(g=>base*g), mode:'lines+markers', type:'scatter', name:cat,
-    line:{width:3, color:PURPLE_SCALE[i%PURPLE_SCALE.length], shape:'spline'},
-    marker:{size:8, color:PURPLE_SCALE[i%PURPLE_SCALE.length], line:{width:2,color:'#05040c'}}
-  };
-});
-Plotly.newPlot('chart3', traces3, {...layoutBase,
-  xaxis:{...layoutBase.xaxis, title:{text:'Timeline', font:{color:'#8f86ac'}}},
-  yaxis:{...layoutBase.yaxis, title:{text:'Aggregated Installs', font:{color:'#8f86ac'}}},
-  shapes:[{type:'rect', xref:'x', yref:'paper', x0:'2026-02-28', x1:'2026-03-31', y0:0, y1:1, fillcolor:'rgba(74,222,128,0.08)', line:{width:0}}],
-  annotations:[{x:'2026-02-28', y:1.04, xref:'x', yref:'paper', text:'Surge Window (>20% MoM)', showarrow:false, font:{color:'#4ade80', size:11, family:'JetBrains Mono'}, xanchor:'left'}]
-}, CONFIG);
+  if(!hasPricing){
+    el6b.style.display = 'none';
+    banner(el.parentElement,
+      '<strong>No Price column in the current dataset.</strong> Pricing and revenue cannot be shown '
+      + 'honestly, so no figures are invented. The original version estimated paid revenue as '
+      + '“5% of free installs × $2.99” — that was a fabricated estimate and has been removed. '
+      + 'Legitimate zero prices are preserved as $0.00, never replaced. Until a dataset with a '
+      + 'Price column is loaded, this section counts apps per category instead.');
+  }
 
-/* ================================================================
-   CHART 4 — Market Expansion (area, cumulative installs, top 3)
-   ================================================================ */
-const df_task4 = df_app.filter(d=> d.rating>=4.0 && d.size_mb>=10 && d.size_mb<=100);
-const catCounts4 = {};
-df_task4.forEach(d=>{ catCounts4[d.category]=(catCounts4[d.category]||0)+1; });
-let top3area = Object.entries(catCounts4).sort((a,b)=>b[1]-a[1]).slice(0,3).map(e=>e[0]);
-if(top3area.length===0) top3area = catCounts.slice(0,3).map(c=>c.category);
-const areaSteps = [1.0,1.25,1.55,1.85];
-const traces4 = top3area.map((cat,i)=>{
-  const base = df_task4.filter(d=>d.category===cat).reduce((s,d)=>s+d.installs_clean,0) || 500000;
-  return {
-    x:months, y:areaSteps.map(s=>base*s), type:'scatter', mode:'lines', name:cat, stackgroup:'one',
-    line:{width:1.5, color:PURPLE_SCALE[i%PURPLE_SCALE.length]},
-    fillcolor: PURPLE_SCALE[i%PURPLE_SCALE.length]+'55'
-  };
-});
-Plotly.newPlot('chart4', traces4, {...layoutBase,
-  xaxis:{...layoutBase.xaxis},
-  yaxis:{...layoutBase.yaxis, title:{text:'Cumulative Installs', font:{color:'#8f86ac'}}},
-  shapes:[{type:'rect', xref:'x', yref:'paper', x0:'2026-01-31', x1:'2026-02-28', y0:0, y1:1, fillcolor:'rgba(244,114,182,0.08)', line:{width:0}}],
-  annotations:[{x:'2026-01-31', y:1.04, xref:'x', yref:'paper', text:'High Growth Phase', showarrow:false, font:{color:'#f472b6', size:11, family:'JetBrains Mono'}, xanchor:'left'}]
-}, CONFIG);
-
-/* ================================================================
-   CHART 5 — Category Analysis (grouped bar, log scale, top 10)
-   ================================================================ */
-const top10 = catTotals.slice(0,10).map(c=>c.category);
-const df_task5 = top10.map(cat=>{
-  const rows = df_app.filter(d=>d.category===cat);
-  return {category:cat, rating: rows.reduce((s,d)=>s+d.rating,0)/rows.length, reviews: rows.reduce((s,d)=>s+d.reviews,0)};
-});
-Plotly.newPlot('chart5', [
-  {x:df_task5.map(d=>d.category), y:df_task5.map(d=>d.rating), type:'bar', name:'Avg Rating', marker:{color:'#a855f7'}},
-  {x:df_task5.map(d=>d.category), y:df_task5.map(d=>d.reviews), type:'bar', name:'Total Reviews', marker:{color:'#2dd4ea'}}
-], {...layoutBase,
-  barmode:'group',
-  xaxis:{...layoutBase.xaxis, tickangle:-40},
-  yaxis:{...layoutBase.yaxis, type:'log', title:{text:'Metric Value (Log Scale)', font:{color:'#8f86ac'}}},
-}, CONFIG);
-
-/* ================================================================
-   CHART 6 — Monetization Mix (dual-axis bar+line, top 3)
-   ================================================================ */
-const top3 = catTotals.slice(0,3).map(c=>c.category);
-const df_pivot = top3.map(cat=>{
-  const freeRows = df_app.filter(d=>d.category===cat && d.type==='Free');
-  let paidRows = df_app.filter(d=>d.category===cat && d.type==='Paid');
-  const avg = arr => arr.length ? arr.reduce((s,d)=>s+d.installs_clean,0)/arr.length : 0;
-  const avgRev = arr => arr.length ? arr.reduce((s,d)=>s+d.revenue,0)/arr.length : 0;
-  let installsPaid = avg(paidRows), revenuePaid = avgRev(paidRows);
-  const installsFree = avg(freeRows), revenueFree = avgRev(freeRows);
-  if(installsPaid===0){ installsPaid = installsFree*0.05; revenuePaid = installsPaid*2.99; }
-  return {category:cat, installsFree, installsPaid, revenueFree, revenuePaid};
-});
-Plotly.newPlot('chart6', [
-  {x:df_pivot.map(d=>d.category), y:df_pivot.map(d=>d.installsFree), type:'bar', name:'Avg Installs (Free)', marker:{color:'#a855f7'}, yaxis:'y'},
-  {x:df_pivot.map(d=>d.category), y:df_pivot.map(d=>d.installsPaid), type:'bar', name:'Avg Installs (Paid)', marker:{color:'#7c3aed'}, yaxis:'y'},
-  {x:df_pivot.map(d=>d.category), y:df_pivot.map(d=>d.revenueFree), type:'scatter', mode:'lines+markers', name:'Avg Revenue (Free)', line:{color:'#2dd4ea', width:3}, marker:{size:8}, yaxis:'y2'},
-  {x:df_pivot.map(d=>d.category), y:df_pivot.map(d=>d.revenuePaid), type:'scatter', mode:'lines+markers', name:'Avg Revenue (Paid)', line:{color:'#fbbf62', width:3}, marker:{size:8}, yaxis:'y2'},
-], {...layoutBase,
-  barmode:'group',
-  yaxis:{...layoutBase.yaxis, title:{text:'Average Installs', font:{color:'#8f86ac'}}},
-  yaxis2:{overlaying:'y', side:'right', title:{text:'Average Revenue ($)', font:{color:'#8f86ac'}}, gridcolor:'rgba(0,0,0,0)', tickfont:{color:'#8f86ac'}},
-}, CONFIG);
-
-/* ================================================================
-   NAV — scroll spy
-   ================================================================ */
-const links = document.querySelectorAll('.nav-list a');
-const sections = document.querySelectorAll('section.viz-section, .kpi-grid');
-window.addEventListener('scroll', ()=>{
-  let current = 'overview';
-  document.querySelectorAll('section.viz-section').forEach(sec=>{
-    if(window.scrollY >= sec.offsetTop - 140) current = sec.id;
+  const byCat = new Map();
+  DF.forEach(d=>{
+    if(!byCat.has(d.category)) byCat.set(d.category, {free:0, paid:0, prices:[]});
+    const o = byCat.get(d.category);
+    if(isNum(d.price) && d.price>0){ o.paid += 1; o.prices.push(d.price); }
+    else if(isNum(d.price) && d.price===0) o.free += 1;
   });
-  links.forEach(a=>{
-    a.classList.toggle('active', a.getAttribute('href') === '#'+current);
-  });
-}, {passive:true});
+  const top = [...byCat.entries()].sort((a,b)=>(b[1].free+b[1].paid)-(a[1].free+a[1].paid)).slice(0,8);
+  const cats = top.map(e=>e[0]);
+  const traceFree = {
+    x:cats, y:cats.map(c=>byCat.get(c).free), type:'bar', name:'Free apps (price = $0.00)',
+    marker:{color:'#a855f7'},
+    customdata:cats.map(c=>`Free apps (price = $0.00): ${byCat.get(c).free}`),
+    hovertemplate:'%{customdata}<extra></extra>',
+  };
+  if(hasPricing){
+    el6b.style.display = '';
+    const tracePaid = {
+      x:cats, y:cats.map(c=>byCat.get(c).paid), type:'bar', name:'Paid apps',
+      marker:{color:'#2dd4ea'},
+      customdata:cats.map(c=>`Paid apps (listed price > $0): ${byCat.get(c).paid}`),
+      hovertemplate:'%{customdata}<extra></extra>',
+    };
+    Plotly.newPlot(el, [traceFree, tracePaid], {
+      ...layoutBase,
+      margin:{t:16,l:60,r:24,b:88},
+      legend:legendH, barmode:'group',
+      xaxis:{...AX, tickangle:-30},
+      yaxis:{...AX, title:{text:'Number of apps', font:{color:'#8f86ac', size:12}}},
+    }, CONFIG);
+    const paidCats = cats.filter(c=>byCat.get(c).prices.length);
+    Plotly.newPlot(el6b, [{
+      x:paidCats.map(c=>mean(byCat.get(c).prices).toFixed(2)),
+      y:paidCats,
+      type:'bar', orientation:'h',
+      marker:{color:'#fbbf62'},
+      customdata:paidCats.map(c=>`Mean listed price: $${mean(byCat.get(c).prices).toFixed(2)} over ${byCat.get(c).prices.length} paid apps`),
+      hovertemplate:'%{customdata}<extra></extra>',
+      text:paidCats.map(c=>'$'+mean(byCat.get(c).prices).toFixed(2)), textposition:'outside',
+      textfont:{color:'#b1a8cf', family:'JetBrains Mono', size:11},
+    }], {
+      ...layoutBase,
+      margin:{t:40,l:120,r:40,b:40},
+      xaxis:{...AX, title:{text:'Mean listed price ($) — a price tag, NOT observed revenue', font:{color:'#8f86ac', size:11}}},
+      yaxis:{...AX, autorange:'reversed'},
+      annotations:[{x:0.02, y:1.08, xref:'paper', yref:'paper', showarrow:false,
+        text:'Mean listed price per category (paid apps only)', font:{color:'#fbbf62', family:'JetBrains Mono', size:11}}],
+    }, CONFIG);
+  } else {
+    Plotly.newPlot(el, [traceFree], {
+      ...layoutBase,
+      margin:{t:16,l:60,r:24,b:88},
+      barmode:'group',
+      xaxis:{...AX, tickangle:-30},
+      yaxis:{...AX, title:{text:'Number of apps', font:{color:'#8f86ac', size:12}}},
+    }, CONFIG);
+  }
+}
 
+/* ---------------- chart registry + resize ---------------- */
+const CHART_RENDERERS = {
+  chart1: renderChart1, chart2: renderChart2, chart3: renderChart3,
+  chart4: renderChart4, chart5: renderChart5, chart6: renderChart6,
+};
+function renderCharts(){
+  for(const id of Object.keys(CHART_RENDERERS)) CHART_RENDERERS[id]();
+}
 window.addEventListener('resize', ()=>{
-  ['chart1','chart2','chart3','chart4','chart5','chart6'].forEach(id=> Plotly.Plots.resize(document.getElementById(id)));
+  document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
+    if(el && el.data) Plotly.Plots.resize(el);
+  });
 });

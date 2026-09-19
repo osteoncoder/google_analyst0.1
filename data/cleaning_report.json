@@ -1,0 +1,91 @@
+{
+  "raw_rows": 10841,
+  "dropped_missing_identity": 0,
+  "categories_normalized": 10840,
+  "categories_typo_fixed": 0,
+  "dropped_corrupted_rows": 1,
+  "corrupted_row_apps": [
+    "Life Made WI-Fi Touchscreen Photo Frame"
+  ],
+  "exact_duplicates_removed": 485,
+  "same_name_variants_kept": 1217,
+  "missing_installs": 0,
+  "missing_rating": 1465,
+  "missing_size_mb": 1526,
+  "missing_price_unparseable": 0,
+  "missing_last_updated": 0,
+  "cleaned_rows": 10355,
+  "rows_for_m1_rating": 8890,
+  "rows_for_m2_tier": 10355,
+  "price_counts": {
+    "free": 9590,
+    "paid": 765,
+    "unknown": 0
+  },
+  "category_counts": {
+    "Family": 1943,
+    "Game": 1121,
+    "Tools": 842,
+    "Business": 427,
+    "Medical": 408,
+    "Productivity": 407,
+    "Personalization": 388,
+    "Lifestyle": 373,
+    "Communication": 366,
+    "Finance": 360,
+    "Sports": 351,
+    "Photography": 322,
+    "Health And Fitness": 306,
+    "Social": 280,
+    "News And Magazines": 264,
+    "Travel And Local": 237,
+    "Books And Reference": 230,
+    "Shopping": 223,
+    "Dating": 196,
+    "Video Players": 175,
+    "Maps And Navigation": 137,
+    "Education": 130,
+    "Food And Drink": 124,
+    "Entertainment": 111,
+    "Auto And Vehicles": 85,
+    "Libraries And Demo": 85,
+    "Weather": 82,
+    "House And Home": 80,
+    "Art And Design": 65,
+    "Events": 64,
+    "Comics": 60,
+    "Parenting": 60,
+    "Beauty": 53
+  },
+  "tier_counts": {
+    "Under 10K": 3150,
+    "10K-1M": 3153,
+    "1M-100M": 3573,
+    "100M+": 479
+  },
+  "source_file": "data/play_store.csv",
+  "is_sample": false,
+  "generated_at": "2026-09-17T15:01:56+00:00",
+  "tier_bounds": [
+    [
+      0,
+      10000,
+      "Under 10K"
+    ],
+    [
+      10000,
+      1000000,
+      "10K-1M"
+    ],
+    [
+      1000000,
+      100000000,
+      "1M-100M"
+    ],
+    [
+      100000000,
+      null,
+      "100M+"
+    ]
+  ]
+}

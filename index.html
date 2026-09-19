@@ -6,7 +6,7 @@
 <title>APEX &mdash; Play Store Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="./style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
 </head>
 <body>
@@ -30,16 +30,25 @@
       <ul class="nav-list">
         <li><a href="#overview" class="active"><span class="dot"></span>Overview</a></li>
         <li><a href="#quality"><span class="dot"></span>Quality Benchmark</a></li>
-        <li><a href="#reach"><span class="dot"></span>Global Reach</a></li>
-        <li><a href="#trajectory"><span class="dot"></span>Category Trajectory</a></li>
-        <li><a href="#expansion"><span class="dot"></span>Market Expansion</a></li>
+        <li><a href="#reach"><span class="dot"></span>Feature Correlation</a></li>
+        <li><a href="#trajectory"><span class="dot"></span>Update Snapshot</a></li>
+        <li><a href="#expansion"><span class="dot"></span>Rating Distribution</a></li>
         <li><a href="#categories"><span class="dot"></span>Category Analysis</a></li>
-        <li><a href="#monetization"><span class="dot"></span>Monetization</a></li>
+        <li><a href="#monetization"><span class="dot"></span>Pricing Mix</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <div class="nav-group-label">Machine Learning</div>
+      <ul class="nav-list">
+        <li><a href="#rating-pred"><span class="dot"></span>Rating Predictor</a></li>
+        <li><a href="#tier-pred"><span class="dot"></span>Install-Tier Classifier</a></li>
+        <li><a href="#model-perf"><span class="dot"></span>Model Performance</a></li>
       </ul>
     </div>
 
     <div class="sidebar-footer">
-      <div class="pipeline-tag"><span class="pulse"></span>ETL synced &middot; live dataset</div>
+      <div class="pipeline-tag"><span class="pulse"></span>ETL &middot; scikit-learn pipelines</div>
     </div>
   </aside>
 
@@ -50,9 +59,10 @@
       <div>
         <div class="eyebrow">Google Play Store &middot; Analytics Dashboard</div>
         <h1 class="page-title">App Ecosystem Intelligence</h1>
-        <p class="page-sub">A live view over the cleaned dataset &mdash; ratings, installs, size, revenue and category dynamics, rendered from your ETL pipeline.</p>
+        <p class="page-sub">A live view over the cleaned dataset &mdash; ratings, reported installs, size and
+        category dynamics, plus two machine-learning models trained with scikit-learn.</p>
       </div>
-      <div class="refresh-chip"><span id="rowCount">&mdash;</span> records &middot; last run <span id="runTime"></span></div>
+      <div class="refresh-chip"><span id="rowCount">&mdash;</span> records &middot; <span id="runTime"></span></div>
     </div>
 
     <!-- ============ KPI STRIP ============ -->
@@ -63,40 +73,50 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">01</span>App Quality Benchmark</h2>
-          <p class="section-desc">Size (MB) vs. user rating, bubble scaled by total installs &mdash; apps with &ge;1,000 installs and known size/rating only.</p>
+          <p class="section-desc">Size (MB) vs. user rating, bubble area &prop; reported installs (band lower
+          bound) &mdash; apps with &ge;1,000 reported installs and known size/rating only.</p>
         </div>
       </div>
       <div class="card"><div id="chart1" class="plot tall"></div></div>
     </section>
 
-    <!-- ============ 2. GLOBAL REACH ============ -->
+    <!-- ============ 2. FEATURE CORRELATION (was fabricated "Global Reach") ============ -->
     <section class="viz-section" id="reach">
       <div class="section-head">
         <div>
-          <h2><span class="stage">02</span>Global Reach</h2>
-          <p class="section-desc">Top 5 categories by total installs, mapped to a representative market and scored by install scale tier.</p>
+          <h2><span class="stage">02</span>Feature Correlation</h2>
+          <p class="section-desc">Pearson correlation matrix over the genuine numeric columns of the cleaned
+          dataset &mdash; Reviews and Installs are log1p-transformed (heavy right skew). The dataset contains
+          no location column, so the original map was removed. Correlation is association, not causation.</p>
         </div>
       </div>
-      <div class="card"><div id="chart2" class="plot tall"></div></div>
+      <div class="card">
+        <div id="chart2" class="plot tall"></div>
+        <p class="chart-note" id="chart2note"></p>
+      </div>
     </section>
 
-    <!-- ============ 3. TRAJECTORY ============ -->
+    <!-- ============ 3. UPDATE SNAPSHOT (was fabricated "Category Trajectory") ============ -->
     <section class="viz-section" id="trajectory">
       <div class="section-head">
         <div>
-          <h2><span class="stage">03</span>Category Trajectory</h2>
-          <p class="section-desc">Monthly active install growth across the top 4 categories by app count, with the surge window flagged.</p>
+          <h2><span class="stage">03</span>Apps by Last-Updated Month</h2>
+          <p class="section-desc">Apps grouped by the month of their <em>latest</em> update and category.
+          This is a snapshot distribution of each app&rsquo;s most recent update date &mdash; not a complete
+          update history and not a monthly install history.</p>
         </div>
       </div>
       <div class="card"><div id="chart3" class="plot"></div></div>
     </section>
 
-    <!-- ============ 4. MARKET EXPANSION ============ -->
+    <!-- ============ 4. RATING DISTRIBUTION (was fabricated "Market Expansion") ============ -->
     <section class="viz-section" id="expansion">
       <div class="section-head">
         <div>
-          <h2><span class="stage">04</span>Market Expansion</h2>
-          <p class="section-desc">Cumulative installs for well-rated, mid-sized apps (rating &ge; 4.0, 10&ndash;100MB) across the top 3 categories.</p>
+          <h2><span class="stage">04</span>Rating Distribution</h2>
+          <p class="section-desc">Histogram of app ratings (all apps with a valid 1&ndash;5 rating), bin width
+          0.25. The original &ldquo;cumulative installs&rdquo; growth curve was a fixed multipliers projection
+          with no date data behind it, so it was replaced by this directly observed distribution.</p>
         </div>
       </div>
       <div class="card"><div id="chart4" class="plot"></div></div>
@@ -107,32 +127,161 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">05</span>Category Analysis</h2>
-          <p class="section-desc">Average rating against total review volume for the top 10 categories by installs &mdash; log scale to balance both axes.</p>
+          <p class="section-desc">One point per category: total review volume (x, log scale, zero-safe) vs.
+          average rating (y). Averages are the unweighted mean of the category&rsquo;s app ratings; totals are
+          sums of review counts. Ratings and review counts no longer share one axis.</p>
         </div>
       </div>
-      <div class="card"><div id="chart5" class="plot tall"></div></div>
+      <div class="card">
+        <div id="chart5" class="plot tall"></div>
+        <p class="chart-note" id="chart5note"></p>
+      </div>
     </section>
 
-    <!-- ============ 6. MONETIZATION ============ -->
+    <!-- ============ 6. PRICING MIX (was fabricated "Monetization" revenue) ============ -->
     <section class="viz-section" id="monetization">
       <div class="section-head">
         <div>
-          <h2><span class="stage">06</span>Monetization Mix</h2>
-          <p class="section-desc">Average installs vs. average revenue, Free vs. Paid, across the top 3 categories by installs.</p>
+          <h2><span class="stage">06</span>Pricing Mix</h2>
+          <p class="section-desc">Free vs. paid app counts (and mean listed price where a Price column exists).
+          Listed price is a price tag, <strong>not observed revenue</strong> &mdash; no revenue is estimated
+          anywhere in this dashboard. Legitimate $0.00 prices are preserved, never imputed.</p>
         </div>
       </div>
-      <div class="card"><div id="chart6" class="plot tall"></div></div>
+      <div class="card">
+        <div id="chart6" class="plot"></div>
+        <div id="chart6b" class="plot" style="height:230px; margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <!-- ============ 7. RATING PREDICTOR (M1) ============ -->
+    <section class="viz-section" id="rating-pred">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">07</span>Rating Predictor</h2>
+          <p class="section-desc">M1 regression: app profile (category, size, price, review volume) &rarr;
+          expected average rating. Inference uses the <em>saved</em> scikit-learn preprocessing + model
+          pipeline &mdash; nothing is retrained per request. Features available at prediction time are exactly
+          the form fields below.</p>
+        </div>
+      </div>
+      <div class="card grid-2">
+        <form id="ratingForm" class="ml-form">
+          <label>Category
+            <select id="rfCategory"></select>
+            <input id="rfCategoryCustom" class="hidden" type="text" placeholder="type a category…">
+          </label>
+          <label>App size (MB) <span class="field-hint">empty → training median</span>
+            <input id="rfSize" type="number" min="0" step="0.1" placeholder="e.g. 86">
+          </label>
+          <label>Price ($) <span class="field-hint">empty → $0 (free)</span>
+            <input id="rfPrice" type="number" min="0" step="0.01" placeholder="e.g. 1.99">
+          </label>
+          <label>Reviews <span class="field-hint">empty → 0</span>
+            <input id="rfReviews" type="number" min="0" step="1" placeholder="e.g. 1200">
+          </label>
+          <button type="submit">Predict rating</button>
+          <div id="ratingResult" class="ml-result"></div>
+        </form>
+        <div id="ratingModelCard" class="ml-side"></div>
+      </div>
+    </section>
+
+    <!-- ============ 8. INSTALL-TIER CLASSIFIER (M2, without Reviews) ============ -->
+    <section class="viz-section" id="tier-pred">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">08</span>Install-Tier Classifier</h2>
+          <p class="section-desc">M2 four-class classifier (primary version <strong>excludes Reviews</strong>,
+          a strong proxy for installs). Inputs available at prediction time: category, size, price.
+          Probabilities are model estimates, not guarantees.</p>
+        </div>
+      </div>
+      <div class="card grid-2">
+        <div>
+          <form id="tierForm" class="ml-form">
+            <label>Category
+              <select id="tfCategory"></select>
+              <input id="tfCategoryCustom" class="hidden" type="text" placeholder="type a category…">
+            </label>
+            <label>App size (MB) <span class="field-hint">empty → training median</span>
+              <input id="tfSize" type="number" min="0" step="0.1" placeholder="e.g. 86">
+            </label>
+            <label>Price ($) <span class="field-hint">empty → $0 (free)</span>
+              <input id="tfPrice" type="number" min="0" step="0.01" placeholder="e.g. 1.99">
+            </label>
+            <button type="submit">Predict install tier</button>
+            <div id="tierResult" class="ml-result"></div>
+          </form>
+        </div>
+        <div id="confusionCard" class="ml-side">
+          <h4>Held-out test confusion matrix (without Reviews)</h4>
+          <div id="chart_confusion" style="height:330px;"></div>
+          <p class="chart-note" id="confusionNote"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 9. MODEL PERFORMANCE ============ -->
+    <section class="viz-section" id="model-perf">
+      <div class="section-head">
+        <div>
+          <h2><span class="stage">09</span>Model Performance</h2>
+          <p class="section-desc">Actual evaluation metrics from the reproducible training run
+          (fixed seed, grouped split, validation-based model selection, test set used once).
+          No tuned-to-test numbers, no placeholders.</p>
+        </div>
+      </div>
+
+      <div class="card" id="perfContent">
+        <h4 class="perf-h">M1 — Rating Regression (candidates)</h4>
+        <div class="table-wrap" id="perfM1"></div>
+
+        <h4 class="perf-h">M2 — Install-Tier Classification</h4>
+        <div class="grid-2">
+          <div>
+            <h5 class="perf-h5">Version A — with Reviews</h5>
+            <div class="table-wrap" id="perfM2a"></div>
+          </div>
+          <div>
+            <h5 class="perf-h5">Version B — without Reviews (primary)</h5>
+            <div class="table-wrap" id="perfM2b"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <h5 class="perf-h5">Per-class metrics — final M2 (B), held-out test</h5>
+            <div class="table-wrap" id="perfPerClass"></div>
+            <h5 class="perf-h5">With-Reviews vs without-Reviews (test)</h5>
+            <div id="perfCompare"></div>
+          </div>
+          <div>
+            <h5 class="perf-h5">Feature importance — M2 (B)</h5>
+            <div id="chart_importance" style="height:380px;"></div>
+          </div>
+        </div>
+
+        <h4 class="perf-h">Dataset, split &amp; limitations</h4>
+        <div id="perfSummary"></div>
+      </div>
     </section>
 
     <div class="footer-note">
-      <strong>Data note</strong> &mdash; running on your actual 11-row dataset, cleaned through the same steps as your notebook: category casing normalized ("business" &rarr; "Business", "commics" &rarr; "Commics"), size strings parsed to MB, no Price/Type column supplied so every app is treated as Free (the Paid-side dummy fallback in chart 06 kicks in automatically). Send the fuller dataset whenever it's ready and this page scales straight to it &mdash; no logic changes needed.
+      <strong>Data note</strong> &mdash; dataset: <span id="footSource">loading…</span>.
+      Cleaning follows the documented rules in <code>clean.py</code> (install bands treated as lower
+      bounds, zero prices preserved, one category typo fixed, exact duplicates removed).
+      ML: scikit-learn pipelines, seed 42, grouped train/test split; models are trained by
+      <code>python train_models.py</code> and served by <code>python app.py</code> (no retraining per request).
+      No revenue, geography, or historical trends are fabricated anywhere on this page.
     </div>
 
   </main>
 </div>
 
-<!-- data.js must load before charts.js: charts.js reads df_app / CATEGORIES / PURPLE_SCALE -->
-<script src="js/data.js"></script>
-<script src="js/charts.js"></script>
+<!-- load order: data (helpers+loader) → charts (01-06) → ml (07-09 + bootstrap) -->
+<script src="./data.js"></script>
+<script src="./charts.js"></script>
+<script src="./ml_dashboard.js"></script>
 </body>
 </html>
