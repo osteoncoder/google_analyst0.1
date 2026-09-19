@@ -445,8 +445,11 @@ const CHART_RENDERERS = {
 
    Append `?bench=1` to the URL (or set window.APEX_BENCH = true) to log the
    per-chart Plotly timing to the console. */
-const BENCH = globalThis.APEX_BENCH === true ||
-  !!(globalThis.location && /[?&]bench=1\b/.test(globalThis.location.search || ''));
+/* TEMPORARY (2026-09-19): forced ON so the panel can be read without editing
+   the URL. Revert to the ?bench=1 gate once the numbers have been captured:
+       const BENCH = globalThis.APEX_BENCH === true ||
+         !!(globalThis.location && /[?&]bench=1\b/.test(globalThis.location.search || '')); */
+const BENCH = globalThis.APEX_BENCH !== false;
 const CHART_TIMES = {};
 const plotted = new Set();
 
