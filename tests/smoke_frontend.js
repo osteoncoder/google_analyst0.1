@@ -68,11 +68,16 @@ const sandbox = {
   fetch: async (url) => {
     if (url === 'data/apps.json') return { ok: true, json: async () => appsJson };
     if (url === 'api/metrics') return { ok: true, json: async () => metricsJson };
+    // static mount serves the artifact file too (used by the degraded-hosting path)
+    if (url === 'ml/artifacts/metrics.json') return { ok: true, json: async () => metricsJson };
     if (url === 'api/predict/rating') {
-      return { ok: true, json: async () => ({ predicted_rating: 4.2, model: 'Test', test_metrics: { mae: 0.3, rmse: 0.4, r2: 0.2 }, n_test: 10, assumptions: ['test assumption'], warning: 'test warning' }) };
+      return { ok: true, json: async () => ({ predicted_rating: 4.2, category_used: 'Education', category_changed: true, model: 'Test', test_metrics: { mae: 0.3, rmse: 0.4, r2: 0.2 }, n_test: 10, assumptions: ['test assumption'], warning: 'test warning' }) };
+    }
+    if (url === 'api/predict/rating-422') {
+      return { ok: false, status: 422, json: async () => ({ detail: [{ loc: ['body', 'size_mb'], msg: 'Input should be greater than or equal to 0' }] }) };
     }
     if (url === 'api/predict/tier') {
-      return { ok: true, json: async () => ({ predicted_tier: '1M-100M', probabilities: { 'Under 100K': 0.1, '100K-1M': 0.2, '1M-100M': 0.5, '100M+': 0.2 }, tier_order: ['Under 100K', '100K-1M', '1M-100M', '100M+'], model: 'Test', test_metrics: { accuracy: 0.7, macro_f1: 0.6, weighted_f1: 0.65 }, assumptions: ['test assumption'], warning: 'Probabilities are model estimates, not guarantees. test' }) };
+      return { ok: true, json: async () => ({ predicted_tier: '1M-100M', probabilities: { 'Under 10K': 0.1, '10K-1M': 0.2, '1M-100M': 0.5, '100M+': 0.2 }, tier_order: ['Under 10K', '10K-1M', '1M-100M', '100M+'], model: 'Test', test_metrics: { accuracy: 0.7, macro_f1: 0.6, weighted_f1: 0.65 }, assumptions: ['test assumption'], warning: 'Probabilities are model estimates, not guarantees. test' }) };
     }
     return { ok: false, status: 404, json: async () => ({}) };
   },
@@ -213,6 +218,26 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   const rr = elements.get('ratingResult');
   if (rr && rr.innerHTML.includes('predicted rating')) ok('section 07: submit → inference result rendered');
   else fail('rating form submission did not render a result');
+  if (rr && rr.innerHTML.includes('Category used: <strong>Education</strong>') && rr.innerHTML.includes('normalized from your input'))
+    ok('section 07: normalized category is shown to the user');
+  else fail('section 07 should report the category actually used (and that it was normalized)');
+
+  /* error path: FastAPI 422 must render as "field: reason", plus the sample note */
+  const origFetch = sandbox.fetch;
+  sandbox.fetch = async (url, opts) => url === 'api/predict/rating'
+    ? { ok: false, status: 422, json: async () => ({ detail: [{ loc: ['body', 'size_mb'], msg: 'Input should be greater than or equal to 0' }] }) }
+    : origFetch(url, opts);
+  g('rfSize').value = '-5';
+  (form.listeners['submit'] || [])[0]({ preventDefault() {} });
+  await tick();
+  const rrErr = elements.get('ratingResult').innerHTML;
+  sandbox.fetch = origFetch;
+  if (rrErr.includes('pred-error') && rrErr.includes('size_mb: Input should be greater than or equal to 0') && !rrErr.includes('[{'))
+    ok('section 07: 422 rendered as readable "field: reason" (no raw JSON)');
+  else fail(`422 message not rendered readably: ${rrErr.slice(0, 160)}`);
+  if (metricsJson.dataset.is_sample && rrErr.includes('warn-note'))
+    ok('section 07: sample caveat still shown on the error path');
+  else fail('sample caveat missing from the rating error path');
 
   const tform = g('tierForm');
   g('tfSize').value = '50';
@@ -224,6 +249,28 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (tr && tr.innerHTML.includes('prob-fill') && tr.innerHTML.includes('model estimates, not guarantees'))
     ok('section 08: submit → tier + probability bars + disclaimer rendered');
   else fail('tier form submission did not render result');
+
+  /* ---------------- hosting-mode resilience (static / dead backend) ---------------- */
+  // Metrics fall back to the static ml/artifacts/metrics.json when api/* is unreachable,
+  // so sections 08-09 show the real measured numbers even without the backend.
+  const staticOnly = async (url, opts) => /^(\/)?api\//.test(String(url))
+    ? Promise.reject(new TypeError('Failed to fetch'))
+    : origFetch(url, opts);
+  sandbox.fetch = staticOnly;
+  const viaStatic = await vm.runInContext('loadMetrics()', sandbox);
+  if (viaStatic && viaStatic.url === 'ml/artifacts/metrics.json' && viaStatic.data.models)
+    ok('hosting: metrics fall back to the static snapshot when the API is unreachable');
+  else fail('metrics static fallback did not resolve ml/artifacts/metrics.json');
+  const hint = vm.runInContext('backendHint(new TypeError("Failed to fetch"))', sandbox);
+  if (hint.includes('python app.py') && hint.includes('live preview'))
+    ok('hosting: failed prediction explains how to start the backend');
+  else fail('backendHint should tell the user how to start the backend');
+  const unavailableHtml = vm.runInContext(
+    '(()=>{const d=document.getElementById("__unavailableProbe"); unavailable(d, "note", new Error("HTTP 503")); return d.innerHTML;})()', sandbox);
+  if (unavailableHtml.includes('HTTP 503') && unavailableHtml.includes('retry-btn'))
+    ok('hosting: unavailable panel shows the real error and a retry button');
+  else fail('unavailable panel should include the error detail and a retry button');
+  sandbox.fetch = origFetch;
 
   console.log(failures.length ? `\nSMOKE TEST: ${failures.length} FAILURE(S)` : '\nSMOKE TEST: ALL CHECKS PASSED');
   process.exit(failures.length ? 1 : 0);

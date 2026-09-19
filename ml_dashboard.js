@@ -9,6 +9,15 @@
    ================================================================ */
 
 let METRICS = null;
+let METRICS_FROM_API = false;   // true = live backend; false = static snapshot / unknown
+
+/* Endpoints the read-only metrics may come from, in order of preference:
+   1. the FastAPI route (live backend, also proves inference is available)
+   2. the same file over the static mount — app.py serves the repo root, and a
+      plain static host (e.g. a file viewer) serves it too, so sections 08/09
+      can still show the REAL measured metrics with no backend running.
+   Predictions always require the live API; this is read-only data only. */
+const METRICS_ENDPOINTS = ['api/metrics', '/api/metrics', 'ml/artifacts/metrics.json'];
 
 async function fetchJSON(url, opts){
   const res = await fetch(url, opts);
@@ -16,14 +25,77 @@ async function fetchJSON(url, opts){
     let msg = 'HTTP ' + res.status;
     try{
       const j = await res.json();
-      if(j && j.detail) msg = (typeof j.detail === 'string') ? j.detail : JSON.stringify(j.detail);
+      if(j && j.detail){
+        if(typeof j.detail === 'string'){
+          msg = j.detail;
+        }else if(Array.isArray(j.detail)){
+          // FastAPI validation errors: render "field: reason" instead of raw JSON
+          msg = j.detail.map(d=>{
+            const field = (d.loc || []).filter(x=>x !== 'body').join('.') || 'input';
+            return `${field}: ${d.msg || 'invalid value'}`;
+          }).join(' · ');
+        }else{
+          msg = JSON.stringify(j.detail);
+        }
+      }
     }catch(e){ /* keep default */ }
     throw new Error(msg);
   }
   return res.json();
 }
 
-function unavailable(el, note){
+/* Fetch the first endpoint that answers. Returns {data, url}. */
+async function fetchFirst(urls){
+  let lastErr = null;
+  for(const u of urls){
+    try{
+      return { data: await fetchJSON(u), url: u };
+    }catch(err){
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('no endpoint reachable');
+}
+
+/* Backend startup is not always instant (and a page can be opened mid-restart),
+   so a failed metrics fetch is retried once before the UI gives up. */
+async function loadMetrics(){
+  let lastErr = null;
+  for(let attempt = 0; attempt < 2; attempt++){
+    try{
+      const hit = await fetchFirst(METRICS_ENDPOINTS);
+      return { ...hit, viaApi: hit.url.startsWith('api/') || hit.url.startsWith('/api/') };
+    }catch(err){
+      lastErr = err;
+      if(attempt === 0) await new Promise(r=>setTimeout(r, 1200));
+    }
+  }
+  throw lastErr || new Error('metrics unreachable');
+}
+
+/* Actionable hint for a failed inference call. */
+function backendHint(err){
+  const m = String((err && err.message) || err || '');
+  if(/Failed to fetch|NetworkError|Load failed|network/i.test(m)){
+    return '<p class="tiny">The model service could not be reached from this page. '
+      + 'Predictions need the FastAPI backend: run <code>python app.py</code> and open the served page '
+      + '(<code>http://localhost:8000</code>, or the live preview of port 8000). '
+      + 'Everything else on this page (charts, metrics tables) works without it.</p>';
+  }
+  if(/HTTP 503/.test(m)){
+    return '<p class="tiny">The backend is running but its model artifacts are missing. '
+      + 'Run <code>python clean.py &amp;&amp; python train_models.py</code>, then retry.</p>';
+  }
+  return '';
+}
+
+function wireRetry(el, handler){
+  const btn = el.querySelector ? el.querySelector('.retry-btn') : null;
+  if(btn && btn.addEventListener) btn.addEventListener('click', handler);
+}
+
+function unavailable(el, note, err){
+  const detail = err ? ` <span class="tiny">(${String(err.message || err)})</span>` : '';
   el.innerHTML = `
     <div class="unavailable">
       <h3>Model service not available</h3>
@@ -34,15 +106,42 @@ python clean.py &amp;&amp; python train_models.py
 python app.py</pre>
       <p>Until then no predictions are shown — this project deliberately never
       returns random or demo values when models are absent.</p>
-      ${note ? `<p class="tiny">${note}</p>` : ''}
+      ${note ? `<p class="tiny">${note}${detail}</p>` : ''}
+      <p><button type="button" class="retry-btn">Retry</button></p>
     </div>`;
+  wireRetry(el, ()=>renderML());
 }
 
+/* Banner when the read-only metrics came from a static file instead of the API:
+   the numbers are still the real measured ones, but inference is not available. */
+function showMlNotice(){
+  const el = document.getElementById('mlNotice');
+  if(!el) return;
+  if(METRICS && !METRICS_FROM_API){
+    el.innerHTML = `<p class="warn-note">⚠ Sections 08–09 below are reading the measured metrics snapshot
+    <code>ml/artifacts/metrics.json</code> directly (the live API did not answer). The numbers are the real
+    results of the reproducible training run, but the prediction forms need the backend —
+    run <code>python app.py</code> and open the page it serves.</p>`;
+  }else{
+    el.innerHTML = '';
+  }
+}
+
+/* Honest, dataset-driven caveat: never claim "11-row" when the model was
+   trained on the 40k stratified sample (or any other subset). */
 function sampleNote(){
-  if(!METRICS || !METRICS.dataset || !METRICS.dataset.is_sample) return '';
-  return `<p class="warn-note">⚠ Trained on the bundled 11-row <strong>sample</strong> dataset —
-  these numbers verify the pipeline only. Re-run the three commands above with the
-  full dataset to get project results.</p>`;
+  const d = (METRICS && METRICS.dataset) || null;
+  if(!d || !d.is_sample) return '';
+  const rows = d.rows_cleaned ? Number(d.rows_cleaned).toLocaleString() : 'sample';
+  const full = d.full_dataset_rows ? ` of the ${Number(d.full_dataset_rows).toLocaleString()}-row dataset` : '';
+  const mechanical = !d.full_dataset_rows && Number(d.rows_cleaned) < 100;
+  return `<p class="warn-note">⚠ Trained on a ${rows}-row <strong>sample</strong>${full} — `
+    + (mechanical
+        ? 'these numbers verify the pipeline mechanically only.'
+        : 'results are representative but not full-scale; rare install tiers are deliberately over-sampled '
+          + '(see <code>data/playstore_sample.meta.json</code>). Run <code>python fetch_dataset.py</code> '
+          + 'and re-run the three commands above for full-scale numbers.')
+    + '</p>';
 }
 
 function fillCategorySelect(sel){
@@ -71,6 +170,13 @@ function numOrNull(input){
   return isFinite(n) ? n : null;
 }
 
+/* Counts (reviews) must be integers — rounds rather than sending a fraction
+   that the API would reject; mirrors the API's own rounding of counts. */
+function intOrNull(input){
+  const n = numOrNull(input);
+  return n === null ? null : Math.round(n);
+}
+
 /* ================================================================
    SECTION 07 — Rating Predictor (M1)
    ================================================================ */
@@ -96,19 +202,23 @@ function initRatingForm(){
           category: cat,
           size_mb: numOrNull(document.getElementById('rfSize')),
           price: numOrNull(document.getElementById('rfPrice')),
-          reviews: numOrNull(document.getElementById('rfReviews')),
+          reviews: intOrNull(document.getElementById('rfReviews')),
         }),
       });
       const tm = out.test_metrics || {};
+      const catNote = out.category_used
+        ? `<p class="tiny">Category used: <strong>${out.category_used}</strong>${out.category_changed ? ' (normalized from your input the same way the training data was)' : ''}.</p>`
+        : '';
       result.innerHTML = `
         <div class="pred-big">${out.predicted_rating.toFixed(2)}<span> / 5 predicted rating</span></div>
         <ul class="assump">${out.assumptions.map(a=>`<li>${a}</li>`).join('')}</ul>
+        ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> · held-out test:
         MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}
         (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>`;
     }catch(err){
-      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`;
-      + sampleNote();
+      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
+        + backendHint(err) + sampleNote();
     }
   });
 }
@@ -168,14 +278,19 @@ function initTierForm(){
         </div>`;
       }).join('');
       const tm = out.test_metrics || {};
+      const catNote = out.category_used
+        ? `<p class="tiny">Category used: <strong>${out.category_used}</strong>${out.category_changed ? ' (normalized from your input the same way the training data was)' : ''}.</p>`
+        : '';
       result.innerHTML = `
         <div class="tier-badge">${out.predicted_tier}</div>
         <div class="prob-bars">${bars}</div>
+        ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> (without Reviews) · held-out test:
         accuracy ${tm.accuracy?.toFixed(3)} · macro-F1 ${tm['macro_f1']?.toFixed(3)}
         · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>`;
     }catch(err){
-      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>` + sampleNote();
+      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
+        + backendHint(err) + sampleNote();
     }
   });
 }
@@ -320,7 +435,7 @@ function renderSummary(){
   const m1 = METRICS.models.m1_rating;
   el.innerHTML = `
     <dl class="kv">
-      <dt>Dataset</dt><dd>${d.source || '—'} (${d.rows_cleaned ?? '—'} cleaned rows${d.is_sample ? ', SAMPLE' : ''}) · md5 ${d.md5 || '—'}</dd>
+      <dt>Dataset</dt><dd>${d.source || '—'} (${d.rows_cleaned ?? '—'} cleaned rows${d.is_sample ? ', SAMPLE' : ''}) · md5 ${d.md5 || '—'}${d.sample_note ? `<br><span class="tiny">${d.sample_note}</span>` : ''}</dd>
       <dt>Split</dt><dd>80/20 train/test before any preprocessing; GroupShuffleSplit on app name (same app never on both sides); 75/25 train/val for selection; test used exactly once</dd>
       <dt>Seed</dt><dd>${METRICS.seed}</dd>
       <dt>M1 inputs</dt><dd>${m1.features.join(', ')} → target ${m1.target}</dd>
@@ -333,7 +448,7 @@ function renderSummary(){
       <li>Listed price is a price tag, <strong>not observed revenue</strong>; no revenue is estimated anywhere.</li>
       <li>Neither model is a pre-launch or future-growth predictor: training data is a cross-sectional store snapshot and evaluation is in-sample-time.</li>
       <li>Unknown categories at prediction time are encoded as “not seen in training”.</li>
-      ${d.is_sample ? '<li>Current numbers are from the 11-row sample — pipeline verification only.</li>' : ''}
+      ${d.is_sample ? `<li>Current numbers are from a ${d.rows_cleaned ? Number(d.rows_cleaned).toLocaleString() : ''}-row sample${d.full_dataset_rows ? ` of the ${Number(d.full_dataset_rows).toLocaleString()}-row dataset` : ''} — representative, not full-scale.</li>` : ''}
     </ul>`;
 }
 
@@ -342,19 +457,22 @@ function renderML(){
   initTierForm();
   (async ()=>{
     try{
-      METRICS = await fetchJSON('api/metrics');
+      const hit = await loadMetrics();
+      METRICS = hit.data;
+      METRICS_FROM_API = hit.viaApi;
     }catch(err){
       METRICS = null;
-    }
-    if(!METRICS){
+      METRICS_FROM_API = false;
+      showMlNotice();
       const note = 'Backend reachable but no artifacts yet? Run: python clean.py && python train_models.py';
-      ['ratingResult','tierResult'].forEach(id=>unavailable(document.getElementById(id), note));
+      ['ratingResult','tierResult'].forEach(id=>unavailable(document.getElementById(id), note, err));
       ['ratingModelCard','confusionCard','perfContent'].forEach(id=>{
         const e = document.getElementById(id);
-        if(e) unavailable(e, note);
+        if(e) unavailable(e, note, err);
       });
       return;
     }
+    showMlNotice();
     renderRatingModelCard();
     renderConfusionMatrix();
     renderPerfM1();

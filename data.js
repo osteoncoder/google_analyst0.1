@@ -2,10 +2,15 @@
    data.js — dataset loading + cleaning mirror
 
    Source of truth: data/apps.json (produced by `python clean.py`).
-   If that file cannot be fetched (e.g. the page is opened directly
+   The primary dataset is the MIT-licensed gauthamp10 Google-Playstore
+   scrape (2,312,944 apps, June 2021); the committed default is a
+   deterministic 40,000-row stratified sample of it (see
+   data/playstore_sample.meta.json), and the full run substitutes the
+   complete file via `python fetch_dataset.py`.
+   If apps.json cannot be fetched (e.g. the page is opened directly
    with file://), the dashboard falls back to EMBEDDED_SAMPLE below —
-   the project's ORIGINAL 11-row sample, kept only so the static
-   preview keeps working. It is labelled as a sample everywhere.
+   an 11-row sample, kept only so the static preview keeps working.
+   It is labelled as a sample everywhere.
 
    The parsing functions mirror clean.py rule-by-rule so the JS
    fallback and the Python pipeline can never disagree:
@@ -88,7 +93,9 @@ function parseRating(v){
   return (isFinite(n) && n>=1 && n<=5) ? n : NaN;
 }
 
-/* Mirrors clean.py rule 8: "Jan 15, 2024" / "January 15, 2024" / ISO. */
+/* Mirrors clean.py rule 8: "Jan 15, 2024" / "January 15, 2024" / ISO.
+   All returned dates are UTC-midnight Date objects so consumers can safely
+   read getUTC* fields (charts.js does) without local-timezone day drift. */
 const MONTH_IDX = {
   jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3,
   may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8,
@@ -99,12 +106,12 @@ function parseDate(v){
   if(v===null || v===undefined) return null;
   const s = String(v).trim();
   if(s==='' || s.toLowerCase()==='nan') return null;
-  const t = Date.parse(s);                 // handles "2024-01-15" (ISO)
+  const t = Date.parse(s);                 // handles "2024-01-15" (ISO, UTC midnight)
   if(!isNaN(t)) return new Date(t);
   const m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);   // "Jan 15, 2024" / "January 15, 2024"
   if(m){
     const mi = MONTH_IDX[m[1].toLowerCase()];
-    if(mi!==undefined) return new Date(parseInt(m[3],10), mi, parseInt(m[2],10));
+    if(mi!==undefined) return new Date(Date.UTC(parseInt(m[3],10), mi, parseInt(m[2],10)));
   }
   return null;
 }
@@ -116,10 +123,11 @@ function parseSentiment(v){
 
 function titleCase(s){ return s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()); }
 
-/* Mirrors clean.py rule 9: underscores/hyphens → spaces, title case, typo fix. */
+/* Mirrors clean.py rule 9: underscores/hyphens → spaces, title case, typo fix.
+   Blank-after-normalization ("___", "-") is missing, not a category named " ". */
 function normCategory(v){
   if(v===null || v===undefined) return 'Unknown';
-  const t = titleCase(String(v).trim().replace(/[_\-]+/g, ' '));
+  const t = titleCase(String(v).trim().replace(/[_\-]+/g, ' ')).trim();
   if(!t) return 'Unknown';
   return CATEGORY_TYPO_MAP[t] || t;
 }
@@ -150,10 +158,17 @@ async function loadApps(){
     const payload = await res.json();
     const rows = (payload.rows || []).map(cleanRow);
     if(rows.length === 0) throw new Error('no rows in apps.json');
+    const sampling = payload.sampling || null;
+    // Say WHICH dataset and, for the committed sample, what it is a sample of.
+    const label = sampling && sampling.full_rows
+      ? `${Number(sampling.sample_rows || rows.length).toLocaleString()}-row sample of the ` +
+        `${Number(sampling.full_rows).toLocaleString()}-row dataset`
+      : (payload.is_sample ? 'SAMPLE' : '');
     return {
       rows,
       report: payload.report || {},
-      source: (payload.source || 'data/apps.json') + (payload.is_sample ? ' (SAMPLE)' : ''),
+      sampling,
+      source: (payload.source || 'data/apps.json') + (label ? ` (${label})` : ''),
       is_sample: !!payload.is_sample,
     };
   }catch(err){

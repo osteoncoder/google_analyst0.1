@@ -86,7 +86,6 @@ function renderChart1(){
       hovertemplate: '%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra>'+cat+'</extra>',
     };
   });
-  const ymin = Math.min(2.3, Math.floor(Math.min(...rows.map(d=>d.rating))*10)/10 - 0.25);
   Plotly.newPlot(el, traces, {
     ...layoutBase,
     margin:{t:16,l:60,r:130,b:56},
@@ -169,10 +168,13 @@ function renderChart3(){
   const dated = DF.filter(d=>d.last_updated);
   if(!dated.length){
     gap(el, 'No “Last Updated” column in the current dataset',
-      'This section needs a real update-date column. The 11-row sample has none, so a '
-      + 'last-updated-month chart cannot be computed honestly. Once the full dataset is '
-      + 'loaded (<code>data/play_store.csv</code> → <code>python clean.py</code>), this section '
-      + 'renders <em>Apps by Last-Updated Month</em> — a snapshot of each app’s latest '
+      'This section needs a real update-date column and the loaded dataset has none '
+      + '(or none parsed), so a last-updated-month chart cannot be computed honestly. '
+      + 'The primary dataset used by this project '
+      + '(<code>data/playstore_sample.csv</code>, or the full 2.31M-row file from '
+      + '<code>python fetch_dataset.py</code>) carries a “Last Updated” column → '
+      + '<code>python clean.py</code>; this section then renders '
+      + '<em>Apps by Last-Updated Month</em> — a snapshot of each app’s latest '
       + 'update date, not a full update or install history.');
     return;
   }
