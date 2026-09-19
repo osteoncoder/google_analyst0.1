@@ -113,6 +113,46 @@ this reproduces them from the sample CSV, ~2 min total):
 .venv/bin/python app.py            # 3. serve  -> http://localhost:8000
 ```
 
+#### Do I need to retrain?
+
+**No — train once, then just serve.** This is the normal day-to-day loop:
+
+```powershell
+.venv\Scripts\python.exe app.py        # Windows
+.venv/bin/python app.py                # macOS / Linux
+```
+
+`clean.py` and `train_models.py` are **setup steps, not startup steps**. The
+trained pipelines are committed (`ml/artifacts/*/pipeline.joblib`), and
+`app.py` merely loads them at startup — it never retrains, not even per
+request. Training is also deterministic (seed 42, `GroupShuffleSplit` on app
+name, deterministic sample), so re-running it on unchanged data reproduces the
+same models; `clean.py` is deterministic too, apart from a `generated_at`
+build timestamp.
+
+Retrain only when one of these is true:
+
+| # | Situation | Why |
+|---|---|---|
+| 1 | The **data changed** — you ran `fetch_dataset.py`, or edited the cleaning rules | models must match the rows they were trained on |
+| 2 | You edited **`train_models.py`** — features, candidates, seed, or split | the saved pipelines no longer describe the current code |
+| 3 | **`ml/artifacts/` is missing or corrupted** | nothing to load; `app.py` reports `models_loaded: false` |
+| 4 | You **pulled changes** that touch the training code | same as #2 |
+
+Switching between Track A and Track B always counts as #1.
+
+Nothing else forces it — restarting `app.py`, editing the frontend, or
+rebooting does not.
+
+Two safety nets:
+
+- **Retraining refreshes the browser bundle too.** `train_models.py` calls
+  `browser_export.py`, so `ml/artifacts/browser/models.js` cannot drift out of
+  sync with the `.joblib` files.
+- **You can spot stale artifacts.** Section 09 prints the MD5 of the dataset
+  the models were trained on (`70da7d6862fa` for the committed sample). If it
+  stops matching your data, retrain.
+
 ---
 
 ### Track B — the complete 2,312,944-row dataset (~15 min + 666 MB download)
