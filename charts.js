@@ -450,6 +450,37 @@ const BENCH = globalThis.APEX_BENCH === true ||
 const CHART_TIMES = {};
 const plotted = new Set();
 
+/* TEMPORARY diagnostic panel — remove this whole block when the chart work is
+   signed off. Only ever created for ?bench=1, so it is invisible in normal
+   use; it exists so the numbers can be read without opening DevTools. */
+function renderBench(){
+  if(!BENCH) return;
+  try{
+    let el = document.getElementById('apexBench');
+    if(!el){
+      el = document.createElement('div');
+      el.id = 'apexBench';
+      el.className = 'apex-bench';
+      document.body.appendChild(el);
+    }
+    const ids = Object.keys(CHART_RENDERERS);
+    const rows = ids.map(id=>{
+      const ms = CHART_TIMES[id];
+      const cls = ms === undefined ? ' pending' : (ms > 400 ? ' slow' : '');
+      return `<div class="apex-bench-row${cls}"><span>${id}</span>`
+        + `<b>${ms === undefined ? 'not plotted yet' : ms + ' ms'}</b></div>`;
+    }).join('');
+    const done = ids.filter(id=>CHART_TIMES[id] !== undefined);
+    const total = done.reduce((s,id)=>s + CHART_TIMES[id], 0);
+    el.innerHTML =
+      `<div class="apex-bench-h">Plotly render time</div>${rows}`
+      + `<div class="apex-bench-row total"><span>${done.length}/${ids.length} plotted</span>`
+      + `<b>${Math.round(total)} ms</b></div>`
+      + `<div class="apex-bench-note">WebGL ${webglAvailable() ? 'yes → scattergl' : 'no → SVG'}`
+      + (done.length < ids.length ? ' · scroll down to plot the rest' : '') + `</div>`;
+  }catch(err){ /* a diagnostic must never break the page */ }
+}
+
 function plotChart(id){
   if(plotted.has(id)) return;
   plotted.add(id);
@@ -463,12 +494,18 @@ function plotChart(id){
   }
   const dt = now() - t0;
   CHART_TIMES[id] = Math.round(dt);
-  if(BENCH) console.log(`[apex] ${id}: ${dt.toFixed(0)} ms`);
+  if(BENCH){
+    console.log(`[apex] ${id}: ${dt.toFixed(0)} ms`);
+    renderBench();
+  }
   return dt;
 }
 
 function renderCharts(){
   const ids = Object.keys(CHART_RENDERERS);
+  renderBench();                 // show the (still empty) panel immediately
+  // Legacy window hook so the panel can be re-rendered from the console.
+  if(BENCH) globalThis.renderBenchPanel = renderBench;
   // No IntersectionObserver (very old browser, jsdom, the test harness):
   // fall back to rendering everything, exactly like before.
   if(typeof IntersectionObserver === 'undefined' || typeof document.getElementById !== 'function'){

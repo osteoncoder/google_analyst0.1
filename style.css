@@ -452,3 +452,24 @@ details.why strong{color:var(--text-hi);}
   .kv{grid-template-columns:1fr;}
 }
 .hidden{display:none !important;}
+
+/* TEMPORARY: ?bench=1 diagnostic panel. Delete with renderBench() in
+   charts.js once the chart performance work is signed off. */
+.apex-bench{
+  position:fixed; right:14px; bottom:14px; z-index:80;
+  min-width:228px; padding:12px 14px;
+  background:rgba(10,9,24,.94); border:1px solid var(--border-hi);
+  border-radius:12px; box-shadow:0 18px 40px rgba(0,0,0,.55);
+  font-family:var(--font-mono); font-size:11.5px; color:var(--text-mid);
+  backdrop-filter:blur(8px);
+}
+.apex-bench-h{
+  font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--purple-glow); margin-bottom:8px;
+}
+.apex-bench-row{display:flex; justify-content:space-between; gap:14px; padding:2px 0;}
+.apex-bench-row b{color:var(--text-hi); font-weight:600;}
+.apex-bench-row.pending b{color:var(--text-low); font-weight:400;}
+.apex-bench-row.slow b{color:var(--amber);}
+.apex-bench-row.total{border-top:1px solid var(--border); margin-top:6px; padding-top:6px;}
+.apex-bench-note{margin-top:7px; font-size:10.5px; color:var(--text-low); line-height:1.5;}
