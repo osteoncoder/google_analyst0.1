@@ -314,7 +314,71 @@ ad / IAP / Editors' Choice flags; impute app age, days-since-update and
 developer portfolio size to training medians and list each as an assumption.
 Implemented (see Step 6).
 
-## Phase 2 — Optimise and professionalise the website
+## Phase 2 — Optimise and professionalise the website  ✅ DONE
+
+**Status: complete 2026-09-19 (commit `34e6a93`).** All four sub-parts are
+implemented and covered by new smoke assertions. **The layout and the chart
+timings still need one look in a real browser** — this sandbox has no browser
+(Playwright's Chromium download and the Debian mirrors are both unreachable),
+so §2.2 and §2.3 were verified structurally, not visually. See
+"Verifying Phase 2 in a browser" at the end of this section.
+
+### What actually changed
+
+**2.1 Hamburger.** Below **1080px** the sidebar leaves the grid and becomes a
+fixed drawer (`transform:translateX(-100%)` → `.open{transform:none}`), with a
+backdrop. Previously it ate 250px down to 760px and then stacked *above* the
+content, pushing the dashboard down a full screen. Toggle lives in the topbar
+(`aria-expanded` / `aria-controls="sidebar"`); closes on nav-link click,
+backdrop click, `Escape`, and when the viewport crosses back to desktop — so it
+cannot be left stuck.
+
+**2.2 Right-edge overflow.** Root cause was the grid: a bare `1fr` track has an
+automatic minimum of `auto`, so a wide Plotly container or metric table
+expanded the column past the viewport instead of shrinking. Fixed with
+`grid-template-columns:250px minmax(0,1fr)` + `min-width:0` on `main` and on
+grid/flex children. Chart 1's legend no longer sits outside the plot area
+(`x:1.02` + `margin.r:130`), which was the other candidate.
+`body{overflow-x:hidden}` was **masking** this, not fixing it; it stays as a
+backstop only.
+
+**2.3 Charts 1 and 5.** Measured first: the JS data preparation is
+**free** — chart 1's 48 `filter()` sweeps over 40k rows take **< 0.1 ms**, so
+the cost is entirely Plotly's DOM/SVG work, not our loops. That inverted the
+priority list:
+
+| Change | Why |
+|---|---|
+| Lazy render via `IntersectionObserver` (400px `rootMargin`) + a yield before each plot | All six charts were plotted synchronously at bootstrap, so the main thread was blocked until every one finished — the page felt frozen wherever you happened to be looking. Biggest win. |
+| Chart 1 → `scattergl` when WebGL is available (SVG fallback otherwise) | ~30k markers: that is ~30k SVG nodes vs one draw call per trace. |
+| Chart 1: drop the 1px per-marker stroke | Roughly doubles paint cost for almost no visual gain at bubble size. |
+| Chart 1: single-pass grouping, `max` in a loop | 48 `filter()` sweeps → one `Map`; `Math.max(...30k)` can overflow the call stack. Correctness, not speed. |
+| Chart 1: no 48-row legend; hover carries the category | Unreadable at any width, and it was the thing drawn outside the plot area. |
+| Chart 5: colour rank precomputed in a `Map` | `order.indexOf()` per point was O(n²). Trivial at n=48, wrong in principle. |
+| Resize debounced to 150 ms | `responsive:true` already handles container changes; the window handler was relayouting all seven plots once per resize event. |
+
+Chart 4 was **not** touched (it is not slow — a 16-bin bar chart, one trace).
+
+**2.4 Prose.** Every section description is now a one-line claim with the
+justification behind a `<details>` disclosure ("Method & caveats",
+"Why this replaced the growth curve", …). Nothing was deleted: the
+data-integrity caveats are still all there, just not walls of text.
+
+### Verifying Phase 2 in a browser
+
+1. **Overflow:** at 1440 / 1080 / 768 / 375 px, run
+   `document.documentElement.scrollWidth <= window.innerWidth` in the console.
+   It must be true at every width (this is the assertion `body{overflow-x:hidden}`
+   was hiding).
+2. **Hamburger:** below 1080px the sidebar must be off-screen until the Menu
+   button is pressed; Tab to it and press Enter; `Escape` closes it. Above
+   1080px the button must not exist.
+3. **Chart timings:** open `?bench=1` and read the console, or run
+   `APEX_CHART_TIMES` after scrolling through the page. Post those numbers if
+   chart 1 or 5 is still slow — they say whether the remaining cost is Plotly
+   or something else.
+4. If WebGL is unavailable in your browser, chart 1 silently falls back to
+   `scatter` (SVG). `APEX_CHART_TIMES.chart1` will show it.
 
 ### 2.1 Hamburger menu for navigation
 
@@ -465,9 +529,9 @@ only viewable.
 | Phase | Status | Commits |
 |---|---|---|
 | Phase 1 — enriched features + faster training | ✅ **DONE** (2026-09-19) | `13e019f`, `4a4ea57` |
-| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose | 🔄 **IN PROGRESS** (2026-09-19) | — |
-| Phase 3 — professionalise the README | ⬜ not started | — |
-| Phase 4 — `VIVA_PREP.txt` | ⬜ not started | — |
+| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose | ✅ **DONE** (2026-09-19) — needs one browser look, see §2 | `34e6a93` |
+| Phase 3 — professionalise the README | ⬜ next | — |
+| Phase 4 — `VIVA_PREP.txt` | ⬜ last (must quote the final metrics) | — |
 
 Branch `arena/01a0ba27-google-analyst0-1`. PR **#3** is open and **not merged**
 — merging it is what republishes GitHub Pages.
