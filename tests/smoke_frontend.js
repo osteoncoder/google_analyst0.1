@@ -68,6 +68,8 @@ const sandbox = {
   fetch: async (url) => {
     if (url === 'data/apps.json') return { ok: true, json: async () => appsJson };
     if (url === 'api/metrics') return { ok: true, json: async () => metricsJson };
+    // static mount serves the artifact file too (used by the degraded-hosting path)
+    if (url === 'ml/artifacts/metrics.json') return { ok: true, json: async () => metricsJson };
     if (url === 'api/predict/rating') {
       return { ok: true, json: async () => ({ predicted_rating: 4.2, category_used: 'Education', category_changed: true, model: 'Test', test_metrics: { mae: 0.3, rmse: 0.4, r2: 0.2 }, n_test: 10, assumptions: ['test assumption'], warning: 'test warning' }) };
     }
@@ -247,6 +249,28 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (tr && tr.innerHTML.includes('prob-fill') && tr.innerHTML.includes('model estimates, not guarantees'))
     ok('section 08: submit → tier + probability bars + disclaimer rendered');
   else fail('tier form submission did not render result');
+
+  /* ---------------- hosting-mode resilience (static / dead backend) ---------------- */
+  // Metrics fall back to the static ml/artifacts/metrics.json when api/* is unreachable,
+  // so sections 08-09 show the real measured numbers even without the backend.
+  const staticOnly = async (url, opts) => /^(\/)?api\//.test(String(url))
+    ? Promise.reject(new TypeError('Failed to fetch'))
+    : origFetch(url, opts);
+  sandbox.fetch = staticOnly;
+  const viaStatic = await vm.runInContext('loadMetrics()', sandbox);
+  if (viaStatic && viaStatic.url === 'ml/artifacts/metrics.json' && viaStatic.data.models)
+    ok('hosting: metrics fall back to the static snapshot when the API is unreachable');
+  else fail('metrics static fallback did not resolve ml/artifacts/metrics.json');
+  const hint = vm.runInContext('backendHint(new TypeError("Failed to fetch"))', sandbox);
+  if (hint.includes('python app.py') && hint.includes('live preview'))
+    ok('hosting: failed prediction explains how to start the backend');
+  else fail('backendHint should tell the user how to start the backend');
+  const unavailableHtml = vm.runInContext(
+    '(()=>{const d=document.getElementById("__unavailableProbe"); unavailable(d, "note", new Error("HTTP 503")); return d.innerHTML;})()', sandbox);
+  if (unavailableHtml.includes('HTTP 503') && unavailableHtml.includes('retry-btn'))
+    ok('hosting: unavailable panel shows the real error and a retry button');
+  else fail('unavailable panel should include the error detail and a retry button');
+  sandbox.fetch = origFetch;
 
   console.log(failures.length ? `\nSMOKE TEST: ${failures.length} FAILURE(S)` : '\nSMOKE TEST: ALL CHECKS PASSED');
   process.exit(failures.length ? 1 : 0);

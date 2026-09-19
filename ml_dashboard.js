@@ -9,6 +9,15 @@
    ================================================================ */
 
 let METRICS = null;
+let METRICS_FROM_API = false;   // true = live backend; false = static snapshot / unknown
+
+/* Endpoints the read-only metrics may come from, in order of preference:
+   1. the FastAPI route (live backend, also proves inference is available)
+   2. the same file over the static mount — app.py serves the repo root, and a
+      plain static host (e.g. a file viewer) serves it too, so sections 08/09
+      can still show the REAL measured metrics with no backend running.
+   Predictions always require the live API; this is read-only data only. */
+const METRICS_ENDPOINTS = ['api/metrics', '/api/metrics', 'ml/artifacts/metrics.json'];
 
 async function fetchJSON(url, opts){
   const res = await fetch(url, opts);
@@ -35,7 +44,58 @@ async function fetchJSON(url, opts){
   return res.json();
 }
 
-function unavailable(el, note){
+/* Fetch the first endpoint that answers. Returns {data, url}. */
+async function fetchFirst(urls){
+  let lastErr = null;
+  for(const u of urls){
+    try{
+      return { data: await fetchJSON(u), url: u };
+    }catch(err){
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error('no endpoint reachable');
+}
+
+/* Backend startup is not always instant (and a page can be opened mid-restart),
+   so a failed metrics fetch is retried once before the UI gives up. */
+async function loadMetrics(){
+  let lastErr = null;
+  for(let attempt = 0; attempt < 2; attempt++){
+    try{
+      const hit = await fetchFirst(METRICS_ENDPOINTS);
+      return { ...hit, viaApi: hit.url.startsWith('api/') || hit.url.startsWith('/api/') };
+    }catch(err){
+      lastErr = err;
+      if(attempt === 0) await new Promise(r=>setTimeout(r, 1200));
+    }
+  }
+  throw lastErr || new Error('metrics unreachable');
+}
+
+/* Actionable hint for a failed inference call. */
+function backendHint(err){
+  const m = String((err && err.message) || err || '');
+  if(/Failed to fetch|NetworkError|Load failed|network/i.test(m)){
+    return '<p class="tiny">The model service could not be reached from this page. '
+      + 'Predictions need the FastAPI backend: run <code>python app.py</code> and open the served page '
+      + '(<code>http://localhost:8000</code>, or the live preview of port 8000). '
+      + 'Everything else on this page (charts, metrics tables) works without it.</p>';
+  }
+  if(/HTTP 503/.test(m)){
+    return '<p class="tiny">The backend is running but its model artifacts are missing. '
+      + 'Run <code>python clean.py &amp;&amp; python train_models.py</code>, then retry.</p>';
+  }
+  return '';
+}
+
+function wireRetry(el, handler){
+  const btn = el.querySelector ? el.querySelector('.retry-btn') : null;
+  if(btn && btn.addEventListener) btn.addEventListener('click', handler);
+}
+
+function unavailable(el, note, err){
+  const detail = err ? ` <span class="tiny">(${String(err.message || err)})</span>` : '';
   el.innerHTML = `
     <div class="unavailable">
       <h3>Model service not available</h3>
@@ -46,8 +106,25 @@ python clean.py &amp;&amp; python train_models.py
 python app.py</pre>
       <p>Until then no predictions are shown — this project deliberately never
       returns random or demo values when models are absent.</p>
-      ${note ? `<p class="tiny">${note}</p>` : ''}
+      ${note ? `<p class="tiny">${note}${detail}</p>` : ''}
+      <p><button type="button" class="retry-btn">Retry</button></p>
     </div>`;
+  wireRetry(el, ()=>renderML());
+}
+
+/* Banner when the read-only metrics came from a static file instead of the API:
+   the numbers are still the real measured ones, but inference is not available. */
+function showMlNotice(){
+  const el = document.getElementById('mlNotice');
+  if(!el) return;
+  if(METRICS && !METRICS_FROM_API){
+    el.innerHTML = `<p class="warn-note">⚠ Sections 08–09 below are reading the measured metrics snapshot
+    <code>ml/artifacts/metrics.json</code> directly (the live API did not answer). The numbers are the real
+    results of the reproducible training run, but the prediction forms need the backend —
+    run <code>python app.py</code> and open the page it serves.</p>`;
+  }else{
+    el.innerHTML = '';
+  }
 }
 
 /* Honest, dataset-driven caveat: never claim "11-row" when the model was
@@ -140,7 +217,8 @@ function initRatingForm(){
         MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}
         (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>`;
     }catch(err){
-      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>` + sampleNote();
+      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
+        + backendHint(err) + sampleNote();
     }
   });
 }
@@ -211,7 +289,8 @@ function initTierForm(){
         accuracy ${tm.accuracy?.toFixed(3)} · macro-F1 ${tm['macro_f1']?.toFixed(3)}
         · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>`;
     }catch(err){
-      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>` + sampleNote();
+      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
+        + backendHint(err) + sampleNote();
     }
   });
 }
@@ -378,19 +457,22 @@ function renderML(){
   initTierForm();
   (async ()=>{
     try{
-      METRICS = await fetchJSON('api/metrics');
+      const hit = await loadMetrics();
+      METRICS = hit.data;
+      METRICS_FROM_API = hit.viaApi;
     }catch(err){
       METRICS = null;
-    }
-    if(!METRICS){
+      METRICS_FROM_API = false;
+      showMlNotice();
       const note = 'Backend reachable but no artifacts yet? Run: python clean.py && python train_models.py';
-      ['ratingResult','tierResult'].forEach(id=>unavailable(document.getElementById(id), note));
+      ['ratingResult','tierResult'].forEach(id=>unavailable(document.getElementById(id), note, err));
       ['ratingModelCard','confusionCard','perfContent'].forEach(id=>{
         const e = document.getElementById(id);
-        if(e) unavailable(e, note);
+        if(e) unavailable(e, note, err);
       });
       return;
     }
+    showMlNotice();
     renderRatingModelCard();
     renderConfusionMatrix();
     renderPerfM1();

@@ -355,6 +355,12 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
   font-family:var(--font-mono);font-size:11.5px;color:var(--cyan);background:var(--surface-2);
   border:1px solid var(--border);border-radius:10px;padding:12px 14px;line-height:1.8;
 }
+.unavailable .retry-btn{
+  font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-hi);background:var(--surface-2);border:1px solid var(--border-hi);
+  border-radius:999px;padding:7px 16px;cursor:pointer;transition:border-color .2s,color .2s;
+}
+.unavailable .retry-btn:hover{border-color:var(--purple);color:var(--purple-lt);}
 
 /* responsive plot heights */
 @media (max-width:760px){

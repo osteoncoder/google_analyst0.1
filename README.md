@@ -68,10 +68,21 @@ all read from the same cleaned dataset; sections 07-09 call the API.
 So `python clean.py` works in a fresh clone, and silently switches to full
 scale as soon as the full CSV exists. `--raw <path>` overrides everything.
 
-**Static-only mode (no ML):** open `index.html` directly (double-click or VS
-Code Live Server). Charts 01-06 still work (they fall back to an embedded
-11-row sample if `data/apps.json` can't be fetched); sections 07-09 show an
-explicit "model service not available" panel instead of faking results.
+**Static-only mode (no ML):** open `index.html` directly (double-click, VS
+Code Live Server, or any static host). Charts 01-06 still work from
+`data/apps.json`; sections 08-09 read the **measured** metrics snapshot
+(`ml/artifacts/metrics.json` — the same file the API serves) and label it
+clearly as a snapshot, so the dashboard degrades gracefully instead of going
+blank. Prediction forms (07-08) genuinely need the backend: they fail with an
+actionable message ("run `python app.py` and open the page it serves") rather
+than inventing values, and the unavailable panel shows the underlying error
+plus a **Retry** button. The metrics fetch also retries once automatically,
+which covers opening the page while the server is still starting.
+
+> If you are looking at a page that says "Model service not available", check
+> the address bar: the dashboard must be served by `python app.py`
+> (`http://localhost:8000`, or the live preview of port 8000). A page opened
+> from a file browser / static viewer has no `/api` routes behind it.
 
 ## Data pipeline (`clean.py`) — documented rules
 
