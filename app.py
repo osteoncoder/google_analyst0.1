@@ -263,4 +263,13 @@ app.mount("/", _SafeStatic(directory=ROOT, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
+    HOST, PORT = "0.0.0.0", 8000
+    # uvicorn logs the BIND address (0.0.0.0 = every interface), which a browser
+    # cannot open — on Windows it fails with ERR_ADDRESS_NOT_AVAILABLE, and VS
+    # Code makes it a clickable link. Print the address that actually works.
+    print(f"\n  APEX dashboard    ->  http://localhost:{PORT}")
+    print(f"  API health check  ->  http://localhost:{PORT}/api/health")
+    print("  (the 0.0.0.0 in uvicorn's log is the bind address, not a URL —\n"
+          "   open localhost or 127.0.0.1 in your browser)\n")
+    sys.stdout.flush()          # print before uvicorn's own log line
+    uvicorn.run("app:app", host=HOST, port=PORT, reload=False)
