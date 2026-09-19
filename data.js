@@ -2,10 +2,15 @@
    data.js — dataset loading + cleaning mirror
 
    Source of truth: data/apps.json (produced by `python clean.py`).
-   If that file cannot be fetched (e.g. the page is opened directly
+   The primary dataset is the MIT-licensed gauthamp10 Google-Playstore
+   scrape (2,312,944 apps, June 2021); the committed default is a
+   deterministic 40,000-row stratified sample of it (see
+   data/playstore_sample.meta.json), and the full run substitutes the
+   complete file via `python fetch_dataset.py`.
+   If apps.json cannot be fetched (e.g. the page is opened directly
    with file://), the dashboard falls back to EMBEDDED_SAMPLE below —
-   the project's ORIGINAL 11-row sample, kept only so the static
-   preview keeps working. It is labelled as a sample everywhere.
+   an 11-row sample, kept only so the static preview keeps working.
+   It is labelled as a sample everywhere.
 
    The parsing functions mirror clean.py rule-by-rule so the JS
    fallback and the Python pipeline can never disagree:
@@ -152,10 +157,17 @@ async function loadApps(){
     const payload = await res.json();
     const rows = (payload.rows || []).map(cleanRow);
     if(rows.length === 0) throw new Error('no rows in apps.json');
+    const sampling = payload.sampling || null;
+    // Say WHICH dataset and, for the committed sample, what it is a sample of.
+    const label = sampling && sampling.full_rows
+      ? `${Number(sampling.sample_rows || rows.length).toLocaleString()}-row sample of the ` +
+        `${Number(sampling.full_rows).toLocaleString()}-row dataset`
+      : (payload.is_sample ? 'SAMPLE' : '');
     return {
       rows,
       report: payload.report || {},
-      source: (payload.source || 'data/apps.json') + (payload.is_sample ? ' (SAMPLE)' : ''),
+      sampling,
+      source: (payload.source || 'data/apps.json') + (label ? ` (${label})` : ''),
       is_sample: !!payload.is_sample,
     };
   }catch(err){

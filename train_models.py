@@ -288,18 +288,32 @@ def main() -> None:
 
     report_path = path.parent / "cleaning_report.json"
     report = json.loads(report_path.read_text()) if report_path.exists() else {}
+    sampling = report.get("sampling") or {}
+    is_sample = bool(report.get("is_sample", False))
+    # Honest provenance: a sample is a sample, whatever its size. When the
+    # source is the committed stratified sample, say what it is a sample OF.
+    sample_note = None
+    if is_sample or sampling:
+        if sampling.get("full_rows"):
+            sample_note = (f"trained on a {report.get('cleaned_rows', len(df)):,}-row stratified sample "
+                           f"of the {sampling['full_rows']:,}-row Google-Playstore dataset "
+                           f"(full-scale proportions differ; see data/playstore_sample.meta.json)")
+        else:
+            sample_note = f"trained on a {report.get('cleaned_rows', len(df)):,}-row sample dataset"
     dataset_info = {
         "source": report.get("source_file", str(path)),
-        "is_sample": bool(report.get("is_sample", False)),
+        "is_sample": is_sample,
         "rows_cleaned": report.get("cleaned_rows", len(df)),
         "md5": hashlib_md5(path),
+        "full_dataset_rows": sampling.get("full_rows"),
+        "sample_note": sample_note,
     }
     # Tier bands come from clean.py (via the report) — single source of truth.
     raw_bounds = report.get("tier_bounds") or [list(b) for b in DEFAULT_TIER_BOUNDS]
     tier_bounds = [(b[0], float("inf") if b[1] is None else b[1], b[2]) for b in raw_bounds]
     TIER_NAMES = [b[2] for b in tier_bounds]
     n = len(df)
-    small = n < 100
+    small = n < 100          # mechanical-test sample: numbers verify the pipeline only
 
     # ---------------- M1: rating regression ----------------
     m1_df = df[df["rating"].notna()]
@@ -369,6 +383,7 @@ def main() -> None:
         "seed": SEED,
         "dataset": dataset_info,
         "small_dataset_warning": small,
+        "trained_on_sample": is_sample or bool(sampling),
         "protocol": (
             "80/20 GroupShuffleSplit on app name (leakage guard), fit BEFORE preprocessing; "
             "75/25 train/val for model selection; selected model refit on train+val; "
@@ -387,8 +402,9 @@ def main() -> None:
 
     # ---------------- console summary ----------------
     print("=== Training summary ===")
-    print(f"dataset      : {dataset_info['source']} (rows={n}"
-          f"{', SAMPLE - not for final results' if small else ''})")
+    print(f"dataset      : {dataset_info['source']} (rows={n})")
+    if sample_note:
+        print(f"note         : {sample_note}")
     print(f"\nM1 rating regression  (n={m1_meta['n_total']}, test={m1_meta['n_test']})")
     for name, r in m1_meta["candidates"].items():
         if "val" in r:
@@ -416,6 +432,10 @@ def main() -> None:
     if small:
         print("\nNOTE: fewer than 100 rows — these numbers verify the pipeline mechanically "
               "only and must NOT be quoted as project results. Re-run with the full dataset.")
+    elif sample_note:
+        print("\nNOTE: sample training — numbers are representative but not full-scale. "
+              "`python fetch_dataset.py --sample 40000` + re-running clean.py and train_models.py "
+              "reproduces them on the full 2.31M-row dataset.")
 
 
 def hashlib_md5(p: Path) -> str:

@@ -2,21 +2,39 @@
 """
 clean.py — documented, reusable cleaning pipeline for the APEX Play Store dashboard.
 
-Dataset-agnostic: it works on the canonical Kaggle "Google Play Store Apps"
-export (10,841 rows), on the bundled 11-row sample, and on any CSV/XLSX with
-the same spirit of columns (aliases handled). Consumed by:
+Dataset-agnostic: it works on the primary Google-Playstore dataset
+(gauthamp10/Google-Playstore-Dataset, 2,312,944 rows, loaded via fetch_dataset.py),
+on the committed 40,000-row sample of it (data/playstore_sample.csv), on the
+older 10,841-row Kaggle export (data/play_store.csv), on the bundled 11-row
+sample, and on any CSV/XLSX with the same spirit of columns (aliases handled).
+Consumed by:
   * train_models.py   (ML training)
   * data/apps.json    (dashboard frontend charts 01-06)
 
 Run:
-    python clean.py                        # auto-picks data/play_store.csv, else data/sample_apps.csv
+    python clean.py                        # auto-picks the source (see order below)
     python clean.py --raw my_data.xlsx     # explicit source (CSV or XLSX)
     python clean.py --tiers "Name:lo:hi,..."   # override the 4 install bands
+
+Source resolution (first match wins):
+    1. data/raw/playstore_full.csv     full 2.3M-row dataset (fetch_dataset.py)
+    2. data/playstore_sample.csv       committed stratified 40k sample of it
+    3. data/play_store.csv             older 10,841-row Kaggle export (fallback)
+    4. data/sample_apps.csv            11-row mechanical-test sample (last resort)
 
 Writes:
     <out>/apps_cleaned.csv      cleaned rows
     <out>/apps.json             cleaned rows + report (fetched by the dashboard)
     <out>/cleaning_report.json  provenance: raw/cleaned/removed counts, field stats
+
+Column aliases understood for the primary dataset (gauthamp10, 24 columns):
+    App Name -> app          Rating Count -> reviews      Price     -> price
+    Category -> category     Installs     -> installs     Last Updated -> last_updated
+    Rating   -> rating       Size         -> size_mb
+    (its extra columns — App Id, Free, Currency, Minimum/Maximum Installs,
+     Minimum Android, Developer *, Released, Content Rating, Privacy Policy,
+     Ad Supported, In App Purchases, Editors Choice, Scraped Time — are not
+     consumed; the raw file keeps them for future work.)
 
 Documented rules
 ----------------
@@ -32,9 +50,10 @@ Documented rules
 3.  Installs  : "1,000,000+" / "1000000" / 1000000 -> integer LOWER BOUND of the
     reported download band. Google Play reports installs in bands (10, 50,
     100, ... 1B+); the printed number is the band floor, NOT the exact download
-    count. Blank/invalid -> missing (row kept, field counted).
-4.  Reviews   : integer. Blank ("") is treated as 0 (review count not reported).
-5.  Rating    : float, kept only if 1.0 <= r <= 5.0, else missing.
+    count. Blank/invalid -> missing (row kept, field counted).4.  Reviews   : integer. Blank ("") is treated as 0 (review count not reported).
+5.  Rating    : float, kept only if 1.0 <= r <= 5.0, else missing. The primary
+    dataset encodes "not yet rated" as 0.0 (~47% of its rows) — those become
+    missing (counted), never fake zeros, so M1 trains only on real ratings.
 6.  Size      : "86M" -> 86.0 MB, "72K" -> 72/1024 MB, "Varies with device" ->
     missing. Missing size is a real state (common on Play), not an error.
 7.  Price     : "" or "0" -> 0.0. Legitimate zero prices are preserved, never
@@ -53,6 +72,13 @@ Documented rules
     (possibly different listings), only counted.
 11. Eligibility: M1 (rating regression) rows = rows with a valid rating.
                  M2 (install tier) rows   = rows with a valid installs bound.
+12. Dashboard export cap: apps.json is what the browser fetches, so the full
+    2.3M-row dataset cannot be exported wholesale. Rows beyond
+    --max-json-rows (default 60000) are omitted from apps.json using the same
+    deterministic content-hash selection as the committed sample, stratified by
+    install tier with a per-tier floor — the dashboard then shows a clearly
+    labelled "N of M rows" note. The cleaned CSV and the ML training always use
+    ALL cleaned rows; only the browser payload is capped.
 
 Install-tier bands (M2 target) — default: log-spaced, left-inclusive, aligned
 with Play's own band structure:
@@ -69,6 +95,7 @@ the dashboard automatically — one change, consistent everywhere.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -80,6 +107,21 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "data"
+
+# Source resolution order (first existing file wins) — see module docstring.
+SOURCE_CANDIDATES = [
+    "raw/playstore_full.csv",   # full 2.31M-row dataset built by fetch_dataset.py
+    "playstore_sample.csv",     # committed deterministic stratified 40k sample
+    "play_store.csv",           # older 10,841-row Kaggle export (fallback)
+    "sample_apps.csv",          # 11-row mechanical-test sample (last resort)
+]
+# A file counts as a SAMPLE when its name says so AND it is far smaller than the
+# full dataset — so a real multi-hundred-thousand-row export that merely has
+# "sample" in its name is not mislabelled (and vice versa: a small full export
+# is not claimed to be a sample).
+SAMPLE_ROW_LIMIT = 200_000
+DEFAULT_MAX_JSON_ROWS = 60_000
+JSON_TIER_FLOOR = 250           # min dashboard rows per install tier when capping
 
 # The single documented spelling correction (typo exists in the sample data).
 CATEGORY_TYPO_MAP = {"Commication": "Communication"}
@@ -120,6 +162,86 @@ def install_tier(installs, bounds=None):
 
 def _title_case(s: str) -> str:
     return re.sub(r"\w\S*", lambda m: m.group(0)[0].upper() + m.group(0)[1:].lower(), s)
+
+
+def allocate_quotas(counts: dict, target: int, floor: int) -> dict:
+    """Proportional (largest-remainder) quotas with a per-stratum floor.
+
+    Used both by fetch_dataset.py (which rows go into the committed sample) and
+    by clean.py (which rows go into the capped dashboard payload), so the two
+    selections follow identical, documented rules.
+    """
+    total = sum(counts.values())
+    if target >= total:
+        return dict(counts)
+    quotas = {s: min(n, floor) for s, n in counts.items()}
+    remaining = target - sum(quotas.values())
+    if remaining > 0:
+        pool = {s: counts[s] - quotas[s] for s in counts}
+        pool_total = sum(pool.values())
+        if pool_total:
+            ideal = {s: remaining * pool[s] / pool_total for s in counts if pool[s] > 0}
+            base = {s: int(v) for s, v in ideal.items()}
+            leftovers = remaining - sum(base.values())
+            order = sorted(ideal, key=lambda s: (-(ideal[s] - base[s]), -counts[s], str(s)))
+            for s in order[:leftovers]:
+                base[s] += 1
+            for s, add in base.items():
+                quotas[s] = min(counts[s], quotas[s] + add)
+    return quotas
+
+
+def _str_col(df: pd.DataFrame, col: str) -> np.ndarray:
+    """Column as plain Python strings, missing -> 'nan'.
+
+    Explicit because `astype(str)` is dtype-version dependent: pandas < 3 turns
+    NaN into the literal 'nan', while pandas 3's str dtype keeps a real missing
+    value — which then propagates through string concatenation as a float.
+    """
+    s = df[col]
+    return s.astype(object).where(s.notna(), "nan").astype(str).to_numpy(dtype=object)
+
+
+def _row_hashes(df: pd.DataFrame) -> np.ndarray:
+    """Deterministic content hash per row (stable across machines and runs)."""
+    cols = ("app", "category", "rating", "reviews", "installs", "size_mb", "price")
+    values = [_str_col(df, c) for c in cols]
+    keys = ["\x1f".join(parts) for parts in zip(*values)]
+    return np.array(
+        [int.from_bytes(hashlib.blake2b(k.encode("utf-8", "replace"), digest_size=8).digest(), "big")
+         for k in keys],
+        dtype=np.uint64,
+    )
+
+
+def cap_dashboard_rows(df: pd.DataFrame, tiers: pd.Series, max_rows: int,
+                       floor: int = JSON_TIER_FLOOR) -> tuple[pd.DataFrame, dict | None]:
+    """Keep at most `max_rows` rows for apps.json — stratified by install tier,
+    chosen by the smallest content hash (rule 12). Returns (df, note-or-None)."""
+    if max_rows is None or max_rows <= 0 or len(df) <= max_rows:
+        return df, None
+    tier_vals = tiers.fillna("__unknown__").astype(str).values
+    counts = {str(k): int(v) for k, v in pd.Series(tier_vals).value_counts().items()}
+    quotas = allocate_quotas(counts, max_rows, floor)
+    hashes = _row_hashes(df)
+    keep: list[int] = []
+    for tier, quota in quotas.items():
+        if quota <= 0:
+            continue
+        idx = np.flatnonzero(tier_vals == tier)
+        if len(idx) <= quota:
+            keep.extend(idx.tolist())
+        else:
+            keep.extend(idx[np.argsort(hashes[idx], kind="stable")[:quota]].tolist())
+    keep_idx = np.sort(np.array(keep, dtype=np.int64))
+    note = {
+        "exported": int(len(keep_idx)),
+        "available": int(len(df)),
+        "rule": f"stratified by install tier (floor {floor} rows/tier), smallest content hash",
+        "note": (f"apps.json carries {len(keep_idx):,} of {len(df):,} cleaned rows so the browser "
+                 f"payload stays small; apps_cleaned.csv and ML training use ALL cleaned rows."),
+    }
+    return df.iloc[keep_idx].reset_index(drop=True), note
 
 
 def clean_category(v):
@@ -262,15 +384,74 @@ def find_col(df: pd.DataFrame, *names):
 
 
 def load_raw(path: Path) -> pd.DataFrame:
-    """Read the raw export as strings so parsing stays explicit and auditable."""
+    """Read the raw export as strings so parsing stays explicit and auditable.
+
+    CSV files are read twice: the header first, so only the alias columns the
+    pipeline actually consumes are loaded. That keeps the full 2.31M-row file
+    (~666 MB, 24 columns) inside a few GB of RAM instead of many.
+    """
     if path.suffix.lower() == ".csv":
-        return pd.read_csv(path, dtype=str)
+        header = pd.read_csv(path, nrows=0)
+        consumed = _consumed_columns(header)
+        keep = [c for c in header.columns if c in consumed]
+        return pd.read_csv(path, dtype=str, usecols=keep or None)
     if path.suffix.lower() in (".xlsx", ".xls"):
         try:
             return pd.read_excel(path, dtype=str)
         except ImportError:
             sys.exit("openpyxl is required for .xlsx input: pip install openpyxl")
     sys.exit(f"Unsupported file type: {path.suffix} (use .csv or .xlsx)")
+
+
+def _consumed_columns(header: pd.DataFrame) -> set:
+    """Alias columns the pipeline reads (identity + parsed fields)."""
+    wanted = [
+        ("App", "Name", "App Name"), ("Category", "Genre"),
+        ("Rating",), ("Reviews", "Reviews count", "Rating Count"),
+        ("Installs", "Minimum Installs"), ("Size",), ("Price",),
+        ("Last Updated", "LastUpdated"),
+        ("Sentiment_Subjectivity", "sentiment_subjectivity"),
+    ]
+    out = set()
+    for aliases in wanted:
+        col = find_col(header, *aliases)
+        if col is not None:
+            out.add(col)
+    return out
+
+
+def resolve_raw_path(explicit: str | None) -> Path:
+    """Explicit --raw wins; otherwise the documented candidate order."""
+    if explicit:
+        p = Path(explicit)
+        if not p.exists():
+            sys.exit(f"--raw {p} not found")
+        return p
+    for name in SOURCE_CANDIDATES:
+        p = DATA_DIR / name
+        if p.exists():
+            return p
+    sys.exit(
+        "No dataset found. Options:\n"
+        "  * full 2.31M-row dataset:  python fetch_dataset.py --sample 40000\n"
+        "  * committed 40k sample:    data/playstore_sample.csv\n"
+        "  * explicit file:           python clean.py --raw my_data.csv"
+    )
+
+
+def load_sampling_meta(raw_path: Path) -> dict | None:
+    """Read the <name>.meta.json sidecar written by fetch_dataset.py, if present."""
+    sidecar = raw_path.parent / (raw_path.stem + ".meta.json")
+    if not sidecar.exists():
+        return None
+    try:
+        meta = json.loads(sidecar.read_text())
+    except json.JSONDecodeError:
+        return None
+    # Keep provenance compact: the full stratum table stays in the sidecar.
+    meta.pop("strata", None)
+    meta["sidecar"] = sidecar.name
+    return meta
 
 
 def _raw_rating_out_of_range(s: str) -> bool:
@@ -290,15 +471,18 @@ def clean(df_raw: pd.DataFrame, tier_bounds: list = None) -> tuple[pd.DataFrame,
     n_raw = len(df_raw)
     report = {"raw_rows": n_raw}
 
-    app_col = find_col(df_raw, "App", "app", "Name")
+    app_col = find_col(df_raw, "App", "app", "Name", "App Name")
     cat_col = find_col(df_raw, "Category", "category", "Genre")
     if app_col is None or cat_col is None:
         sys.exit(f"Missing identity columns. Found: {list(df_raw.columns)}")
 
     rating_col = find_col(df_raw, "Rating", "rating")
-    reviews_col = find_col(df_raw, "Reviews", "reviews", "Reviews count")
+    # "Rating Count" is the primary dataset's review column.
+    reviews_col = find_col(df_raw, "Reviews", "reviews", "Reviews count", "Rating Count")
     size_col = find_col(df_raw, "Size", "size")
-    installs_col = find_col(df_raw, "Installs", "installs")
+    # Prefer the printed band string; "Minimum Installs" is the same band floor
+    # in numeric form and is used when the string column is absent.
+    installs_col = find_col(df_raw, "Installs", "installs", "Minimum Installs")
     price_col = find_col(df_raw, "Price", "price")
     updated_col = find_col(df_raw, "Last Updated", "last_updated", "LastUpdated")
     sentiment_col = find_col(df_raw, "Sentiment_Subjectivity", "sentiment_subjectivity")
@@ -412,60 +596,89 @@ def main() -> None:
     ap.add_argument("--out-dir", default=str(DATA_DIR))
     ap.add_argument("--tiers", default=None,
                     help='install bands override: "Name:lo:hi,..." (hi may be inf)')
+    ap.add_argument("--max-json-rows", type=int, default=DEFAULT_MAX_JSON_ROWS,
+                    help=f"cap on rows exported to apps.json (default {DEFAULT_MAX_JSON_ROWS}; 0 = no cap)")
     args = ap.parse_args()
 
     tier_bounds = parse_tier_arg(args.tiers) if args.tiers else DEFAULT_TIER_BOUNDS
 
-    if args.raw:
-        raw_path = Path(args.raw)
-    elif (DATA_DIR / "play_store.csv").exists():
-        raw_path = DATA_DIR / "play_store.csv"
-    elif (DATA_DIR / "sample_apps.csv").exists():
-        raw_path = DATA_DIR / "sample_apps.csv"
-    else:
-        sys.exit("No dataset found. Put your raw data at data/play_store.csv "
-                 "(or pass --raw). The bundled sample is data/sample_apps.csv.")
-
+    raw_path = resolve_raw_path(args.raw)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     df_raw = load_raw(raw_path)
-    # The "sample" flag drives "verification only" warnings, so it must not
-    # fire for a large real dataset that merely has a sample-ish filename:
-    # require BOTH a sample-ish name and a small row count.
-    is_sample = raw_path.name.lower().startswith("sample") and len(df_raw) < 100
+    # "is_sample" means: this file is a documented subset of a larger dataset.
+    # Require BOTH a sample-ish name and a clearly-smaller-than-full row count,
+    # so an export merely named like a sample is not mislabelled.
+    is_sample = "sample" in raw_path.stem.lower() and len(df_raw) < SAMPLE_ROW_LIMIT
     cleaned, report = clean(df_raw, tier_bounds)
 
+    sampling = load_sampling_meta(raw_path)  # provenance for sample files
     report.update(
         {
             "source_file": str(raw_path.relative_to(ROOT)) if raw_path.is_relative_to(ROOT) else str(raw_path),
             "is_sample": is_sample,
+            "sampling": sampling,
             "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "tier_bounds": [[lo, (hi if np.isfinite(hi) else None), name] for lo, hi, name in tier_bounds],
         }
     )
 
+    # Rule 12: the browser payload is capped; CSV/training keep every cleaned row.
+    if args.max_json_rows and len(cleaned) > args.max_json_rows:
+        tiers = cleaned["installs"].map(lambda v: install_tier(v, tier_bounds))
+        json_df, cap_note = cap_dashboard_rows(cleaned, tiers, args.max_json_rows)
+    else:
+        json_df, cap_note = cleaned, None
+    report["dashboard_export"] = cap_note or {
+        "exported": int(len(json_df)),
+        "available": int(len(cleaned)),
+        "note": "all cleaned rows exported (under the cap)",
+    }
+
     # Write outputs
     cleaned.to_csv(out_dir / "apps_cleaned.csv", index=False)
-    (out_dir / "cleaning_report.json").write_text(json.dumps(report, indent=2))
+    (out_dir / "cleaning_report.json").write_text(json.dumps(report, indent=2, default=str))
+    # apps.json is fetched by the browser: compact separators, no indent
+    # (cleaning_report.json stays human-readable).
     (out_dir / "apps.json").write_text(
         json.dumps({"source": report["source_file"], "is_sample": is_sample,
-                    "generated_at": report["generated_at"], "report": report,
-                    "rows": _jsonable_rows(cleaned)}, indent=2)
+                    "sampling": sampling, "generated_at": report["generated_at"],
+                    "report": report, "rows": _jsonable_rows(json_df)},
+                   separators=(",", ":"))
     )
 
     # Human-readable summary (used in README / viva)
     print("=== Cleaning report ===")
     for k, v in report.items():
+        if k == "category_counts":
+            print(f"category_counts: {len(v)} categories")
+            continue
         if isinstance(v, dict):
             print(f"{k}:")
             for kk, vv in v.items():
-                print(f"   {kk}: {vv}")
+                if kk == "strata" or (isinstance(vv, dict) and len(vv) > 12):
+                    print(f"   {kk}: <{len(vv)} entries>")
+                else:
+                    print(f"   {kk}: {vv}")
+        elif isinstance(v, list):
+            print(f"{k}: {v[:4]}{' …' if len(v) > 4 else ''}")
         else:
             print(f"{k}: {v}")
     if is_sample:
-        print("\nWARNING: ran on the 11-row SAMPLE dataset. "
-              "Replace with the full dataset (data/play_store.csv) before final results.")
+        full = (sampling or {}).get("full_rows")
+        if full:
+            print(f"\nNOTE: ran on a {len(df_raw):,}-row SAMPLE of the {full:,}-row "
+                  f"Google-Playstore dataset. Results are representative but not full-scale — "
+                  f"run `python fetch_dataset.py --sample {len(df_raw)}` once and re-run "
+                  f"`python clean.py` (it will pick data/raw/playstore_full.csv automatically) "
+                  f"for full-scale numbers.")
+        else:
+            print("\nWARNING: ran on the 11-row SAMPLE dataset. "
+                  "Replace with a real dataset (see data/playstore_sample.csv) before final results.")
+    if cap_note:
+        print(f"\nNOTE: apps.json exports {cap_note['exported']:,} of {cap_note['available']:,} "
+              f"cleaned rows (browser payload cap, rule 12).")
 
 
 if __name__ == "__main__":

@@ -269,6 +269,10 @@
 
     <div class="footer-note">
       <strong>Data note</strong> &mdash; dataset: <span id="footSource">loading…</span>.
+      Primary source: the MIT-licensed <em>gauthamp10/Google-Playstore-Dataset</em> scrape
+      (June 2021, 24 attributes); the committed default is a deterministic stratified sample
+      and <code>python fetch_dataset.py</code> builds the full 2,312,944-row file
+      (<code>data/raw/playstore_full.csv</code>, auto-detected by <code>clean.py</code>).
       Cleaning follows the documented rules in <code>clean.py</code> (install bands treated as lower
       bounds, zero prices preserved, one category typo fixed, exact duplicates removed).
       ML: scikit-learn pipelines, seed 42, grouped train/test split; models are trained by

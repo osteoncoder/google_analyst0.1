@@ -1,3 +1,10 @@
 __pycache__/
 *.pyc
 .venv/
+
+# Dataset downloads (fetch_dataset.py): the full 2.31M-row CSV (~666 MB) and the
+# tar.gz/parts staging area are far too large for git. Only the deterministic
+# sample (data/playstore_sample.csv + .meta.json) is committed.
+data/raw/
+*.tar.gz
+*.part

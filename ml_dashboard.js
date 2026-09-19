@@ -38,11 +38,21 @@ python app.py</pre>
     </div>`;
 }
 
+/* Honest, dataset-driven caveat: never claim "11-row" when the model was
+   trained on the 40k stratified sample (or any other subset). */
 function sampleNote(){
-  if(!METRICS || !METRICS.dataset || !METRICS.dataset.is_sample) return '';
-  return `<p class="warn-note">⚠ Trained on the bundled 11-row <strong>sample</strong> dataset —
-  these numbers verify the pipeline only. Re-run the three commands above with the
-  full dataset to get project results.</p>`;
+  const d = (METRICS && METRICS.dataset) || null;
+  if(!d || !d.is_sample) return '';
+  const rows = d.rows_cleaned ? Number(d.rows_cleaned).toLocaleString() : 'sample';
+  const full = d.full_dataset_rows ? ` of the ${Number(d.full_dataset_rows).toLocaleString()}-row dataset` : '';
+  const mechanical = !d.full_dataset_rows && Number(d.rows_cleaned) < 100;
+  return `<p class="warn-note">⚠ Trained on a ${rows}-row <strong>sample</strong>${full} — `
+    + (mechanical
+        ? 'these numbers verify the pipeline mechanically only.'
+        : 'results are representative but not full-scale; rare install tiers are deliberately over-sampled '
+          + '(see <code>data/playstore_sample.meta.json</code>). Run <code>python fetch_dataset.py</code> '
+          + 'and re-run the three commands above for full-scale numbers.')
+    + '</p>';
 }
 
 function fillCategorySelect(sel){
@@ -320,7 +330,7 @@ function renderSummary(){
   const m1 = METRICS.models.m1_rating;
   el.innerHTML = `
     <dl class="kv">
-      <dt>Dataset</dt><dd>${d.source || '—'} (${d.rows_cleaned ?? '—'} cleaned rows${d.is_sample ? ', SAMPLE' : ''}) · md5 ${d.md5 || '—'}</dd>
+      <dt>Dataset</dt><dd>${d.source || '—'} (${d.rows_cleaned ?? '—'} cleaned rows${d.is_sample ? ', SAMPLE' : ''}) · md5 ${d.md5 || '—'}${d.sample_note ? `<br><span class="tiny">${d.sample_note}</span>` : ''}</dd>
       <dt>Split</dt><dd>80/20 train/test before any preprocessing; GroupShuffleSplit on app name (same app never on both sides); 75/25 train/val for selection; test used exactly once</dd>
       <dt>Seed</dt><dd>${METRICS.seed}</dd>
       <dt>M1 inputs</dt><dd>${m1.features.join(', ')} → target ${m1.target}</dd>
@@ -333,7 +343,7 @@ function renderSummary(){
       <li>Listed price is a price tag, <strong>not observed revenue</strong>; no revenue is estimated anywhere.</li>
       <li>Neither model is a pre-launch or future-growth predictor: training data is a cross-sectional store snapshot and evaluation is in-sample-time.</li>
       <li>Unknown categories at prediction time are encoded as “not seen in training”.</li>
-      ${d.is_sample ? '<li>Current numbers are from the 11-row sample — pipeline verification only.</li>' : ''}
+      ${d.is_sample ? `<li>Current numbers are from a ${d.rows_cleaned ? Number(d.rows_cleaned).toLocaleString() : ''}-row sample${d.full_dataset_rows ? ` of the ${Number(d.full_dataset_rows).toLocaleString()}-row dataset` : ''} — representative, not full-scale.</li>` : ''}
     </ul>`;
 }
 

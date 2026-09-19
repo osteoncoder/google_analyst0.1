@@ -1,0 +1,900 @@
+{
+  "sample_rows": 40000,
+  "full_rows": 2312944,
+  "strategy": "stratified by (category x install tier), proportional quotas (largest-remainder), rows selected by the smallest content hash \u2014 reproducible without an RNG seed",
+  "stratum_floor": 25,
+  "floor_note": "every non-empty stratum keeps at least 25 rows, so rare strata (few categories of 100M+ apps) are over-represented in the sample relative to the full dataset \u2014 see tier_shares. Full-scale proportions return on a full run.",
+  "tier_shares": {
+    "Under 10K": {
+      "full": 1795541,
+      "sampled": 29023,
+      "full_pct": 77.6301,
+      "sample_pct": 72.5575
+    },
+    "10K-1M": {
+      "full": 469351,
+      "sampled": 8461,
+      "full_pct": 20.2924,
+      "sample_pct": 21.1525
+    },
+    "1M-100M": {
+      "full": 47261,
+      "sampled": 1916,
+      "full_pct": 2.0433,
+      "sample_pct": 4.79
+    },
+    "100M+": {
+      "full": 684,
+      "sampled": 493,
+      "full_pct": 0.0296,
+      "sample_pct": 1.2325
+    },
+    "__missing__": {
+      "full": 107,
+      "sampled": 107,
+      "full_pct": 0.0046,
+      "sample_pct": 0.2675
+    }
+  },
+  "strata": {
+    "Action | 100M+": {
+      "full": 48,
+      "sampled": 25
+    },
+    "Action | 10K-1M": {
+      "full": 7465,
+      "sampled": 140
+    },
+    "Action | 1M-100M": {
+      "full": 2144,
+      "sampled": 58
+    },
+    "Action | Under 10K": {
+      "full": 17889,
+      "sampled": 302
+    },
+    "Action | __missing__": {
+      "full": 9,
+      "sampled": 9
+    },
+    "Adventure | 100M+": {
+      "full": 8,
+      "sampled": 8
+    },
+    "Adventure | 10K-1M": {
+      "full": 6924,
+      "sampled": 132
+    },
+    "Adventure | 1M-100M": {
+      "full": 1106,
+      "sampled": 42
+    },
+    "Adventure | Under 10K": {
+      "full": 15161,
+      "sampled": 260
+    },
+    "Adventure | __missing__": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Arcade | 100M+": {
+      "full": 46,
+      "sampled": 25
+    },
+    "Arcade | 10K-1M": {
+      "full": 7481,
+      "sampled": 141
+    },
+    "Arcade | 1M-100M": {
+      "full": 1594,
+      "sampled": 49
+    },
+    "Arcade | Under 10K": {
+      "full": 44668,
+      "sampled": 717
+    },
+    "Arcade | __missing__": {
+      "full": 3,
+      "sampled": 3
+    },
+    "Art & Design | 100M+": {
+      "full": 3,
+      "sampled": 3
+    },
+    "Art & Design | 10K-1M": {
+      "full": 3762,
+      "sampled": 83
+    },
+    "Art & Design | 1M-100M": {
+      "full": 249,
+      "sampled": 28
+    },
+    "Art & Design | Under 10K": {
+      "full": 14523,
+      "sampled": 250
+    },
+    "Art & Design | __missing__": {
+      "full": 2,
+      "sampled": 2
+    },
+    "Auto & Vehicles | 100M+": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Auto & Vehicles | 10K-1M": {
+      "full": 3306,
+      "sampled": 76
+    },
+    "Auto & Vehicles | 1M-100M": {
+      "full": 214,
+      "sampled": 28
+    },
+    "Auto & Vehicles | Under 10K": {
+      "full": 14757,
+      "sampled": 253
+    },
+    "Auto & Vehicles | __missing__": {
+      "full": 2,
+      "sampled": 2
+    },
+    "Beauty | 10K-1M": {
+      "full": 1539,
+      "sampled": 48
+    },
+    "Beauty | 1M-100M": {
+      "full": 119,
+      "sampled": 26
+    },
+    "Beauty | Under 10K": {
+      "full": 10114,
+      "sampled": 181
+    },
+    "Board | 100M+": {
+      "full": 7,
+      "sampled": 7
+    },
+    "Board | 10K-1M": {
+      "full": 3182,
+      "sampled": 74
+    },
+    "Board | 1M-100M": {
+      "full": 493,
+      "sampled": 32
+    },
+    "Board | Under 10K": {
+      "full": 6906,
+      "sampled": 132
+    },
+    "Books & Reference | 100M+": {
+      "full": 5,
+      "sampled": 5
+    },
+    "Books & Reference | 10K-1M": {
+      "full": 30577,
+      "sampled": 499
+    },
+    "Books & Reference | 1M-100M": {
+      "full": 813,
+      "sampled": 37
+    },
+    "Books & Reference | Under 10K": {
+      "full": 85333,
+      "sampled": 1348
+    },
+    "Business | 100M+": {
+      "full": 10,
+      "sampled": 10
+    },
+    "Business | 10K-1M": {
+      "full": 12332,
+      "sampled": 216
+    },
+    "Business | 1M-100M": {
+      "full": 519,
+      "sampled": 33
+    },
+    "Business | Under 10K": {
+      "full": 130910,
+      "sampled": 2055
+    },
+    "Card | 100M+": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Card | 10K-1M": {
+      "full": 3303,
+      "sampled": 76
+    },
+    "Card | 1M-100M": {
+      "full": 518,
+      "sampled": 33
+    },
+    "Card | Under 10K": {
+      "full": 4354,
+      "sampled": 92
+    },
+    "Card | __missing__": {
+      "full": 3,
+      "sampled": 3
+    },
+    "Casino | 10K-1M": {
+      "full": 2153,
+      "sampled": 58
+    },
+    "Casino | 1M-100M": {
+      "full": 339,
+      "sampled": 30
+    },
+    "Casino | Under 10K": {
+      "full": 2584,
+      "sampled": 65
+    },
+    "Casual | 100M+": {
+      "full": 33,
+      "sampled": 25
+    },
+    "Casual | 10K-1M": {
+      "full": 10562,
+      "sampled": 188
+    },
+    "Casual | 1M-100M": {
+      "full": 2548,
+      "sampled": 64
+    },
+    "Casual | Under 10K": {
+      "full": 37666,
+      "sampled": 609
+    },
+    "Casual | __missing__": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Comics | 10K-1M": {
+      "full": 1156,
+      "sampled": 43
+    },
+    "Comics | 1M-100M": {
+      "full": 134,
+      "sampled": 27
+    },
+    "Comics | Under 10K": {
+      "full": 1572,
+      "sampled": 49
+    },
+    "Communication | 100M+": {
+      "full": 43,
+      "sampled": 25
+    },
+    "Communication | 10K-1M": {
+      "full": 8804,
+      "sampled": 161
+    },
+    "Communication | 1M-100M": {
+      "full": 993,
+      "sampled": 40
+    },
+    "Communication | Under 10K": {
+      "full": 38327,
+      "sampled": 619
+    },
+    "Dating | 100M+": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Dating | 10K-1M": {
+      "full": 2012,
+      "sampled": 56
+    },
+    "Dating | 1M-100M": {
+      "full": 168,
+      "sampled": 27
+    },
+    "Dating | Under 10K": {
+      "full": 4343,
+      "sampled": 92
+    },
+    "Education | 100M+": {
+      "full": 6,
+      "sampled": 6
+    },
+    "Education | 10K-1M": {
+      "full": 44409,
+      "sampled": 713
+    },
+    "Education | 1M-100M": {
+      "full": 1513,
+      "sampled": 48
+    },
+    "Education | Under 10K": {
+      "full": 195162,
+      "sampled": 3051
+    },
+    "Educational | 100M+": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Educational | 10K-1M": {
+      "full": 4980,
+      "sampled": 102
+    },
+    "Educational | 1M-100M": {
+      "full": 987,
+      "sampled": 40
+    },
+    "Educational | Under 10K": {
+      "full": 15335,
+      "sampled": 262
+    },
+    "Educational | __missing__": {
+      "full": 2,
+      "sampled": 2
+    },
+    "Entertainment | 100M+": {
+      "full": 32,
+      "sampled": 25
+    },
+    "Entertainment | 10K-1M": {
+      "full": 36821,
+      "sampled": 596
+    },
+    "Entertainment | 1M-100M": {
+      "full": 2997,
+      "sampled": 71
+    },
+    "Entertainment | Under 10K": {
+      "full": 98425,
+      "sampled": 1551
+    },
+    "Entertainment | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Events | 10K-1M": {
+      "full": 656,
+      "sampled": 35
+    },
+    "Events | 1M-100M": {
+      "full": 25,
+      "sampled": 25
+    },
+    "Events | Under 10K": {
+      "full": 12160,
+      "sampled": 213
+    },
+    "Finance | 100M+": {
+      "full": 7,
+      "sampled": 7
+    },
+    "Finance | 10K-1M": {
+      "full": 15823,
+      "sampled": 270
+    },
+    "Finance | 1M-100M": {
+      "full": 1408,
+      "sampled": 46
+    },
+    "Finance | Under 10K": {
+      "full": 48226,
+      "sampled": 772
+    },
+    "Finance | __missing__": {
+      "full": 2,
+      "sampled": 2
+    },
+    "Food & Drink | 100M+": {
+      "full": 2,
+      "sampled": 2
+    },
+    "Food & Drink | 10K-1M": {
+      "full": 5614,
+      "sampled": 112
+    },
+    "Food & Drink | 1M-100M": {
+      "full": 325,
+      "sampled": 30
+    },
+    "Food & Drink | Under 10K": {
+      "full": 67985,
+      "sampled": 1079
+    },
+    "Food & Drink | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Health & Fitness | 100M+": {
+      "full": 6,
+      "sampled": 6
+    },
+    "Health & Fitness | 10K-1M": {
+      "full": 11898,
+      "sampled": 209
+    },
+    "Health & Fitness | 1M-100M": {
+      "full": 768,
+      "sampled": 37
+    },
+    "Health & Fitness | Under 10K": {
+      "full": 70837,
+      "sampled": 1123
+    },
+    "Health & Fitness | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "House & Home | 10K-1M": {
+      "full": 1665,
+      "sampled": 50
+    },
+    "House & Home | 1M-100M": {
+      "full": 119,
+      "sampled": 26
+    },
+    "House & Home | Under 10K": {
+      "full": 12584,
+      "sampled": 220
+    },
+    "House & Home | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Libraries & Demo | 10K-1M": {
+      "full": 925,
+      "sampled": 39
+    },
+    "Libraries & Demo | 1M-100M": {
+      "full": 80,
+      "sampled": 26
+    },
+    "Libraries & Demo | Under 10K": {
+      "full": 4193,
+      "sampled": 90
+    },
+    "Lifestyle | 100M+": {
+      "full": 7,
+      "sampled": 7
+    },
+    "Lifestyle | 10K-1M": {
+      "full": 21904,
+      "sampled": 364
+    },
+    "Lifestyle | 1M-100M": {
+      "full": 1255,
+      "sampled": 44
+    },
+    "Lifestyle | Under 10K": {
+      "full": 95165,
+      "sampled": 1500
+    },
+    "Maps & Navigation | 100M+": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Maps & Navigation | 10K-1M": {
+      "full": 5782,
+      "sampled": 114
+    },
+    "Maps & Navigation | 1M-100M": {
+      "full": 469,
+      "sampled": 32
+    },
+    "Maps & Navigation | Under 10K": {
+      "full": 20467,
+      "sampled": 342
+    },
+    "Medical | 10K-1M": {
+      "full": 5009,
+      "sampled": 102
+    },
+    "Medical | 1M-100M": {
+      "full": 168,
+      "sampled": 27
+    },
+    "Medical | Under 10K": {
+      "full": 26888,
+      "sampled": 442
+    },
+    "Music | 100M+": {
+      "full": 5,
+      "sampled": 5
+    },
+    "Music | 10K-1M": {
+      "full": 1364,
+      "sampled": 46
+    },
+    "Music | 1M-100M": {
+      "full": 200,
+      "sampled": 28
+    },
+    "Music | Under 10K": {
+      "full": 2632,
+      "sampled": 65
+    },
+    "Music | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Music & Audio | 100M+": {
+      "full": 33,
+      "sampled": 25
+    },
+    "Music & Audio | 10K-1M": {
+      "full": 27993,
+      "sampled": 459
+    },
+    "Music & Audio | 1M-100M": {
+      "full": 1413,
+      "sampled": 47
+    },
+    "Music & Audio | Under 10K": {
+      "full": 125467,
+      "sampled": 1970
+    },
+    "News & Magazines | 100M+": {
+      "full": 6,
+      "sampled": 6
+    },
+    "News & Magazines | 10K-1M": {
+      "full": 8792,
+      "sampled": 161
+    },
+    "News & Magazines | 1M-100M": {
+      "full": 440,
+      "sampled": 31
+    },
+    "News & Magazines | Under 10K": {
+      "full": 33569,
+      "sampled": 545
+    },
+    "Parenting | 10K-1M": {
+      "full": 1106,
+      "sampled": 42
+    },
+    "Parenting | 1M-100M": {
+      "full": 83,
+      "sampled": 26
+    },
+    "Parenting | Under 10K": {
+      "full": 2621,
+      "sampled": 65
+    },
+    "Personalization | 100M+": {
+      "full": 16,
+      "sampled": 16
+    },
+    "Personalization | 10K-1M": {
+      "full": 26496,
+      "sampled": 436
+    },
+    "Personalization | 1M-100M": {
+      "full": 1843,
+      "sampled": 53
+    },
+    "Personalization | Under 10K": {
+      "full": 60854,
+      "sampled": 968
+    },
+    "Personalization | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Photography | 100M+": {
+      "full": 42,
+      "sampled": 25
+    },
+    "Photography | 10K-1M": {
+      "full": 11483,
+      "sampled": 203
+    },
+    "Photography | 1M-100M": {
+      "full": 1998,
+      "sampled": 56
+    },
+    "Photography | Under 10K": {
+      "full": 22029,
+      "sampled": 366
+    },
+    "Productivity | 100M+": {
+      "full": 42,
+      "sampled": 25
+    },
+    "Productivity | 10K-1M": {
+      "full": 12631,
+      "sampled": 220
+    },
+    "Productivity | 1M-100M": {
+      "full": 1159,
+      "sampled": 43
+    },
+    "Productivity | Under 10K": {
+      "full": 65866,
+      "sampled": 1046
+    },
+    "Puzzle | 100M+": {
+      "full": 19,
+      "sampled": 19
+    },
+    "Puzzle | 10K-1M": {
+      "full": 11490,
+      "sampled": 203
+    },
+    "Puzzle | 1M-100M": {
+      "full": 1892,
+      "sampled": 54
+    },
+    "Puzzle | Under 10K": {
+      "full": 37759,
+      "sampled": 610
+    },
+    "Puzzle | __missing__": {
+      "full": 8,
+      "sampled": 8
+    },
+    "Racing | 100M+": {
+      "full": 26,
+      "sampled": 25
+    },
+    "Racing | 10K-1M": {
+      "full": 3477,
+      "sampled": 79
+    },
+    "Racing | 1M-100M": {
+      "full": 1212,
+      "sampled": 43
+    },
+    "Racing | Under 10K": {
+      "full": 5646,
+      "sampled": 112
+    },
+    "Racing | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Role Playing | 100M+": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Role Playing | 10K-1M": {
+      "full": 4500,
+      "sampled": 94
+    },
+    "Role Playing | 1M-100M": {
+      "full": 1153,
+      "sampled": 43
+    },
+    "Role Playing | Under 10K": {
+      "full": 4353,
+      "sampled": 92
+    },
+    "Role Playing | __missing__": {
+      "full": 24,
+      "sampled": 24
+    },
+    "Shopping | 100M+": {
+      "full": 19,
+      "sampled": 19
+    },
+    "Shopping | 10K-1M": {
+      "full": 9450,
+      "sampled": 171
+    },
+    "Shopping | 1M-100M": {
+      "full": 1051,
+      "sampled": 41
+    },
+    "Shopping | Under 10K": {
+      "full": 64733,
+      "sampled": 1028
+    },
+    "Shopping | __missing__": {
+      "full": 3,
+      "sampled": 3
+    },
+    "Simulation | 100M+": {
+      "full": 13,
+      "sampled": 13
+    },
+    "Simulation | 10K-1M": {
+      "full": 10961,
+      "sampled": 195
+    },
+    "Simulation | 1M-100M": {
+      "full": 2783,
+      "sampled": 68
+    },
+    "Simulation | Under 10K": {
+      "full": 9515,
+      "sampled": 172
+    },
+    "Simulation | __missing__": {
+      "full": 10,
+      "sampled": 10
+    },
+    "Social | 100M+": {
+      "full": 24,
+      "sampled": 24
+    },
+    "Social | 10K-1M": {
+      "full": 8568,
+      "sampled": 157
+    },
+    "Social | 1M-100M": {
+      "full": 920,
+      "sampled": 39
+    },
+    "Social | Under 10K": {
+      "full": 35218,
+      "sampled": 571
+    },
+    "Social | __missing__": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Sports | 100M+": {
+      "full": 16,
+      "sampled": 16
+    },
+    "Sports | 10K-1M": {
+      "full": 10204,
+      "sampled": 183
+    },
+    "Sports | 1M-100M": {
+      "full": 1228,
+      "sampled": 44
+    },
+    "Sports | Under 10K": {
+      "full": 36031,
+      "sampled": 583
+    },
+    "Sports | __missing__": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Strategy | 100M+": {
+      "full": 7,
+      "sampled": 7
+    },
+    "Strategy | 10K-1M": {
+      "full": 2525,
+      "sampled": 64
+    },
+    "Strategy | 1M-100M": {
+      "full": 678,
+      "sampled": 35
+    },
+    "Strategy | Under 10K": {
+      "full": 5308,
+      "sampled": 107
+    },
+    "Strategy | __missing__": {
+      "full": 8,
+      "sampled": 8
+    },
+    "Tools | 100M+": {
+      "full": 93,
+      "sampled": 26
+    },
+    "Tools | 10K-1M": {
+      "full": 34975,
+      "sampled": 567
+    },
+    "Tools | 1M-100M": {
+      "full": 4120,
+      "sampled": 89
+    },
+    "Tools | Under 10K": {
+      "full": 104797,
+      "sampled": 1650
+    },
+    "Tools | __missing__": {
+      "full": 3,
+      "sampled": 3
+    },
+    "Travel & Local | 100M+": {
+      "full": 9,
+      "sampled": 9
+    },
+    "Travel & Local | 10K-1M": {
+      "full": 9744,
+      "sampled": 176
+    },
+    "Travel & Local | 1M-100M": {
+      "full": 760,
+      "sampled": 36
+    },
+    "Travel & Local | Under 10K": {
+      "full": 56774,
+      "sampled": 905
+    },
+    "Travel & Local | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Trivia | 100M+": {
+      "full": 2,
+      "sampled": 2
+    },
+    "Trivia | 10K-1M": {
+      "full": 2793,
+      "sampled": 68
+    },
+    "Trivia | 1M-100M": {
+      "full": 284,
+      "sampled": 29
+    },
+    "Trivia | Under 10K": {
+      "full": 8715,
+      "sampled": 160
+    },
+    "Trivia | __missing__": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Video Players & Editors | 100M+": {
+      "full": 29,
+      "sampled": 25
+    },
+    "Video Players & Editors | 10K-1M": {
+      "full": 5441,
+      "sampled": 109
+    },
+    "Video Players & Editors | 1M-100M": {
+      "full": 970,
+      "sampled": 40
+    },
+    "Video Players & Editors | Under 10K": {
+      "full": 7575,
+      "sampled": 142
+    },
+    "Weather | 100M+": {
+      "full": 4,
+      "sampled": 4
+    },
+    "Weather | 10K-1M": {
+      "full": 2763,
+      "sampled": 67
+    },
+    "Weather | 1M-100M": {
+      "full": 566,
+      "sampled": 33
+    },
+    "Weather | Under 10K": {
+      "full": 3913,
+      "sampled": 85
+    },
+    "Word | 100M+": {
+      "full": 1,
+      "sampled": 1
+    },
+    "Word | 10K-1M": {
+      "full": 2551,
+      "sampled": 64
+    },
+    "Word | 1M-100M": {
+      "full": 443,
+      "sampled": 32
+    },
+    "Word | Under 10K": {
+      "full": 5632,
+      "sampled": 112
+    },
+    "Word | __missing__": {
+      "full": 3,
+      "sampled": 3
+    }
+  },
+  "column_mapping": {
+    "app": "App Name",
+    "category": "Category",
+    "rating": "Rating",
+    "reviews": "Rating Count",
+    "installs": "Installs (band floor, e.g. '50,000+')",
+    "size_mb": "Size",
+    "price": "Price",
+    "last_updated": "Last Updated"
+  },
+  "source_repo": "https://github.com/gauthamp10/Google-Playstore-Dataset",
+  "license": "MIT",
+  "scraped": "2021-06",
+  "generated_at": "2026-09-19T11:00:08+00:00",
+  "full_csv": "/home/user/google_analyst0.1/data/raw/playstore_full.csv"
+}
