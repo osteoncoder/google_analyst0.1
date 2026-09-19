@@ -364,6 +364,38 @@ justification behind a `<details>` disclosure ("Method & caveats",
 "Why this replaced the growth curve", …). Nothing was deleted: the
 data-integrity caveats are still all there, just not walls of text.
 
+### Measured render times — round 1 (browser, 40,000 rows)
+
+The dashboard posts its own timings to the backend (`?bench=1` panel + a
+temporary `/api/bench` sink), because the preview is behind a tokened proxy:
+no DevTools, no shareable URL. Round 1, after the lazy-rendering work:
+
+| chart | round 1 | root cause | fix |
+|---|---|---|---|
+| 1 — size × rating | **1403 ms** | 48 traces (one per category) → 48× Plotly's per-trace setup | collapse to 1 trace, per-point colour array; memoise `toLocaleString` (14 distinct installs values, 17k calls) |
+| 2 — correlation | **926 ms** | 25 sweeps of 40k rows building ~1.3M pair arrays — **data prep, not Plotly** | materialise columns once into `Float64Array`, pairwise Pearson: 159.5 → 22.7 ms (7.0×) |
+| 3 — last-updated month | 434 ms | Plotly drawing 1,143 stacked SVG bars | none — inherent to SVG bars |
+| 4 — rating histogram | 159 ms | not slow | untouched (by request) |
+| 5 — category scatter | 178 ms | — | already fixed |
+| 6 — pricing | 189 ms | — | untouched |
+| **total** | **3289 ms** | | |
+
+WebGL **was** available (`scattergl` engaged), so chart 1's cost was not the
+SVG fallback — it was the trace count.
+
+Notes on the two fixes:
+
+- Chart 1 keeps the same picture and hover: every marker keeps its category
+  colour (now a per-point array) and `customdata` still names the category.
+  Verified: 1 trace, 17,247 markers, 10 distinct colours, every hover valid.
+- Chart 2 uses the **two-pass** Pearson (means, then products of deviations),
+  not the cheaper one-pass `n·Σxy − Σx·Σy`, which loses precision to
+  catastrophic cancellation at n = 40,000. Output verified identical to the
+  old matrix to **1.8e-12**. The rewrite also removes a latent
+  `Math.max(...40k_values)` spread, which can overflow the call stack.
+
+**Awaiting round 2 numbers** from the same browser to confirm the effect.
+
 ### Verifying Phase 2 in a browser
 
 1. **Overflow:** at 1440 / 1080 / 768 / 375 px, run
@@ -373,12 +405,12 @@ data-integrity caveats are still all there, just not walls of text.
 2. **Hamburger:** below 1080px the sidebar must be off-screen until the Menu
    button is pressed; Tab to it and press Enter; `Escape` closes it. Above
    1080px the button must not exist.
-3. **Chart timings:** open `?bench=1` and read the console, or run
-   `APEX_CHART_TIMES` after scrolling through the page. Post those numbers if
-   chart 1 or 5 is still slow — they say whether the remaining cost is Plotly
-   or something else.
+3. **Chart timings:** the dashboard reports them itself. With `?bench=1` a
+   panel appears bottom-right, and the same numbers are POSTed to `/api/bench`
+   and printed to `python app.py`'s stdout — use that if the preview cannot be
+   opened in a new tab.
 4. If WebGL is unavailable in your browser, chart 1 silently falls back to
-   `scatter` (SVG). `APEX_CHART_TIMES.chart1` will show it.
+   `scatter` (SVG). The bench panel's footer line says which path ran.
 
 ### 2.1 Hamburger menu for navigation
 
