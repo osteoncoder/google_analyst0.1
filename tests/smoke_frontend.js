@@ -142,8 +142,21 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
 
   const c1 = plots['chart1'];
   const cats1 = new Set(rows.map(r => r.category)).size;
-  if (c1 && c1.traces.length === cats1) ok(`chart1: ${cats1} category traces (one per real category)`);
-  else fail(`chart1 trace count ${c1 ? c1.traces.length : 'none'} != ${cats1}`);
+  // Chart 1 is ONE trace with a per-point colour array, not one trace per
+  // category: 48 traces cost 48x Plotly's per-trace setup for the same markers
+  // (1.4 s measured). The category colour and name must survive the merge.
+  if (c1 && c1.traces.length === 1) ok(`chart1: single trace (${cats1} categories carried as per-point colours)`);
+  else fail(`chart1 trace count ${c1 ? c1.traces.length : 'none'} != 1`);
+  if (c1 && c1.traces[0].y.length === rows.filter(r => r.installs >= 1000 && r.rating && r.size_mb).length)
+    ok(`chart1: ${c1.traces[0].y.length} markers, one per app passing the ≥1,000-install filter`);
+  else fail('chart1 marker count does not match the filtered rows');
+  if (c1 && c1.traces[0].marker.color.length === c1.traces[0].y.length)
+    ok('chart1: every marker has its own category colour');
+  else fail('chart1 per-point colour array is missing or the wrong length');
+  const knownCats = new Set(rows.map(r => r.category));
+  if (c1 && c1.traces[0].customdata.every(s => knownCats.has(/Category: ([^<]+)<br>/.exec(s)[1])))
+    ok('chart1: hover still names a real category for every point');
+  else fail('chart1 hover lost the category when the traces were merged');
   if (c1 && c1.traces.every(t => t.y.every(v => v >= 1 && v <= 5))) ok('chart1: all ratings within 1-5');
 
   const c2 = plots['chart2'];
