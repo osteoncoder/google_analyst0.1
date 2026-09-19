@@ -50,6 +50,16 @@ No build step, no npm.
 
 ## Run it (full version with ML)
 
+> **Run every command below from the project root** — the folder that directly
+> contains `app.py`, `index.html` and `requirements.txt`.
+>
+> If `pip` answers `Could not open requirements file: ... 'requirements.txt'`,
+> the terminal is one level too high (a GitHub ZIP usually extracts to a folder
+> like `google_analyst0.1-main/`). Either `cd` into that folder, or reopen the
+> project with **File → Open Folder** on it — VS Code's integrated terminal
+> then starts in the right place. Check with `ls`/`dir`: you should see
+> `requirements.txt` listed.
+
 ```bash
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt   # Windows: .venv\Scripts\pip ...
