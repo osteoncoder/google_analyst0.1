@@ -16,7 +16,19 @@ async function fetchJSON(url, opts){
     let msg = 'HTTP ' + res.status;
     try{
       const j = await res.json();
-      if(j && j.detail) msg = (typeof j.detail === 'string') ? j.detail : JSON.stringify(j.detail);
+      if(j && j.detail){
+        if(typeof j.detail === 'string'){
+          msg = j.detail;
+        }else if(Array.isArray(j.detail)){
+          // FastAPI validation errors: render "field: reason" instead of raw JSON
+          msg = j.detail.map(d=>{
+            const field = (d.loc || []).filter(x=>x !== 'body').join('.') || 'input';
+            return `${field}: ${d.msg || 'invalid value'}`;
+          }).join(' · ');
+        }else{
+          msg = JSON.stringify(j.detail);
+        }
+      }
     }catch(e){ /* keep default */ }
     throw new Error(msg);
   }
@@ -81,6 +93,13 @@ function numOrNull(input){
   return isFinite(n) ? n : null;
 }
 
+/* Counts (reviews) must be integers — rounds rather than sending a fraction
+   that the API would reject; mirrors the API's own rounding of counts. */
+function intOrNull(input){
+  const n = numOrNull(input);
+  return n === null ? null : Math.round(n);
+}
+
 /* ================================================================
    SECTION 07 — Rating Predictor (M1)
    ================================================================ */
@@ -106,19 +125,22 @@ function initRatingForm(){
           category: cat,
           size_mb: numOrNull(document.getElementById('rfSize')),
           price: numOrNull(document.getElementById('rfPrice')),
-          reviews: numOrNull(document.getElementById('rfReviews')),
+          reviews: intOrNull(document.getElementById('rfReviews')),
         }),
       });
       const tm = out.test_metrics || {};
+      const catNote = out.category_used
+        ? `<p class="tiny">Category used: <strong>${out.category_used}</strong>${out.category_changed ? ' (normalized from your input the same way the training data was)' : ''}.</p>`
+        : '';
       result.innerHTML = `
         <div class="pred-big">${out.predicted_rating.toFixed(2)}<span> / 5 predicted rating</span></div>
         <ul class="assump">${out.assumptions.map(a=>`<li>${a}</li>`).join('')}</ul>
+        ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> · held-out test:
         MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}
         (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>`;
     }catch(err){
-      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`;
-      + sampleNote();
+      result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>` + sampleNote();
     }
   });
 }
@@ -178,9 +200,13 @@ function initTierForm(){
         </div>`;
       }).join('');
       const tm = out.test_metrics || {};
+      const catNote = out.category_used
+        ? `<p class="tiny">Category used: <strong>${out.category_used}</strong>${out.category_changed ? ' (normalized from your input the same way the training data was)' : ''}.</p>`
+        : '';
       result.innerHTML = `
         <div class="tier-badge">${out.predicted_tier}</div>
         <div class="prob-bars">${bars}</div>
+        ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> (without Reviews) · held-out test:
         accuracy ${tm.accuracy?.toFixed(3)} · macro-F1 ${tm['macro_f1']?.toFixed(3)}
         · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>`;

@@ -181,8 +181,25 @@ Exactly what the forms ask for (that is deliberate):
 - M1: category, size (MB), price ($), review count.
 - M2: category, size (MB), price ($).
 - Omitted fields: size → training median (imputer), price → $0, reviews → 0.
+- **Category normalization**: an incoming category is passed through
+  `clean.py`'s own `clean_category()` (trim, underscores/hyphens → spaces,
+  title case, the one documented typo fix) *before* encoding — the same
+  transformation the training categories went through. A hand-typed
+  `"education"` therefore matches the trained `"Education"` category instead
+  of silently falling into the "unseen category" bucket. The response reports
+  the category actually used (`category_used`) and whether it was changed.
 - Unknown category → `handle_unknown='ignore'` one-hot (encoded as "not seen
-  in training"). The API returns its assumptions with every prediction.
+  in training"), **and the response says so explicitly** in its assumptions
+  list, naming the category and how many the model knows. A category that is
+  blank after normalization (e.g. `"___"`) is rejected with a 422 rather than
+  being scored as a category named " ".
+- Review counts are counts: a fractional value (e.g. `1200.5`) is rounded,
+  not rejected.
+- The M1 prediction is clipped to the target's own domain, `[1, 5]`, and the
+  response notes when clipping was applied.
+- The API returns its assumptions with every prediction, and validation
+  errors (422) are rendered as readable `field: reason` messages in the UI,
+  not raw JSON.
 
 ## Dataset (provenance)
 

@@ -245,15 +245,21 @@ def cap_dashboard_rows(df: pd.DataFrame, tiers: pd.Series, max_rows: int,
 
 
 def clean_category(v):
-    """Rule 9: trim, underscores/hyphens -> spaces, title case, typo fix."""
+    """Rule 9: trim, underscores/hyphens -> spaces, title case, typo fix.
+
+    A value that is blank after normalization (e.g. "___" or "-") is missing,
+    not a category named " ".
+    """
     if v is None:
         return None
     s = str(v).strip()
     if s == "" or s.lower() in ("nan", "none"):
         return None
     s = re.sub(r"[_\-]+", " ", s)
-    t = _title_case(s)
-    return CATEGORY_TYPO_MAP.get(t, t)
+    if s.strip() == "":
+        return None
+    t = _title_case(s).strip()
+    return CATEGORY_TYPO_MAP.get(t, t) or None
 
 
 def parse_installs(v):

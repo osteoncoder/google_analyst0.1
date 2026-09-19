@@ -123,10 +123,11 @@ function parseSentiment(v){
 
 function titleCase(s){ return s.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase()); }
 
-/* Mirrors clean.py rule 9: underscores/hyphens → spaces, title case, typo fix. */
+/* Mirrors clean.py rule 9: underscores/hyphens → spaces, title case, typo fix.
+   Blank-after-normalization ("___", "-") is missing, not a category named " ". */
 function normCategory(v){
   if(v===null || v===undefined) return 'Unknown';
-  const t = titleCase(String(v).trim().replace(/[_\-]+/g, ' '));
+  const t = titleCase(String(v).trim().replace(/[_\-]+/g, ' ')).trim();
   if(!t) return 'Unknown';
   return CATEGORY_TYPO_MAP[t] || t;
 }
