@@ -38,7 +38,9 @@ Documented rules
 6.  Size      : "86M" -> 86.0 MB, "72K" -> 72/1024 MB, "Varies with device" ->
     missing. Missing size is a real state (common on Play), not an error.
 7.  Price     : "" or "0" -> 0.0. Legitimate zero prices are preserved, never
-    imputed to a nonzero value. "$1.99" -> 1.99. type = Paid / Free / Unknown.
+    imputed to a nonzero value. "$1.99" -> 1.99. A dataset with NO Price column
+    at all gets unknown (NaN) prices, not $0 — it is not assumed to be
+    all-free (mirrors data.js). type = Paid / Free / Unknown.
     Listed price is a price tag, NOT observed revenue.
 8.  Last Updated: parsed from "Jan 15, 2024", "January 15, 2024", "2024-01-15",
     "15-Jan-2024", "01/15/2024". Unparseable -> missing (counted, row kept).
@@ -169,9 +171,11 @@ def parse_reviews(v):
 
 
 def parse_price(v):
-    """Rule 7: ''/0 -> 0.0 (free, preserved); '$1.99' -> 1.99; unparseable -> NaN."""
+    """Rule 7: ''/0 -> 0.0 (free, preserved); '$1.99' -> 1.99; column missing
+    (None) -> NaN (unknown, mirrors data.js parsePrice(null) — a dataset without
+    a Price column is NOT assumed to be all-free); unparseable -> NaN."""
     if v is None:
-        return 0.0
+        return np.nan
     if isinstance(v, (int, np.integer)):
         return float(v)
     if isinstance(v, (float, np.floating)):
@@ -424,9 +428,12 @@ def main() -> None:
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    is_sample = raw_path.name.startswith("sample")
 
     df_raw = load_raw(raw_path)
+    # The "sample" flag drives "verification only" warnings, so it must not
+    # fire for a large real dataset that merely has a sample-ish filename:
+    # require BOTH a sample-ish name and a small row count.
+    is_sample = raw_path.name.lower().startswith("sample") and len(df_raw) < 100
     cleaned, report = clean(df_raw, tier_bounds)
 
     report.update(

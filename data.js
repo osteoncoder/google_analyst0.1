@@ -88,7 +88,9 @@ function parseRating(v){
   return (isFinite(n) && n>=1 && n<=5) ? n : NaN;
 }
 
-/* Mirrors clean.py rule 8: "Jan 15, 2024" / "January 15, 2024" / ISO. */
+/* Mirrors clean.py rule 8: "Jan 15, 2024" / "January 15, 2024" / ISO.
+   All returned dates are UTC-midnight Date objects so consumers can safely
+   read getUTC* fields (charts.js does) without local-timezone day drift. */
 const MONTH_IDX = {
   jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3,
   may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8,
@@ -99,12 +101,12 @@ function parseDate(v){
   if(v===null || v===undefined) return null;
   const s = String(v).trim();
   if(s==='' || s.toLowerCase()==='nan') return null;
-  const t = Date.parse(s);                 // handles "2024-01-15" (ISO)
+  const t = Date.parse(s);                 // handles "2024-01-15" (ISO, UTC midnight)
   if(!isNaN(t)) return new Date(t);
   const m = s.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);   // "Jan 15, 2024" / "January 15, 2024"
   if(m){
     const mi = MONTH_IDX[m[1].toLowerCase()];
-    if(mi!==undefined) return new Date(parseInt(m[3],10), mi, parseInt(m[2],10));
+    if(mi!==undefined) return new Date(Date.UTC(parseInt(m[3],10), mi, parseInt(m[2],10)));
   }
   return null;
 }

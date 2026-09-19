@@ -86,7 +86,6 @@ function renderChart1(){
       hovertemplate: '%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra>'+cat+'</extra>',
     };
   });
-  const ymin = Math.min(2.3, Math.floor(Math.min(...rows.map(d=>d.rating))*10)/10 - 0.25);
   Plotly.newPlot(el, traces, {
     ...layoutBase,
     margin:{t:16,l:60,r:130,b:56},

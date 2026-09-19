@@ -72,7 +72,7 @@ const sandbox = {
       return { ok: true, json: async () => ({ predicted_rating: 4.2, model: 'Test', test_metrics: { mae: 0.3, rmse: 0.4, r2: 0.2 }, n_test: 10, assumptions: ['test assumption'], warning: 'test warning' }) };
     }
     if (url === 'api/predict/tier') {
-      return { ok: true, json: async () => ({ predicted_tier: '1M-100M', probabilities: { 'Under 100K': 0.1, '100K-1M': 0.2, '1M-100M': 0.5, '100M+': 0.2 }, tier_order: ['Under 100K', '100K-1M', '1M-100M', '100M+'], model: 'Test', test_metrics: { accuracy: 0.7, macro_f1: 0.6, weighted_f1: 0.65 }, assumptions: ['test assumption'], warning: 'Probabilities are model estimates, not guarantees. test' }) };
+      return { ok: true, json: async () => ({ predicted_tier: '1M-100M', probabilities: { 'Under 10K': 0.1, '10K-1M': 0.2, '1M-100M': 0.5, '100M+': 0.2 }, tier_order: ['Under 10K', '10K-1M', '1M-100M', '100M+'], model: 'Test', test_metrics: { accuracy: 0.7, macro_f1: 0.6, weighted_f1: 0.65 }, assumptions: ['test assumption'], warning: 'Probabilities are model estimates, not guarantees. test' }) };
     }
     return { ok: false, status: 404, json: async () => ({}) };
   },

@@ -71,13 +71,14 @@ class TierIn(BaseModel):
     price: float | None = Field(default=None, ge=0, le=100_000)
 
 
-def _assumptions(size_mb, price, reviews=None) -> list[str]:
+def _assumptions(size_mb, price, reviews=None, has_reviews=False) -> list[str]:
     a = []
     if size_mb is None:
         a.append("size omitted → imputed to the training-set median")
     if price is None:
         a.append("price omitted → treated as free ($0)")
-    if reviews is not None and reviews is None:
+    # Only M1 has a reviews input; for M2 "no reviews field" is not an assumption.
+    if has_reviews and reviews is None:
         a.append("reviews omitted → treated as 0")
     a.append("listed price is a price tag, not observed revenue")
     return a
@@ -119,6 +120,8 @@ def predict_rating(body: RatingIn):
     if state["m1"] is None:
         raise HTTPException(status_code=503, detail="M1 model not loaded — run: python train_models.py")
     meta = state["m1_meta"] or {}
+    if not meta.get("features"):
+        raise HTTPException(status_code=503, detail="M1 model metadata missing — re-run: python train_models.py")
     row = {
         "category": body.category.strip(),
         "size_mb": body.size_mb if body.size_mb is not None else np.nan,
@@ -133,7 +136,7 @@ def predict_rating(body: RatingIn):
         "model": meta.get("model"),
         "test_metrics": _round(meta.get("test_metrics", {})),
         "n_test": meta.get("n_test"),
-        "assumptions": _assumptions(body.size_mb, body.price, body.reviews),
+        "assumptions": _assumptions(body.size_mb, body.price, body.reviews, has_reviews=True),
         "warning": "Model estimate on a cross-sectional snapshot — not a pre-launch or future rating guarantee.",
     }
 
@@ -144,6 +147,8 @@ def predict_tier(body: TierIn):
         raise HTTPException(status_code=503,
                             detail="M2 model not loaded — run: python train_models.py")
     meta = state["m2_meta"] or {}
+    if not meta.get("features"):
+        raise HTTPException(status_code=503, detail="M2 model metadata missing — re-run: python train_models.py")
     row = {
         "category": body.category.strip(),
         "size_mb": body.size_mb if body.size_mb is not None else np.nan,
@@ -169,7 +174,7 @@ def predict_tier(body: TierIn):
     }
 
 
-TIER_ORDER_FALLBACK = ["Under 100K", "100K-1M", "1M-100M", "100M+"]
+TIER_ORDER_FALLBACK = ["Under 10K", "10K-1M", "1M-100M", "100M+"]
 
 
 class _SafeStatic(StaticFiles):
