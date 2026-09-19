@@ -28,7 +28,7 @@ is self-contained, lists the files it touches, and says how to verify it.
 Note: M2-B's accuracy is **below** the majority baseline. That is documented
 honestly in the README; it is the main model-quality weakness.
 
-### Open decision carried over (not yet made)
+### Decision: adopt the enriched features (settled 2026-09-19)
 
 Adding engineered features — `app_age_days`, `days_since_update`,
 `developer_app_count`, `min_android`, `ad_supported`, `in_app_purchases`,
@@ -47,8 +47,15 @@ lifts M2-B substantially:
   grouped split) costs only ~0.015 macro-F1.
 - The auto-selected Random Forest is a **443 MB** artifact — unshippable.
   Gradient Boosting gets 99% of the lift at 1.0 MB.
-- **Decision needed:** adopt the features with Gradient Boosting (recommended),
-  adopt with a depth-capped Random Forest, or leave models as they are.
+- **DECIDED: adopt the enriched features**, shipped as **Gradient Boosting**
+  (acc 0.7682 / macro-F1 0.5440, 1.0 MB) rather than the auto-selected
+  Random Forest (0.7692 / 0.5492, 443 MB). GB gives 99% of the lift at 1/443
+  the size.
+- Mechanism for that choice: rather than hard-coding the estimator, add an
+  **artifact-size budget to model selection** (Step 2.3). RF-300 unbounded is
+  rejected as unshippable; GB then wins on merit by validation macro-F1
+  (0.530 vs LogReg 0.482 and DT 0.459). This generalises — it prevents the
+  next 443 MB surprise instead of special-casing today's.
 - If adopted, three things must change for it to be shippable:
   1. `clean.py::_consumed_columns` must whitelist the 8 extra raw columns —
      `load_raw()` only loads whitelisted columns (a memory optimisation for the
@@ -63,80 +70,201 @@ lifts M2-B substantially:
 
 ---
 
-## Phase 1 — Make the models faster at low compute cost
+## Phase 1 — Adopt enriched features + make training faster
 
-**Constraint: must not break the current execution pathway.** Specifically,
-every change below must preserve:
+**Goal:** ship the measured M2-B improvement (acc 0.6729 → 0.7682, macro-F1
+0.3067 → 0.5440, now above the 0.7242 majority baseline) and cut training cost,
+without breaking anything that works today.
 
-- the `ml/artifacts/<task>/{pipeline.joblib,meta.json}` contract that
-  `app.py` loads at startup;
-- the `metrics.json` schema consumed by dashboard sections 08–09;
-- the Pydantic request models in `app.py` (`RatingIn`, `TierIn`);
-- `browser_export.py` → `ml_inference.js` parity (tests must still pass);
-- the documented run commands (`clean.py` → `train_models.py` → `app.py`).
+### 1.0 Non-negotiable constraints
 
-### Measured on this machine (40k sample, 2 cores, n_train = 31,926)
+Every step must preserve these, or the change does not ship:
 
-| Estimator | Fit time | acc | macro-F1 |
-|---|---|---|---|
-| `GradientBoostingClassifier(200, depth 3)` | 23.5 s | 0.7260 | 0.2481 |
-| **`HistGradientBoostingClassifier(200)`** | **1.7 s** | 0.7265 | 0.2478 |
-| `HistGradientBoostingClassifier(200, early_stopping)` | 1.7 s | 0.7265 | 0.2478 |
-| `RandomForestClassifier(300)`, `n_jobs=1` | 9.2 s | 0.6917 | 0.3081 |
-| `RandomForestClassifier(300)`, `n_jobs=-1` | **4.8 s** | 0.6917 | 0.3081 |
+1. `ml/artifacts/<task>/{pipeline.joblib,meta.json}` — `app.py` loads these at
+   startup; the contract is fixed.
+2. `metrics.json` schema — dashboard sections 08–09 read it directly.
+3. Pydantic models `RatingIn` / `TierIn` in `app.py` — existing requests must
+   keep working (new fields must be optional).
+4. **Browser-engine parity** — `ml_inference.js` must reproduce the served
+   pipeline exactly, proven by `tests/browser_inference.test.js`. The API and
+   the in-browser engine must never disagree.
+5. The documented run flow: `clean.py` → `train_models.py` → `app.py`.
+6. `node tests/smoke_frontend.js` stays green.
 
-Two headline findings:
+### 1.1 Why Gradient Boosting and not the 14×-faster HistGB
 
-1. **`HistGradientBoosting` is ~14× faster than `GradientBoosting` with metrics
-   within noise** (acc +0.0005, macro-F1 −0.0003). It bins features and handles
-   NaN natively. `requirements.txt` already pins `scikit-learn>=1.3`, which is
-   the minimum for it — no dependency change needed.
-2. **`n_jobs=-1` on Random Forest is 1.9× faster here and bit-identical** —
-   results are unchanged because `random_state` is fixed. It scales with core
-   count, so the win is larger on normal hardware.
+`HistGradientBoosting` measured ~14× faster with metrics inside noise, but it
+has **no public accessor for its binned trees** — verified: no `estimators_`,
+no tree objects on the public API. It therefore cannot be exported to
+`ml_inference.js`, so adopting it would silently kill the no-backend
+prediction path (GitHub Pages, Live Server, `file://`).
 
-### Actions, in priority order
+`GradientBoostingClassifier` **is** exportable and small:
 
-1. **Add `HistGradientBoostingClassifier` / `Regressor` as candidates** and let
-   the existing selection rule pick them.
-   - *Risk:* `browser_export.py` does not support HistGB, so if it wins, the
-     in-browser engine loses that model. Mitigation, in order of preference:
-     add HistGB support to `ml_inference.js` (it is an additive ensemble of
-     binned trees — exportable, but a bigger job than the current trees), or
-     restrict the browser-exported model to a supported family and document it.
-   - *Gate:* do not merge until `tests/browser_inference.test.js` passes.
-2. **Set `n_jobs=-1`** on every Random Forest candidate. Zero metric change.
-3. **Enable `early_stopping` on HistGB** with the existing train/val split —
-   free speed on the full run.
-4. **Cap tree complexity** where unbounded: `min_samples_leaf` / `max_depth`
-   on the tree and forest candidates. This is what prevents the 443 MB
-   artifact and speeds both fit and predict.
-5. **Cut the design-matrix memory footprint** for the 2.3M-row run:
-   `OneHotEncoder(sparse_output=True)` where the estimator accepts sparse
-   input, and/or downcast numerics to `float32`. Today the dense matrix is
-   ~940 MB (2.31M × ~51 × 8 bytes).
-6. **Cheap dimensionality control:** `OneHotEncoder(min_frequency=…)` folds
-   rare categories instead of giving each its own column.
-7. **Optional, for Track B only:** select among candidates on a subsample, then
-   refit the winner on the full data. Document it if used.
+- `estimators_` shape `(n_estimators, n_classes)` = `(200, 4)` → 800 trees
+- ~**11,880 nodes total** (measured 594 nodes for 10×4, scaled ×20)
+- `init_.class_prior_` gives the softmax starting point; `loss == 'log_loss'`
+  (multinomial), so inference is: start at `log(class_prior)`, add
+  `learning_rate × Σ leaf values` per class, then softmax.
 
-### Expected effect on the full 2.31M-row run
+So: **exact Gradient Boosting everywhere**, browser parity intact.
+HistGB is retained only as an explicitly-flagged `--fast` option for the
+optional Track B full run, documented as incompatible with the browser bundle.
 
-The previous estimate was **1.5–4 h** dominated by 3× RF-300 and 3× GB-200, all
-single-threaded. With HistGB replacing GB (~14×) and `n_jobs=-1` on RF (~2× on
-this box, more on a real laptop), the same work should land in roughly
-**15–45 minutes**. This is a projection, not a measurement — it must be
-re-measured on real hardware before being written down as fact.
+### 1.2 Step-by-step
 
-### Verification
+#### Step 1 — `clean.py`: carry the 8 new columns through
 
-- `node tests/browser_inference.test.js` — JS engine still matches sklearn.
-- `node tests/smoke_frontend.js` — frontend unchanged.
-- `python train_models.py` on the 40k sample: metrics move only within noise
-  unless a deliberate change is made; record before/after.
-- `curl localhost:8000/api/health` → `models_loaded: true`.
+Three separate edits are required; missing any one silently yields NaNs.
 
----
+1. `_consumed_columns()` — whitelist the raw columns, otherwise `load_raw()`
+   never loads them (it uses `usecols` to keep the 666 MB file in RAM).
+   This was the bug that produced all-NaN features on the first attempt:
+   ```python
+   ("Released",), ("Scraped Time",), ("Developer Id",), ("Content Rating",),
+   ("Minimum Android",), ("Ad Supported",), ("In App Purchases",), ("Editors Choice",),
+   ```
+2. Derive the features inside `clean()`, after `df["type"]` is set (so the
+   derived columns inherit the corrupted-row and duplicate filters applied
+   afterwards):
+   | Column | Rule |
+   |---|---|
+   | `app_age_days` | (`Scraped Time` − `Released`) in days |
+   | `days_since_update` | (`Scraped Time` − `Last Updated`) in days |
+   | `developer_app_count` | rows per `Developer Id` |
+   | `min_android` | leading number of `"5.0 and up"` → `5.0` |
+   | `ad_supported`, `in_app_purchases`, `editors_choice` | `True`/`False` → `1.0`/`0.0`, else NaN |
+   | `content_rating` | trimmed string (categorical) |
+3. Add them to the `out = df[[...]]` whitelist near the end of `clean()`.
+
+Sanity check (measured on the sample): `app_age_days` mean 1062 d (38,673
+non-null), `days_since_update` mean 546 d, `developer_app_count` mean 2.87,
+`min_android` mean 4.36, `ad_supported` 51.6% true, `in_app_purchases` 10.6%,
+`editors_choice` 0.27%, `content_rating` = Everyone 34,510 / Teen 3,707 /
+Mature 17+ 1,111 / Everyone 10+ 671.
+
+#### Step 2 — `train_models.py`: features, selection budget, speed
+
+1. Extend `BASE_NUM`:
+   ```python
+   BASE_NUM = ["size_mb", "price", "price_is_positive", "app_age_days",
+               "days_since_update", "developer_app_count", "min_android",
+               "ad_supported", "in_app_purchases", "editors_choice"]
+   ```
+2. `build_matrix()` — copy the new numeric columns; emit `content_rating`
+   alongside `category`.
+3. `make_preprocessor()` — one-hot block becomes `["category", "content_rating"]`.
+4. **Artifact-size budget in selection** (the principled fix for the 443 MB
+   problem): after fitting each candidate, serialise it and reject any
+   candidate over a budget (default ~10 MB, `--max-artifact-mb`). Rejected
+   candidates are recorded in `metrics.json` with the reason, so the report
+   stays honest. Effect: RF-300 unbounded is rejected; GB wins on merit.
+5. Speed levers that are **safe** (do not change results or break export):
+   - `n_jobs=-1` on both Random Forest candidates — **measured bit-identical**
+     (fixed `random_state`), 1.9× faster here, scales with cores.
+   - `n_iter_no_change` + `validation_fraction` on Gradient Boosting — early
+     stopping; confirmed present in the signature.
+   - `subsample=0.8` (stochastic GB) — ~20% cheaper per stage.
+   - Cap the unbounded tree: `min_samples_leaf` / `max_depth` on Decision Tree
+     and Random Forest → smaller, faster, and keeps RF exportable.
+6. Memory for Track B: `OneHotEncoder(sparse_output=True)` where the estimator
+   accepts sparse, or downcast numerics to `float32`. The dense design matrix
+   on the full run is ~940 MB (2.31M × ~51 × 8 bytes).
+
+#### Step 3 — `browser_export.py`: export the new model family
+
+1. Add `GradientBoostingClassifier` to `SUPPORTED_ESTIMATORS` and export it:
+   `init` = `log(class_prior_)`, per-class tree ensembles `(200, 4)`,
+   `learning_rate`, `classes_`.
+2. Extend the preprocessing export: 10 numeric columns + 2 categorical
+   (`category`, `content_rating`).
+3. Fix `make_parity_cases()` — it currently builds frames from the old feature
+   list and fails with `not in index` once new columns exist. Generate the new
+   features too (randomised ages/dates/flags, some unseen categories, some
+   missing values).
+4. Skip-and-warn (never crash) on unsupported families.
+
+#### Step 4 — `ml_inference.js`: implement multiclass gradient boosting
+
+1. `predictProba` for `GradientBoostingClassifier`:
+   `score_k = log(prior_k) + lr × Σ_trees leaf_k`, then softmax.
+2. Handle the wider feature vector (10 numeric + 2 one-hot blocks).
+3. Keep `handle_unknown='ignore'` semantics for both categoricals.
+4. **This is the correctness gate:** `tests/browser_inference.test.js` must
+   match sklearn to ~1e-11 on every parity case before anything merges.
+
+#### Step 5 — `app.py`: optional new inputs
+
+Extend `TierIn` (and `RatingIn` for M1) with optional fields for the new
+features, defaulting to `None`. Build the row with training medians for
+numeric and the mode for categorical, and append the imputation to the
+returned `assumptions` list so the UI states it.
+
+#### Step 6 — Frontend forms
+
+**Open question (needs your call — see §1.6).** Recommended default: keep the
+form at 3 fields and impute the new features to training medians/modes,
+listing each imputation as an assumption. Least disruptive and still honest.
+
+#### Step 7 — Tests
+
+- `tests/browser_inference.test.js`: new parity cases incl. the new features,
+  unseen content ratings, and missing values.
+- `tests/smoke_frontend.js`: unchanged expectations unless the form changes.
+
+#### Step 8 — Docs
+
+Update `README.md` metrics tables and the M2-B caveat (it will no longer be
+below the majority baseline), and record the final timings here.
+
+### 1.3 Expected outcome
+
+| Model | Before | After |
+|---|---|---|
+| M2-B accuracy | 0.6729 (below 0.7242 baseline) | **0.7682** (above it) |
+| M2-B macro-F1 | 0.3067 | **0.5440** |
+| M2-B artifact | 1.0 MB (Decision Tree) | **1.0 MB** (Gradient Boosting) |
+| M1 R² | +0.0506 | +0.0711 |
+| M2-A macro-F1 | 0.8275 | 0.8385 |
+
+Training cost (40k sample): GB-200 currently 23.5 s per fit; early stopping
+and `subsample` should reduce it. Full 2.3M run projected at roughly 1–1.5 h
+with exact GB, versus 15–45 min if HistGB were used — the price of keeping
+browser parity.
+
+### 1.4 Risks
+
+| Risk | Mitigation |
+|---|---|
+| New features leak across the split | `developer_app_count` is computed over the whole frame; the ablation showed only ~0.015 macro-F1 depends on it. Consider computing it on training rows only and documenting the choice. |
+| `content_rating` unseen at predict time | `handle_unknown='ignore'` → all-zero one-hot; already the behaviour for `category`. |
+| Browser bundle grows | GB adds ~12k nodes; measure models.js and keep it under a few MB. |
+| Parity breaks silently | Gate the merge on `tests/browser_inference.test.js`. |
+| Selection rejects everything | Budget must leave at least one candidate; assert and fail loudly otherwise. |
+
+### 1.5 Verification checklist
+
+- [ ] `python clean.py` — new columns present, no all-NaN columns
+- [ ] `python train_models.py` — M2-B ≈ 0.768 / 0.544; GB selected
+- [ ] `node tests/browser_inference.test.js` — parity at ~1e-11
+- [ ] `node tests/smoke_frontend.js` — all assertions pass
+- [ ] `python app.py` → `/api/health` reports `models_loaded: true`
+- [ ] API prediction == browser-engine prediction for the same input
+- [ ] Static-host check: page on port 8001 (no `/api`) still predicts
+- [ ] README metrics updated
+
+### 1.6 Open question — form UX
+
+The M2 form currently asks for category / size / price. Options:
+
+1. **Impute everything** (recommended default): form unchanged; new features
+   take training medians/modes and each is listed as an assumption.
+2. **Expose the intuitive ones**: add content rating, minimum Android, ad /
+   IAP / Editors' Choice as optional inputs; impute age, days-since-update and
+   portfolio size.
+3. **Expose all ~10**: most accurate for real apps, longest form.
+
+Recommend option 2 as the balance; say the word and I will build it.
 
 ## Phase 2 — Optimise and professionalise the website
 
