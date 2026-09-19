@@ -48,35 +48,151 @@ No build step, no npm.
     └── browser_inference.test.js  # JS engine must match scikit-learn exactly
 ```
 
-## Run it (full version with ML)
+## Run it
 
-> **Run every command below from the project root** — the folder that directly
+There are two tracks. **Track A** (40,000-row sample) is the default and needs
+no download; **Track B** re-runs everything on the complete 2,312,944-row
+dataset and downloads 666 MB. Both use the exact same commands — the pipeline
+switches scale automatically.
+
+### Before either track: one-time setup
+
+Requirements: **Python 3.10+** (`app.py`'s Pydantic models use `float | None`
+at runtime), and optionally Node 18+ if you want to run the test suites.
+
+> **Run every command from the project root** — the folder that directly
 > contains `app.py`, `index.html` and `requirements.txt`.
->
-> If `pip` answers `Could not open requirements file: ... 'requirements.txt'`,
-> the terminal is one level too high (a GitHub ZIP usually extracts to a folder
-> like `google_analyst0.1-main/`). Either `cd` into that folder, or reopen the
-> project with **File → Open Folder** on it — VS Code's integrated terminal
-> then starts in the right place. Check with `ls`/`dir`: you should see
-> `requirements.txt` listed.
 
-```bash
-python -m venv .venv
-.venv/bin/pip install -r requirements.txt   # Windows: .venv\Scripts\pip ...
-
-# optional: get the FULL 2.31M-row dataset (downloads 3 parts, combines them,
-# and re-writes data/playstore_sample.csv + its provenance sidecar)
-.venv/bin/python fetch_dataset.py --sample 40000
-
-.venv/bin/python clean.py          # 1. clean raw data  -> data/apps_cleaned.csv, data/apps.json
-.venv/bin/python train_models.py   # 2. train models    -> ml/artifacts/
-.venv/bin/python app.py            # 3. serve           -> http://localhost:8000
+```powershell
+# ---- Windows (PowerShell) ----
+py -3 -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-Open http://localhost:8000. The KPI strip, charts 01-06 and the ML sections
-all read from the same cleaned dataset; sections 07-09 call the API.
+```bash
+# ---- macOS / Linux ----
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
 
-`clean.py` auto-detects its source, first match wins:
+On Windows, call `.venv\Scripts\python.exe` explicitly rather than activating
+the venv — it avoids the `Activate.ps1 cannot be loaded` execution-policy
+error. If `python` opens the Microsoft Store, use `py -3`.
+
+> **Trap:** `pip` saying `Could not open requirements file: ... 'requirements.txt'`
+> means the terminal is not in the project folder. A GitHub ZIP extracts to a
+> folder like `google_analyst0.1-main/`, so you are usually one level too high:
+> `cd` into it, or reopen the project with **File → Open Folder** on the folder
+> that contains `requirements.txt`.
+
+---
+
+### Track A — the 40,000-row sample (default; serving is instant)
+
+The repository already commits everything needed: the stratified sample, the
+cleaned payload, and the trained pipelines. **You can skip straight to serving.**
+
+```powershell
+# Windows
+.venv\Scripts\python.exe app.py
+```
+
+```bash
+# macOS / Linux
+.venv/bin/python app.py
+```
+
+Then open **http://localhost:8000**.
+
+To regenerate the artifacts instead of using the committed ones (optional —
+this reproduces them from the sample CSV, ~2 min total):
+
+```bash
+.venv/bin/python clean.py          # 1. clean  -> data/apps_cleaned.csv, apps.json, apps_bundle.js
+.venv/bin/python train_models.py   # 2. train  -> ml/artifacts/ (~90 s)
+.venv/bin/python app.py            # 3. serve  -> http://localhost:8000
+```
+
+---
+
+### Track B — the complete 2,312,944-row dataset (~15 min + 666 MB download)
+
+Do this only if you need full-scale metrics rather than sample ones.
+
+```powershell
+# Windows
+# 1. download 3 tar.gz parts (~666 MB) -> combine -> data/raw/playstore_full.csv
+#    and rebuild the 40,000-row sample from it
+.venv\Scripts\python.exe fetch_dataset.py --sample 40000 --cleanup
+
+# 2. clean + train + serve (clean.py detects data/raw/playstore_full.csv first)
+.venv\Scripts\python.exe clean.py
+.venv\Scripts\python.exe train_models.py
+.venv\Scripts\python.exe app.py
+```
+
+```bash
+# macOS / Linux
+.venv/bin/python fetch_dataset.py --sample 40000 --cleanup
+.venv/bin/python clean.py
+.venv/bin/python train_models.py
+.venv/bin/python app.py
+```
+
+What to expect:
+
+| | |
+|---|---|
+| Download | three `.tar.gz` parts, **~666 MB**; `--cleanup` deletes them afterwards |
+| Full CSV | written to `data/raw/playstore_full.csv` (git-ignored) |
+| `clean.py` | 2,312,944 → 2,312,222 rows, **~80 s, ~3.0 GB peak RAM** |
+| `train_models.py` | trains all 15 candidate pipelines on the full set (slower than the sample) |
+| Browser payload | capped at **60,000 rows** (rule 12) — raise with `--max-json-rows 0`, but the page gets slow |
+| Sample banners | disappear, because `is_sample` is now false |
+
+> **Trap:** `--sample N` **overwrites** `data/playstore_sample.csv` with N rows.
+> The documented value is `40000` (forty thousand). Running
+> `--sample 4000` would download 666 MB and then *shrink* the committed sample
+> tenfold, showing up as modified files in `git status`. To leave the sample
+> alone entirely, run `python fetch_dataset.py --cleanup` with no `--sample`.
+
+To go back to Track A afterwards, delete the full CSV and re-clean:
+
+```bash
+rm data/raw/playstore_full.csv     # Windows: del data\raw\playstore_full.csv
+.venv/bin/python clean.py          # falls back to data/playstore_sample.csv
+```
+
+---
+
+### Verifying it worked
+
+Open **http://localhost:8000/api/health** — it should return:
+
+```json
+{"ok":true,"models_loaded":true,"m1_rating":true,"m2_tier_without_reviews":true,"trained_on_sample_dataset":true}
+```
+
+`trained_on_sample_dataset` is `true` on Track A and `false` on Track B. The
+header of the dashboard shows the row count (40,000 on Track A) and the dataset
+it came from.
+
+> **Trap:** uvicorn logs `Uvicorn running on http://0.0.0.0:8000`. `0.0.0.0`
+> is the *bind* address, not a URL — Windows browsers cannot open it and fail
+> with "This site can't be reached". Use **http://localhost:8000** or
+> **http://127.0.0.1:8000**. `app.py` prints the working URL at startup.
+
+Optional, if you have Node:
+
+```bash
+node tests/smoke_frontend.js           # whole frontend against the real artifacts
+node tests/browser_inference.test.js   # JS engine must match scikit-learn exactly
+```
+
+### How the pipeline picks its scale
+
+This is why Track A and Track B are the same three commands — `clean.py`
+auto-detects its source, first match wins:
 
 | # | Path | What it is |
 |---|---|---|
