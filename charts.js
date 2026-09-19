@@ -500,8 +500,31 @@ function plotChart(id){
   if(BENCH){
     console.log(`[apex] ${id}: ${dt.toFixed(0)} ms`);
     renderBench();
+    reportBench();
   }
   return dt;
+}
+
+/* TEMPORARY diagnostic sink. The preview is behind a tokened proxy, so the
+   numbers cannot be read from a URL or from DevTools here — instead the page
+   posts them to the backend, where they land in `python app.py`'s stdout.
+   Remove together with renderBench(). */
+function reportBench(){
+  if(!BENCH || typeof fetch !== 'function') return;
+  const ids = Object.keys(CHART_RENDERERS);
+  if(ids.some(id=>CHART_TIMES[id] === undefined)) return;   // wait until all are plotted
+  try{
+    fetch('api/bench', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        charts: CHART_TIMES,
+        webgl: webglAvailable(),
+        plotted: `${ids.filter(id=>CHART_TIMES[id] !== undefined).length}/${ids.length}`,
+        scrollWidth: (document.documentElement || {}).scrollWidth,
+        innerWidth: window.innerWidth,
+      }),
+    }).catch(()=>{});
+  }catch(err){ /* a diagnostic must never break the page */ }
 }
 
 function renderCharts(){
@@ -540,6 +563,7 @@ window.addEventListener('resize', ()=>{
     document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
       if(el && el.data) Plotly.Plots.resize(el);
     });
+    reportBench();          // TEMPORARY: re-report at the new viewport width
   }, 150);
 });
 
