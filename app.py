@@ -171,7 +171,23 @@ def _categorical_value(pipe, meta, raw, which: str) -> tuple[str, str | None]:
     if not s:
         return default, (f"{which.replace('_', ' ')} not provided → assumed "
                          f"\u201c{default}\u201d (the most common value in training)")
-    return (clean_category(s) or default), None
+    value = clean_category(s) or default
+    if value not in _known_levels(pipe, which):
+        return value, (f"{which.replace('_', ' ')} {value!r} was not seen in training → "
+                       f"encoded as an unknown category (the model knows "
+                       f"{len(_known_levels(pipe, which))} {which.replace('_', ' ')}s)")
+    return value, None
+
+
+def _known_levels(pipe, which: str) -> set[str]:
+    """Categories the fitted encoder actually saw, for ONE categorical column."""
+    try:
+        prep = pipe.named_steps["prep"]
+        cols = list(dict((n, c) for n, _t, c in prep.transformers_)["cat"])
+        enc = prep.named_transformers_["cat"].named_steps["onehot"]
+        return {str(c) for c in enc.categories_[cols.index(which)]}
+    except Exception:
+        return set()
 
 
 def _profile_row(body, pipe, meta, has_reviews: bool) -> tuple[dict, list[str]]:

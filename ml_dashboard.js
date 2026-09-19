@@ -556,22 +556,23 @@ function renderRatingModelCard(){
 /* ================================================================
    SECTION 08 — Install-Tier Classifier (M2, without Reviews)
    ================================================================ */
-/* Content rating is not in apps.json — the only authoritative list is the one
-   the fitted encoder was trained on, so read it out of the exported pipeline
-   when the bundle is reachable (API-only mode keeps the static fallback list). */
-async function refreshContentRatings(){
+/* Content rating is not in apps.json, so the authoritative list is the one the
+   fitted encoder was trained on. Use it when the bundle is already in memory
+   (static host / file://), and leave the static list in index.html alone
+   otherwise — populating the select is never worth downloading the bundle for
+   in backend mode. */
+function refreshContentRatings(){
   const sel = document.getElementById('tfContentRating');
   if(!sel) return;
-  try{
-    const models = await ensureBrowserModels();
-    const m = models.m2_tier_without_reviews || models.m1_rating;
-    const cats = catLevels(m, 1);
-    if(!cats.length) return;
-    const current = sel.value;
-    sel.innerHTML = '<option value="">Not specified</option>'
-      + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-    sel.value = cats.indexOf(current) === -1 ? '' : current;
-  }catch(err){ /* bundle unavailable — the static list in index.html stands */ }
+  const models = INFERENCE.models;
+  const m = models && (models.m2_tier_without_reviews || models.m1_rating);
+  if(!m) return;
+  const cats = catLevels(m, 1);
+  if(!cats.length) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Not specified</option>'
+    + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = cats.indexOf(current) === -1 ? '' : current;
 }
 
 function initTierForm(){
@@ -842,6 +843,7 @@ function renderML(){
     /* Inference and the read-only metrics are independent: decide the engine
        first so the forms are usable even when metrics.json is unreachable. */
     await detectInference();
+    refreshContentRatings();   // now that we know whether the bundle is loaded
     if(INFERENCE.mode === 'none'){
       const note = 'No inference engine is available: neither the FastAPI backend '
         + '(<code>api/health</code>) nor the exported browser bundle '
