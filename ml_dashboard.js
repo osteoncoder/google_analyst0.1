@@ -431,12 +431,12 @@ function showMlNotice(){
       + '<code>ml/artifacts/metrics.json</code> directly (the live API did not answer). '
       + 'The numbers are the real results of the reproducible training run.');
   }
+  // Only the in-browser path is worth a notice. The backend path is the normal
+  // case, and announcing it added a banner above the predictor for no reason.
   if(INFERENCE.mode === 'browser'){
     bits.push('Predictions run <strong>in your browser</strong>: <code>ml_inference.js</code> evaluates '
       + 'the fitted scikit-learn pipelines exported to <code>ml/artifacts/browser/models.js</code> — '
       + 'same model, same numbers, no backend needed.');
-  }else if(INFERENCE.mode === 'api'){
-    bits.push('Predictions are served by the FastAPI backend (<code>python app.py</code>).');
   }
   el.innerHTML = bits.length ? `<p class="warn-note">${bits.join(' ')}</p>` : '';
 }
@@ -814,10 +814,13 @@ function renderCompare(){
 
 function renderSummary(){
   const el = document.getElementById('perfSummary');
+  const lim = document.getElementById('perfLimits');
   const d = METRICS.dataset || {};
   const a = METRICS.models.m2_tier.without_reviews;
   const m1 = METRICS.models.m1_rating;
-  el.innerHTML = `
+  // Limitations are rendered into their own container so they can be labelled
+  // and collapsed separately from the dataset/split facts.
+  if(el) el.innerHTML = `
     <dl class="kv">
       <dt>Dataset</dt><dd>${d.source || '—'} (${d.rows_cleaned ?? '—'} cleaned rows${d.is_sample ? ', SAMPLE' : ''}) · md5 ${d.md5 || '—'}${d.sample_note ? `<br><span class="tiny">${d.sample_note}</span>` : ''}</dd>
       <dt>Split</dt><dd>80/20 train/test before any preprocessing; GroupShuffleSplit on app name (same app never on both sides); 75/25 train/val for selection; test used exactly once</dd>
@@ -826,7 +829,8 @@ function renderSummary(){
       <dt>M2 inputs (B)</dt><dd>${a.features.join(', ')} → 4 install bands</dd>
       <dt>Tier bounds</dt><dd>${(a.tier_bounds||[]).map(([lo,hi,n])=>`${n}: [${lo.toLocaleString()}, ${hi===null?'∞':hi.toLocaleString()})`).join('; ')}</dd>
       <dt>Class counts (full data)</dt><dd>${Object.entries(a.class_counts_full_data||{}).map(([k,v])=>`${k} ${v}`).join(' · ')}</dd>
-    </dl>
+    </dl>`;
+  if(lim) lim.innerHTML = `
     <ul class="limit-list">
       <li>Installs are reported download-band <strong>lower bounds</strong>, not exact downloads.</li>
       <li>Listed price is a price tag, <strong>not observed revenue</strong>; no revenue is estimated anywhere.</li>
@@ -944,9 +948,30 @@ function initNav(){
   }, {passive:true});
 }
 
+/* A plot inside a collapsed <details> has no layout box, so Plotly cannot size
+   it — it draws at a stub size and stays wrong after the panel is opened.
+   Re-fit any plot that has already been drawn each time a fold opens. Charts
+   not drawn yet are covered by the lazy IntersectionObserver in charts.js,
+   which fires once the element becomes visible. */
+function initFoldPlots(){
+  const folds = document.querySelectorAll('details.fold-plot, details.perf-fold');
+  if(!folds || !folds.forEach) return;
+  folds.forEach(d=>{
+    d.addEventListener('toggle', ()=>{
+      if(!d.open) return;
+      const plots = d.querySelectorAll('[id^="chart"], .plot');
+      if(!plots || !plots.forEach) return;
+      plots.forEach(el=>{
+        if(el && el.data && typeof Plotly !== 'undefined') Plotly.Plots.resize(el);
+      });
+    });
+  });
+}
+
 function bootstrap(){
   initNav();
   initNavToggle();
+  initFoldPlots();
   loadApps().then(({rows, source, is_sample, degraded, errors})=>{
     DF = rows;
     APP_SOURCE = source;

@@ -6,7 +6,7 @@
 <title>APEX &mdash; Play Store Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20260920d">
+<link rel="stylesheet" href="./style.css?v=20260920e">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
 </head>
 <body>
@@ -106,9 +106,7 @@
           <p class="section-desc">Pearson correlation over the genuine numeric columns.
           <strong>Correlation is association, not causation.</strong></p>
           <details class="why"><summary>Method &amp; caveats</summary>
-            <div>Reviews and Installs are log1p-transformed (heavy right skew). The dataset
-            contains <strong>no location column</strong>, so the original choropleth map was
-            removed rather than drawn from invented geography.</div>
+            <div>Reviews and Installs are log1p-transformed (heavy right skew).</div>
           </details>
         </div>
       </div>
@@ -159,8 +157,7 @@
           average rating (y).</p>
           <details class="why"><summary>Method &amp; caveats</summary>
             <div>Averages are the <strong>unweighted mean of the category&rsquo;s app ratings</strong>;
-            totals are sums of review counts. Ratings and review counts no longer share one axis
-            (the original did, which made the two incomparable scales look related). Categories with
+            totals are sums of review counts. Categories with
             zero total reviews are excluded from the log axis.</div>
           </details>
         </div>
@@ -198,16 +195,18 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">07</span>Rating Predictor</h2>
-          <p class="section-desc">M1 regression: app profile &rarr; expected average rating.
-          Runs on the FastAPI backend when <code>app.py</code> is serving, otherwise in this page
-          via <code>ml_inference.js</code> &mdash; the result always says which one answered.</p>
-          <details class="why"><summary>How inference works &amp; what is assumed</summary>
-            <div>Inference uses the <em>saved</em> scikit-learn preprocessing + model pipeline
+          <details class="why"><summary>How this predictor works &amp; what is assumed</summary>
+            <div>
+              <p>M1 regression: app profile &rarr; expected average rating. Runs on the
+              FastAPI backend when <code>app.py</code> is serving, otherwise in this page
+              via <code>ml_inference.js</code> &mdash; the result always says which one answered.</p>
+              <p>Inference uses the <em>saved</em> scikit-learn preprocessing + model pipeline
             &mdash; nothing is retrained per request. The form asks for only what a user can know;
             the model's other inputs (content rating, app age, time since the last update,
             developer portfolio size) are imputed to their training medians, and
             <strong>every imputation is listed with the value used</strong> under the result.
-            Predicted ratings are clipped to the rating domain [1, 5] and say so when clipped.</div>
+              Predicted ratings are clipped to the rating domain [1, 5] and say so when clipped.</p>
+            </div>
           </details>
         </div>
       </div>
@@ -238,15 +237,17 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">08</span>Install-Tier Classifier</h2>
-          <p class="section-desc">M2 four-class classifier. The primary version
-          <strong>excludes Reviews</strong>, a strong proxy for installs.
-          Probabilities are model estimates, not guarantees.</p>
-          <details class="why"><summary>Inputs &amp; what is assumed</summary>
-            <div>Inputs at prediction time: category, size, price, content rating, minimum Android,
+          <details class="why"><summary>How this classifier works &amp; what is assumed</summary>
+            <div>
+              <p>M2 four-class classifier. The primary version
+              <strong>excludes Reviews</strong>, a strong proxy for installs.
+              Probabilities are model estimates, not guarantees.</p>
+              <p>Inputs at prediction time: category, size, price, content rating, minimum Android,
             and the ad / in-app-purchase / Editors' Choice flags. App age, days since the last
             update and developer portfolio size have no field here, so they are imputed to their
             training medians &mdash; <strong>every imputation is stated, with the value used</strong>,
-            under the result. Like section 07, this works with or without the Python backend.</div>
+              under the result. Like section 07, this works with or without the Python backend.</p>
+            </div>
           </details>
         </div>
       </div>
@@ -309,9 +310,13 @@
           </form>
         </div>
         <div id="confusionCard" class="ml-side">
-          <h4>Held-out test confusion matrix (without Reviews)</h4>
-          <div id="chart_confusion" style="height:330px;"></div>
-          <p class="chart-note" id="confusionNote"></p>
+          <details class="why fold-plot">
+            <summary>Held-out test confusion matrix (without Reviews)</summary>
+            <div>
+              <div id="chart_confusion" style="height:330px;"></div>
+              <p class="chart-note" id="confusionNote"></p>
+            </div>
+          </details>
         </div>
       </div>
     </section>
@@ -320,7 +325,7 @@
     <section class="viz-section" id="model-perf">
       <div class="section-head">
         <div>
-          <h2><span class="stage">09</span>Model Performance</h2>
+          <h2 class="h-center">Model Performance</h2>
           <p class="section-desc">Actual evaluation metrics from the reproducible training run.
           No tuned-to-test numbers, no placeholders.</p>
           <details class="why"><summary>Protocol</summary>
@@ -336,34 +341,50 @@
         <h4 class="perf-h">M1 — Rating Regression (candidates)</h4>
         <div class="table-wrap" id="perfM1"></div>
 
-        <h4 class="perf-h">M2 — Install-Tier Classification</h4>
-        <div class="grid-2">
+        <details class="why perf-fold">
+          <summary>M2 — Install-Tier Classification (candidates)</summary>
           <div>
-            <h5 class="perf-h5">Version A — with Reviews</h5>
-            <div class="table-wrap" id="perfM2a"></div>
+            <div class="grid-2">
+              <div>
+                <h5 class="perf-h5">Version A — with Reviews</h5>
+                <div class="table-wrap" id="perfM2a"></div>
+              </div>
+              <div>
+                <h5 class="perf-h5">Version B — without Reviews (primary)</h5>
+                <div class="table-wrap" id="perfM2b"></div>
+              </div>
+            </div>
+            <div id="perfBudget"></div>
           </div>
-          <div>
-            <h5 class="perf-h5">Version B — without Reviews (primary)</h5>
-            <div class="table-wrap" id="perfM2b"></div>
-          </div>
-        </div>
-        <div id="perfBudget"></div>
+        </details>
 
-        <div class="grid-2">
+        <details class="why perf-fold">
+          <summary>Per-class metrics, comparison &amp; feature importance</summary>
           <div>
-            <h5 class="perf-h5">Per-class metrics — final M2 (B), held-out test</h5>
-            <div class="table-wrap" id="perfPerClass"></div>
-            <h5 class="perf-h5">With-Reviews vs without-Reviews (test)</h5>
-            <div id="perfCompare"></div>
+            <div class="grid-2">
+              <div>
+                <h5 class="perf-h5">Per-class metrics — final M2 (B), held-out test</h5>
+                <div class="table-wrap" id="perfPerClass"></div>
+                <h5 class="perf-h5">With-Reviews vs without-Reviews (test)</h5>
+                <div id="perfCompare"></div>
+              </div>
+              <div>
+                <h5 class="perf-h5">Feature importance — M2 (B)</h5>
+                <div id="chart_importance" style="height:380px;"></div>
+              </div>
+            </div>
           </div>
-          <div>
-            <h5 class="perf-h5">Feature importance — M2 (B)</h5>
-            <div id="chart_importance" style="height:380px;"></div>
-          </div>
-        </div>
+        </details>
 
-        <h4 class="perf-h">Dataset, split &amp; limitations</h4>
-        <div id="perfSummary"></div>
+        <details class="why perf-fold">
+          <summary>Dataset &amp; split</summary>
+          <div><div id="perfSummary"></div></div>
+        </details>
+
+        <details class="why perf-fold">
+          <summary>Limitations</summary>
+          <div><div id="perfLimits"></div></div>
+        </details>
       </div>
     </section>
 
@@ -389,9 +410,9 @@
 </div>
 
 <!-- load order: data (helpers+loader) → charts (01-06) → inference engine → ml (07-09 + bootstrap) -->
-<script src="./data.js?v=20260920d"></script>
-<script src="./charts.js?v=20260920d"></script>
-<script src="./ml_inference.js?v=20260920d"></script>
-<script src="./ml_dashboard.js?v=20260920d"></script>
+<script src="./data.js?v=20260920e"></script>
+<script src="./charts.js?v=20260920e"></script>
+<script src="./ml_inference.js?v=20260920e"></script>
+<script src="./ml_dashboard.js?v=20260920e"></script>
 </body>
 </html>

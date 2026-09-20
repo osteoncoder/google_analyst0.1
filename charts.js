@@ -378,7 +378,11 @@ function renderChart5(){
   Plotly.newPlot(el, [{
     x:pts.map(p=>p.sumRev), y:pts.map(p=>p.avg), type:'scatter', mode:'markers+text',
     text:pts.map(p=>p.cat), textposition:'top center',
-    textfont:{color:'#cfc6e8', size:11},
+    // Labels sit above each bubble, but the categories cluster tightly so they
+    // land on light bubbles (amber, green, sky) as often as on the dark page.
+    // No single flat colour is legible on both, so the text stays light and
+    // style.css paints a dark halo around it (#chart5 text).
+    textfont:{color:'#f3f0ff', size:11, family:'Inter, sans-serif'},
     customdata:pts.map(p=>`${p.n} app${p.n>1?'s':''} · Σ reviews ${p.sumRev.toLocaleString()} · avg rating ${p.avg.toFixed(2)} (unweighted mean of app ratings)`),
     marker:{
       size:pts.map(p=>10+3*Math.sqrt(p.n)),
@@ -463,10 +467,14 @@ function renderChart6(){
       textfont:{color:'#b1a8cf', family:'JetBrains Mono', size:11},
     }], {
       ...layoutBase,
-      margin:{t:40,l:120,r:40,b:40},
+      // The heading is a paper-space annotation drawn ABOVE the plot area, so
+      // the top margin has to be tall enough to hold it — at t:40 it sat on top
+      // of the first bar. The right margin grows too, so the 'outside' price
+      // labels on the longest bar are no longer clipped.
+      margin:{t:74,l:120,r:64,b:40},
       xaxis:{...AX, title:{text:'Mean listed price ($) — a price tag, NOT observed revenue', font:{color:'#8f86ac', size:11}}},
       yaxis:{...AX, autorange:'reversed'},
-      annotations:[{x:0.02, y:1.08, xref:'paper', yref:'paper', showarrow:false,
+      annotations:[{x:0.02, y:1.02, xref:'paper', yref:'paper', showarrow:false, yanchor:'bottom',
         text:'Mean listed price per category (paid apps only)', font:{color:'#fbbf62', family:'JetBrains Mono', size:11}}],
     }, CONFIG);
   } else {

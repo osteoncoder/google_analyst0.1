@@ -350,7 +350,10 @@ details.why strong{color:var(--text-hi);}
 .ml-form .form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
 @media (max-width:520px){ .ml-form .form-row{grid-template-columns:1fr;} }
 .ml-form label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-low);display:flex;flex-direction:column;gap:6px;}
-.ml-form .field-hint{text-transform:none;letter-spacing:0;font-size:10px;opacity:.75;}
+/* Was --text-low at 75% opacity, which was too faint to read against the dark
+   card. Full-opacity --text-mid instead. (On a dark theme, "darker" would only
+   reduce contrast — this is the change that makes the hints legible.) */
+.ml-form .field-hint{text-transform:none;letter-spacing:0;font-size:10.5px;color:var(--text-mid);opacity:1;line-height:1.5;}
 .ml-form input,.ml-form select{
   background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
   color:var(--text-hi);font-family:var(--font-body);font-size:14px;padding:10px 12px;
@@ -473,3 +476,32 @@ details.why strong{color:var(--text-hi);}
 .apex-bench-row.slow b{color:var(--amber);}
 .apex-bench-row.total{border-top:1px solid var(--border); margin-top:6px; padding-top:6px;}
 .apex-bench-note{margin-top:7px; font-size:10.5px; color:var(--text-low); line-height:1.5;}
+
+/* ================================================================
+   Chart 5 category labels
+   Every bubble is labelled, and the categories cluster tightly, so a label
+   lands on a light bubble (amber / green / sky) as often as on the dark page.
+   No flat colour reads on both — a dark halo does. paint-order draws the stroke
+   behind the fill, so the glyphs stay crisp.
+   ================================================================ */
+#chart5 text{
+  paint-order:stroke fill;
+  stroke:rgba(8,7,20,0.92);
+  stroke-width:3px;
+  stroke-linejoin:round;
+}
+
+/* Section 09 drops its stage number and centres the heading. */
+.section-head h2.h-center{text-align:center;}
+
+/* Section 09 folds: the details.why disclosure pattern, but full width and
+   spaced like section headings. The inner panel styling is dropped because
+   these folds contain full-width tables and plots. */
+details.perf-fold{margin:20px 0 0; max-width:none;}
+details.perf-fold > summary{
+  font-size:11.5px; letter-spacing:.1em; color:var(--text-mid);
+  padding:6px 14px; border-color:var(--border-hi); background:var(--glass-hi);
+}
+details.perf-fold > div{
+  margin:14px 0 0; padding:0; border-left:0; border-radius:0; background:none;
+}

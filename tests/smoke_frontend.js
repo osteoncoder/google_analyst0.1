@@ -225,11 +225,17 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (pBudget && /shipping budget/.test(pBudget.innerHTML) && /<s>/.test(pM1.innerHTML))
     ok('section 09: oversized candidates struck out with the shipping-budget reason');
   else fail(`section 09 artifact-budget rejection not surfaced (budget=${pBudget ? pBudget.innerHTML.slice(0, 80) : 'none'})`);
+  // Limitations moved out of perfSummary into their own labelled, collapsible
+  // block, so the two are asserted separately.
   const pSum = elements.get('perfSummary');
-  if (pSum && pSum.innerHTML.includes('lower bounds') && pSum.innerHTML.includes('not observed revenue'))
-    ok('section 09: limitation notes present (install bands, price ≠ revenue)');
-  else fail('section 09 limitation notes missing');
-  if (metricsJson.dataset.is_sample && pSum.innerHTML.includes('sample')) ok('section 09: sample-dataset warning surfaced');
+  const pLim = elements.get('perfLimits');
+  if (pSum && pSum.innerHTML.includes('Dataset') && pSum.innerHTML.includes('80/20 train/test'))
+    ok('section 09: dataset & split facts in their own block');
+  else fail('section 09 dataset/split block missing');
+  if (pLim && pLim.innerHTML.includes('lower bounds') && pLim.innerHTML.includes('not observed revenue'))
+    ok('section 09: limitations labelled separately (install bands, price ≠ revenue)');
+  else fail('section 09 limitations block missing or not separated');
+  if (metricsJson.dataset.is_sample && pLim && pLim.innerHTML.includes('sample')) ok('section 09: sample-dataset warning surfaced');
 
   /* ---------------- chart3 with DATES (exercises the non-gap path) ---------------- */
   // The real sample has no dates, so also run renderChart3 on synthetic dated
