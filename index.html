@@ -6,7 +6,7 @@
 <title>APEX &mdash; Play Store Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20260920e">
+<link rel="stylesheet" href="./style.css?v=20260920f">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
 </head>
 <body>
@@ -92,9 +92,9 @@
       </div>
       <div class="card">
         <div id="chart1" class="plot tall"></div>
-        <p class="chart-note">Each bubble is one app. Colour groups apps by
-        category (48 of them — a legend that long is unreadable, so hover any
-        bubble for its name, category and install band).</p>
+        <p class="chart-note">Each bubble is one app: x = app size (MB),
+        y = user rating, bubble area &prop; installs.</p>
+        <div id="chart1legend" class="chart-legend"></div>
       </div>
     </section>
 
@@ -338,8 +338,10 @@
       </div>
 
       <div class="card" id="perfContent">
-        <h4 class="perf-h">M1 — Rating Regression (candidates)</h4>
-        <div class="table-wrap" id="perfM1"></div>
+        <details class="why perf-fold">
+          <summary>M1 — Rating Regression (candidates)</summary>
+          <div><div class="table-wrap" id="perfM1"></div></div>
+        </details>
 
         <details class="why perf-fold">
           <summary>M2 — Install-Tier Classification (candidates)</summary>
@@ -410,9 +412,9 @@
 </div>
 
 <!-- load order: data (helpers+loader) → charts (01-06) → inference engine → ml (07-09 + bootstrap) -->
-<script src="./data.js?v=20260920e"></script>
-<script src="./charts.js?v=20260920e"></script>
-<script src="./ml_inference.js?v=20260920e"></script>
-<script src="./ml_dashboard.js?v=20260920e"></script>
+<script src="./data.js?v=20260920f"></script>
+<script src="./charts.js?v=20260920f"></script>
+<script src="./ml_inference.js?v=20260920f"></script>
+<script src="./ml_dashboard.js?v=20260920f"></script>
 </body>
 </html>

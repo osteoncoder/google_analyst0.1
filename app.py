@@ -282,16 +282,6 @@ def health():
     }
 
 
-# TEMPORARY diagnostic sink — the chart timings and the overflow measurement
-# are posted here by charts.js because the preview is behind a tokened proxy
-# (no DevTools, no shareable URL). Remove together with renderBench() /
-# reportBench() in charts.js and the .apex-bench CSS.
-@app.post("/api/bench")
-def bench(payload: dict):
-    print(f"[bench] {json.dumps(payload, sort_keys=True)}", flush=True)
-    return {"ok": True}
-
-
 @app.get("/api/metrics")
 def metrics():
     p = ART / "metrics.json"

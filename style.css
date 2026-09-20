@@ -55,7 +55,7 @@ p,span{
   --base:#0a0918;
   --surface:#120f24;
   --surface-2:#181432;
-  --purple-neon:#a855f7;
+  --purple-neon:#ae63fa;
   --purple-deep:#7c3aed;
   --purple-glow:#d8b4fe;
   --cyan:#2dd4ea;
@@ -63,7 +63,7 @@ p,span{
   --amber:#fbbf62;
   --text-hi:#f3f0ff;
   --text-mid:#b1a8cf;
-  --text-low:#6c6390;
+  --text-low:#8a80b2;
   --border:rgba(168,85,247,0.16);
   --border-hi:rgba(168,85,247,0.45);
   --glass:rgba(255,255,255,0.035);
@@ -456,26 +456,6 @@ details.why strong{color:var(--text-hi);}
 }
 .hidden{display:none !important;}
 
-/* TEMPORARY: ?bench=1 diagnostic panel. Delete with renderBench() in
-   charts.js once the chart performance work is signed off. */
-.apex-bench{
-  position:fixed; right:14px; bottom:14px; z-index:80;
-  min-width:228px; padding:12px 14px;
-  background:rgba(10,9,24,.94); border:1px solid var(--border-hi);
-  border-radius:12px; box-shadow:0 18px 40px rgba(0,0,0,.55);
-  font-family:var(--font-mono); font-size:11.5px; color:var(--text-mid);
-  backdrop-filter:blur(8px);
-}
-.apex-bench-h{
-  font-size:10px; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--purple-glow); margin-bottom:8px;
-}
-.apex-bench-row{display:flex; justify-content:space-between; gap:14px; padding:2px 0;}
-.apex-bench-row b{color:var(--text-hi); font-weight:600;}
-.apex-bench-row.pending b{color:var(--text-low); font-weight:400;}
-.apex-bench-row.slow b{color:var(--amber);}
-.apex-bench-row.total{border-top:1px solid var(--border); margin-top:6px; padding-top:6px;}
-.apex-bench-note{margin-top:7px; font-size:10.5px; color:var(--text-low); line-height:1.5;}
 
 /* ================================================================
    Chart 5 category labels
@@ -505,3 +485,20 @@ details.perf-fold > summary{
 details.perf-fold > div{
   margin:14px 0 0; padding:0; border-left:0; border-radius:0; background:none;
 }
+
+/* Chart 1 legend, rebuilt in HTML: with one Plotly trace there is no trace
+   legend to show, and the old 48-entry SVG legend ate 130px of plot width.
+   This wraps instead, and each swatch is the exact colour its markers carry. */
+.chart-legend{margin:12px 0 6px; display:flex; flex-wrap:wrap; gap:5px 6px;}
+.chart-legend .legend-note{
+  flex:1 0 100%; font-size:10.5px; line-height:1.65; color:var(--text-mid);
+  margin-bottom:2px;
+}
+.chart-legend .legend-item{
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.02em;
+  color:var(--text-mid); background:var(--glass);
+  border:1px solid var(--border); border-radius:999px; padding:2px 8px 2px 5px;
+}
+.chart-legend .legend-item i{width:8px; height:8px; border-radius:50%; flex:none;}
+.chart-legend .legend-item b{color:var(--text-mid); font-weight:500;}

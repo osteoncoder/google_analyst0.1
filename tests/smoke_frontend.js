@@ -108,7 +108,9 @@ const sandbox = {
     return { ok: false, status: 404, json: async () => ({}) };
   },
   Plotly: {
-    newPlot(el, traces, layout) { el.data = { traces, layout }; plots[el.id] = { traces, layout }; },
+    // Counted so the "plotted at most once" check can assert on real draw
+    // calls instead of on timing instrumentation (which no longer exists).
+    newPlot(el, traces, layout) { newPlotCount.n++; el.data = { traces, layout }; plots[el.id] = { traces, layout }; },
     Plots: { resize() {} },
   },
 };
@@ -124,6 +126,9 @@ for (const f of ['data.js', 'charts.js', 'ml_inference.js', 'ml_dashboard.js']) 
   catch (e) { fail(`${f} threw at load: ${e.message}`); process.exit(1); }
 }
 ok('data.js + charts.js + ml_inference.js + ml_dashboard.js load without errors');
+
+const newPlotCount = { n: 0 };
+sandbox.__newPlotCount = newPlotCount;
 
 const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
 
@@ -405,17 +410,15 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   else fail('nav: Escape did not close the drawer');
 
   /* ---------------- lazy chart rendering ---------------- */
-  // Charts must be plotted at most once each, and the timings must be
-  // recorded (that is what ?bench=1 prints).
+  // Charts must be plotted at most once each. Asserted by counting real
+  // Plotly.newPlot calls, not by reading any timing map.
   const plottedOnce = vm.runInContext(`(() => {
-    const before = Object.keys(APEX_CHART_TIMES).length;
-    const times0 = Object.assign({}, APEX_CHART_TIMES);
+    const before = __newPlotCount.n;
     plotChart('chart1'); plotChart('chart1'); plotChart('chart4');
-    return { before, after: Object.keys(APEX_CHART_TIMES).length,
-             unchanged: JSON.stringify(times0) === JSON.stringify(APEX_CHART_TIMES) };
+    return { before, after: __newPlotCount.n };
   })()`, sandbox);
-  if (plottedOnce.before >= 6 && plottedOnce.unchanged)
-    ok(`charts: each chart is plotted at most once (${plottedOnce.before} already rendered, re-plot is a no-op)`);
+  if (plottedOnce.before >= 6 && plottedOnce.after === plottedOnce.before)
+    ok(`charts: each chart is plotted at most once (${plottedOnce.before} draws on record, re-plot draws nothing new)`);
   else fail(`charts: re-plotting a chart re-ran the renderer (${JSON.stringify(plottedOnce)})`);
 
   // With an IntersectionObserver present nothing is plotted until it fires.
@@ -444,6 +447,48 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (plots['chart2'] && plots['chart2'].traces.length)
     ok('charts: a chart revealed by the observer is rendered on the next tick');
   else fail('charts: observed chart was never rendered');
+
+  /* ---------------- WCAG 2.2 contrast ----------------
+     Every text colour in the palette is asserted against every surface it can
+     land on. AA needs 4.5:1 for normal text (3:1 for large text and UI), so a
+     dimmed "low" colour is exactly the kind of thing that silently regresses. */
+  const cssText = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+  const hex = h => {
+    h = h.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  };
+  const lum = rgb => {
+    const f = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]);
+  };
+  const contrast = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const varOf = name => {
+    const m = new RegExp(`\\-\\-${name}\\s*:\\s*(#[0-9a-fA-F]{3,6})`).exec(cssText);
+    return m ? hex(m[1]) : null;
+  };
+  // Surfaces a text colour can sit on, darkest to lightest.
+  const surfaces = { void: varOf('void'), base: varOf('base'), surface: varOf('surface'),
+                     inputs: varOf('surface-2') };
+  const textColours = { 'text-hi': varOf('text-hi'), 'text-mid': varOf('text-mid'),
+                        'text-low': varOf('text-low'), 'purple-glow': varOf('purple-glow'),
+                        'purple-neon': varOf('purple-neon'), cyan: varOf('cyan'),
+                        amber: varOf('amber'), pink: varOf('pink') };
+  const contrastFails = [];
+  for (const [name, fg] of Object.entries(textColours)) {
+    if (!fg) { contrastFails.push(`${name}: variable missing`); continue; }
+    for (const [sName, bg] of Object.entries(surfaces)) {
+      if (!bg) continue;
+      const r = contrast(fg, bg);
+      if (r < 4.5) contrastFails.push(`${name} on ${sName} = ${r.toFixed(2)}:1`);
+    }
+  }
+  if (!contrastFails.length)
+    ok(`WCAG 2.2 AA: all ${Object.keys(textColours).length} text colours >= 4.5:1 on every surface`);
+  else fail(`WCAG 2.2 AA contrast failures:\n     ${contrastFails.join('\n     ')}`);
 
   console.log(failures.length ? `\nSMOKE TEST: ${failures.length} FAILURE(S)` : '\nSMOKE TEST: ALL CHECKS PASSED');
   process.exit(failures.length ? 1 : 0);

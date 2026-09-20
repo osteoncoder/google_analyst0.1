@@ -85,13 +85,13 @@ function renderChart1(){
     gap(el, 'No apps to plot', 'Filter requires ≥1,000 reported installs and known size and rating.');
     return;
   }
+
   // ONE trace, not one per category. Measured on the 40k-row sample: this chart
-  // split ~20k markers across 48 category traces, and Plotly repeats its
+  // split ~17k markers across 48 category traces, and Plotly repeats its
   // per-trace setup (calc, autorange, hover wiring, and for scattergl a
   // separate vertex buffer) for each one — that overhead, not the markers, was
   // the bulk of the 1.4 s. Colour moves to a per-point array, so every marker
-  // keeps exactly the category colour it had as its own trace, and hover still
-  // names the category. Same data, same picture, one draw call.
+  // keeps exactly the category colour it had as its own trace.
   const cats = [...new Set(rows.map(d=>d.category))].sort();
   const catColor = new Map(cats.map((c,i)=>[c, PURPLE_SCALE[i%PURPLE_SCALE.length]]));
 
@@ -99,32 +99,49 @@ function renderChart1(){
   const x = new Array(n), y = new Array(n), sizes = new Array(n),
         colors = new Array(n), cd = new Array(n);
   // Installs are banded — only ~14 distinct values across 40k rows — so
-  // re-formatting the same handful of numbers 20k times is pure waste.
+  // re-formatting the same handful of numbers 17k times is pure waste.
   const fmtCache = new Map();
   const fmtInst = v => {
     let s = fmtCache.get(v);
     if(s === undefined){ s = v.toLocaleString(); fmtCache.set(v, s); }
     return s;
   };
-  // Math.max(...sizes) spreads ~20k arguments and can overflow the call stack
-  // on a bigger dataset — a plain loop is both safer and faster.
-  let maxSize = 0;
+  const catCount = new Map();
   for(let k=0;k<n;k++){
     const d = rows[k];
     x[k] = d.size_mb; y[k] = d.rating;
-    const s = Math.sqrt(d.installs)/9;
-    sizes[k] = s; if(s > maxSize) maxSize = s;
+    sizes[k] = Math.sqrt(d.installs)/9;
     colors[k] = catColor.get(d.category);
+    catCount.set(d.category, (catCount.get(d.category)||0) + 1);
     cd[k] = `${d.app}<br>Category: ${d.category}<br>Installs (band lower bound): ${fmtInst(d.installs)}`;
+  }
+
+  /* Bubble area is proportional to installs — but installs span about six
+     orders of magnitude, so scaling against the single largest app (1B
+     installs) drove 85% of the markers into the sizemin floor and every bubble
+     came out the same size. Merging the traces is what exposed it: each trace
+     used to be scaled against its own category maximum, so every category had
+     a visibly large bubble. Scaling globally is the comparable, honest choice,
+     so instead the SIZE SCALE is capped at the 95th percentile: the common
+     range then spans seven clearly different diameters, and apps at or above
+     the cap are drawn at the maximum size. Area is still proportional to
+     installs below the cap, and the cap is stated in the legend, so nothing is
+     silently distorted. */
+  const ordered = [...sizes].sort((a,b)=>a-b);
+  const sizeCap = ordered[Math.floor(ordered.length*0.95)] || ordered[ordered.length-1] || 1;
+  let maxSize = 0;
+  for(let k=0;k<n;k++){
+    if(sizes[k] > sizeCap) sizes[k] = sizeCap;
+    if(sizes[k] > maxSize) maxSize = sizes[k];
   }
 
   Plotly.newPlot(el, [{
     x, y, mode:'markers', type: webglAvailable() ? 'scattergl' : 'scatter',
     marker:{
       size:sizes, sizemode:'area',
-      sizeref: 2.0*maxSize/(40**2), sizemin:4,
+      sizeref: 2.0*maxSize/(40**2), sizemin:5,
       color:colors, opacity:0.75,
-      // A 1px stroke on every one of ~20k markers roughly doubles the paint
+      // A 1px stroke on every one of ~17k markers roughly doubles the paint
       // cost and buys almost nothing at this bubble size.
       line:{width:0},
     },
@@ -132,14 +149,36 @@ function renderChart1(){
     hovertemplate:'%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra></extra>',
   }], {
     ...layoutBase,
-    // No 48-entry legend: it was drawn outside the plot area (x:1.02, right
-    // margin 130px), which is both unreadable and what pushed content towards
-    // the right edge on narrow viewports. Hover carries the category instead.
     margin:{t:16,l:60,r:24,b:56},
     showlegend:false,
     xaxis:{...AX, title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
     yaxis:{...AX, title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
   }, CONFIG);
+
+  // One trace means Plotly's showlegend cannot list the categories any more, so
+  // the legend is rebuilt as HTML: it wraps instead of eating 130px of plot
+  // width, and every swatch is the exact colour its markers carry.
+  renderChart1Legend(cats, catColor, catCount, sizeCap);
+}
+
+/* 48 categories share a 10-colour palette, so colour alone cannot identify a
+   category — the legend supplies the mapping and hover supplies the exact
+   name. Counts are shown so the reader can see how lopsided the categories
+   are, which matters when judging any one bubble. */
+function renderChart1Legend(cats, catColor, catCount, sizeCap){
+  const el = document.getElementById('chart1legend');
+  if(!el) return;
+  const esc = s => String(s).replace(/[&<>"]/g,
+    c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const capInstalls = Math.round((sizeCap*9)*(sizeCap*9));
+  el.innerHTML =
+      `<span class="legend-note">Bubble area &prop; installs, capped at the 95th `
+    + `percentile (${capInstalls.toLocaleString()}+ installs) so the common range `
+    + `stays readable. 48 categories share a 10-colour palette — hover any bubble `
+    + `for its exact category.</span>`
+    + cats.map(c=>`<span class="legend-item" title="${esc(c)}: `
+      + `${catCount.get(c)||0} apps"><i style="background:${catColor.get(c)}"></i>`
+      + `${esc(c)}<b>${catCount.get(c)||0}</b></span>`).join('');
 }
 
 /* ================================================================
@@ -494,103 +533,27 @@ const CHART_RENDERERS = {
   chart4: renderChart4, chart5: renderChart5, chart6: renderChart6,
 };
 
-/* ---------------- lazy, measured rendering ----------------
+/* ---------------- lazy rendering ----------------
    Rendering all six charts synchronously used to block the main thread until
    every one of them was done: the page was unresponsive (and felt frozen
    around whichever chart the user happened to be looking at) even though only
    one chart was ever visible at a time. Each chart is now plotted when it
    first comes near the viewport, with a yield so the scroll that revealed it
-   is not itself janked.
-
-   Append `?bench=1` to the URL (or set window.APEX_BENCH = true) to log the
-   per-chart Plotly timing to the console. */
-/* TEMPORARY (2026-09-19): forced ON so the panel can be read without editing
-   the URL. Revert to the ?bench=1 gate once the numbers have been captured:
-       const BENCH = globalThis.APEX_BENCH === true ||
-         !!(globalThis.location && /[?&]bench=1\b/.test(globalThis.location.search || '')); */
-const BENCH = globalThis.APEX_BENCH !== false;
-const CHART_TIMES = {};
+   is not itself janked. */
 const plotted = new Set();
-
-/* TEMPORARY diagnostic panel — remove this whole block when the chart work is
-   signed off. Only ever created for ?bench=1, so it is invisible in normal
-   use; it exists so the numbers can be read without opening DevTools. */
-function renderBench(){
-  if(!BENCH) return;
-  try{
-    let el = document.getElementById('apexBench');
-    if(!el){
-      el = document.createElement('div');
-      el.id = 'apexBench';
-      el.className = 'apex-bench';
-      document.body.appendChild(el);
-    }
-    const ids = Object.keys(CHART_RENDERERS);
-    const rows = ids.map(id=>{
-      const ms = CHART_TIMES[id];
-      const cls = ms === undefined ? ' pending' : (ms > 400 ? ' slow' : '');
-      return `<div class="apex-bench-row${cls}"><span>${id}</span>`
-        + `<b>${ms === undefined ? 'not plotted yet' : ms + ' ms'}</b></div>`;
-    }).join('');
-    const done = ids.filter(id=>CHART_TIMES[id] !== undefined);
-    const total = done.reduce((s,id)=>s + CHART_TIMES[id], 0);
-    el.innerHTML =
-      `<div class="apex-bench-h">Plotly render time</div>${rows}`
-      + `<div class="apex-bench-row total"><span>${done.length}/${ids.length} plotted</span>`
-      + `<b>${Math.round(total)} ms</b></div>`
-      + `<div class="apex-bench-note">WebGL ${webglAvailable() ? 'yes → scattergl' : 'no → SVG'}`
-      + (done.length < ids.length ? ' · scroll down to plot the rest' : '') + `</div>`;
-  }catch(err){ /* a diagnostic must never break the page */ }
-}
 
 function plotChart(id){
   if(plotted.has(id)) return;
   plotted.add(id);
-  const now = () => (globalThis.performance && globalThis.performance.now
-    ? globalThis.performance.now() : Date.now());
-  const t0 = now();
   try{
     CHART_RENDERERS[id]();
   }catch(err){
     console.error(`[apex] ${id} failed to render`, err);
   }
-  const dt = now() - t0;
-  CHART_TIMES[id] = Math.round(dt);
-  if(BENCH){
-    console.log(`[apex] ${id}: ${dt.toFixed(0)} ms`);
-    renderBench();
-    reportBench();
-  }
-  return dt;
-}
-
-/* TEMPORARY diagnostic sink. The preview is behind a tokened proxy, so the
-   numbers cannot be read from a URL or from DevTools here — instead the page
-   posts them to the backend, where they land in `python app.py`'s stdout.
-   Remove together with renderBench(). */
-function reportBench(){
-  if(!BENCH || typeof fetch !== 'function') return;
-  const ids = Object.keys(CHART_RENDERERS);
-  if(ids.some(id=>CHART_TIMES[id] === undefined)) return;   // wait until all are plotted
-  try{
-    fetch('api/bench', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        charts: CHART_TIMES,
-        webgl: webglAvailable(),
-        plotted: `${ids.filter(id=>CHART_TIMES[id] !== undefined).length}/${ids.length}`,
-        scrollWidth: (document.documentElement || {}).scrollWidth,
-        innerWidth: window.innerWidth,
-      }),
-    }).catch(()=>{});
-  }catch(err){ /* a diagnostic must never break the page */ }
 }
 
 function renderCharts(){
   const ids = Object.keys(CHART_RENDERERS);
-  renderBench();                 // show the (still empty) panel immediately
-  // Legacy window hook so the panel can be re-rendered from the console.
-  if(BENCH) globalThis.renderBenchPanel = renderBench;
   // No IntersectionObserver (very old browser, jsdom, the test harness):
   // fall back to rendering everything, exactly like before.
   if(typeof IntersectionObserver === 'undefined' || typeof document.getElementById !== 'function'){
@@ -622,8 +585,5 @@ window.addEventListener('resize', ()=>{
     document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
       if(el && el.data) Plotly.Plots.resize(el);
     });
-    reportBench();          // TEMPORARY: re-report at the new viewport width
   }, 150);
 });
-
-globalThis.APEX_CHART_TIMES = CHART_TIMES;
