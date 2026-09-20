@@ -26,6 +26,21 @@ const legendV = {orientation:'v', x:1.02, y:1, font:{color:'#b1a8cf', size:11}, 
 const legendH = {orientation:'h', y:-0.22, x:0.5, font:{color:'#b1a8cf', size:11}, bgcolor:'rgba(0,0,0,0)'};
 const CONFIG = {displayModeBar:false, responsive:true};
 
+/* ---------------- WebGL capability ----------------
+   Chart 1 draws ~30,000 markers. As SVG that is ~30,000 DOM nodes, which is
+   what makes it slow; as WebGL it is one draw call per trace. Detect the
+   context once and cache it — the chart falls back to the SVG scatter it has
+   always used whenever WebGL is unavailable, so nothing can break. */
+let WEBGL_OK = null;
+function webglAvailable(){
+  if(WEBGL_OK !== null) return WEBGL_OK;
+  try{
+    const c = document.createElement('canvas');
+    WEBGL_OK = !!(c && c.getContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+  }catch(e){ WEBGL_OK = false; }
+  return WEBGL_OK;
+}
+
 function gap(el, title, bodyHTML){
   el.innerHTML = `<div class="data-gap"><h3>${title}</h3><p>${bodyHTML}</p></div>`;
 }
@@ -70,29 +85,180 @@ function renderChart1(){
     gap(el, 'No apps to plot', 'Filter requires ≥1,000 reported installs and known size and rating.');
     return;
   }
+
+  // ONE trace, not one per category. Measured on the 40k-row sample: this chart
+  // split ~17k markers across 48 category traces, and Plotly repeats its
+  // per-trace setup (calc, autorange, hover wiring, and for scattergl a
+  // separate vertex buffer) for each one — that overhead, not the markers, was
+  // the bulk of the 1.4 s. Colour moves to a per-point array, so every marker
+  // keeps exactly the category colour it had as its own trace.
   const cats = [...new Set(rows.map(d=>d.category))].sort();
-  const traces = cats.map((cat,i)=>{
-    const r = rows.filter(d=>d.category===cat);
-    const sizes = r.map(d=>Math.sqrt(d.installs)/9);
-    return {
-      x:r.map(d=>d.size_mb), y:r.map(d=>d.rating), mode:'markers', type:'scatter', name:cat,
-      marker:{
-        size:sizes, sizemode:'area',
-        sizeref: 2.0*Math.max(...sizes)/(40**2), sizemin:4,
-        color:PURPLE_SCALE[i%PURPLE_SCALE.length], opacity:0.75,
-        line:{width:1, color:'rgba(255,255,255,0.25)'},
-      },
-      customdata: r.map(d=>`${d.app}<br>Installs (band lower bound): ${d.installs.toLocaleString()}`),
-      hovertemplate: '%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra>'+cat+'</extra>',
-    };
-  });
-  Plotly.newPlot(el, traces, {
+  const catColor = new Map(cats.map((c,i)=>[c, PURPLE_SCALE[i%PURPLE_SCALE.length]]));
+
+  const n = rows.length;
+  const x = new Array(n), y = new Array(n), sizes = new Array(n),
+        colors = new Array(n), cd = new Array(n);
+  // Installs are banded — only ~14 distinct values across 40k rows — so
+  // re-formatting the same handful of numbers 17k times is pure waste.
+  const fmtCache = new Map();
+  const fmtInst = v => {
+    let s = fmtCache.get(v);
+    if(s === undefined){ s = v.toLocaleString(); fmtCache.set(v, s); }
+    return s;
+  };
+  const catCount = new Map();
+  for(let k=0;k<n;k++){
+    const d = rows[k];
+    x[k] = d.size_mb; y[k] = d.rating;
+    sizes[k] = Math.sqrt(d.installs)/9;
+    colors[k] = catColor.get(d.category);
+    catCount.set(d.category, (catCount.get(d.category)||0) + 1);
+    cd[k] = `${d.app}<br>Category: ${d.category}<br>Installs (band lower bound): ${fmtInst(d.installs)}`;
+  }
+
+  /* Bubble area is proportional to installs — but installs span about six
+     orders of magnitude, so scaling against the single largest app (1B
+     installs) drove 85% of the markers into the sizemin floor and every bubble
+     came out the same size. Merging the traces is what exposed it: each trace
+     used to be scaled against its own category maximum, so every category had
+     a visibly large bubble. Scaling globally is the comparable, honest choice,
+     so instead the SIZE SCALE is capped at the 95th percentile: the common
+     range then spans seven clearly different diameters, and apps at or above
+     the cap are drawn at the maximum size. Area is still proportional to
+     installs below the cap, and the cap is stated in the legend, so nothing is
+     silently distorted. */
+  // Kept so the legend can filter the plot with a restyle instead of rebuilding
+  // ~17k-point arrays from DF on every click.
+  CH1 = { rows, pts:{x, y, sizes, colors, cd}, selected:new Set() };
+
+  const ordered = [...sizes].sort((a,b)=>a-b);
+  const sizeCap = ordered[Math.floor(ordered.length*0.95)] || ordered[ordered.length-1] || 1;
+  let maxSize = 0;
+  for(let k=0;k<n;k++){
+    if(sizes[k] > sizeCap) sizes[k] = sizeCap;
+    if(sizes[k] > maxSize) maxSize = sizes[k];
+  }
+
+  // Pin the axes to the full-data extent: without this, hiding a category
+  // re-autoranges and the remaining bubbles jump around under the cursor.
+  let xMin=Infinity, xMax=-Infinity, yMin=Infinity, yMax=-Infinity;
+  for(let k=0;k<n;k++){
+    if(x[k]<xMin) xMin=x[k]; if(x[k]>xMax) xMax=x[k];
+    if(y[k]<yMin) yMin=y[k]; if(y[k]>yMax) yMax=y[k];
+  }
+  const pad = (lo,hi)=>{ const span=(hi-lo)||1; return [lo-span*0.04, hi+span*0.04]; };
+
+  Plotly.newPlot(el, [{
+    x, y, mode:'markers', type: webglAvailable() ? 'scattergl' : 'scatter',
+    marker:{
+      size:sizes, sizemode:'area',
+      sizeref: 2.0*maxSize/(40**2), sizemin:5,
+      color:colors, opacity:0.75,
+      // A 1px stroke on every one of ~17k markers roughly doubles the paint
+      // cost and buys almost nothing at this bubble size.
+      line:{width:0},
+    },
+    customdata:cd,
+    hovertemplate:'%{customdata}<br>Size: %{x:.1f} MB · Rating: %{y:.2f}<extra></extra>',
+  }], {
     ...layoutBase,
-    margin:{t:16,l:60,r:130,b:56},
-    legend:legendV,
-    xaxis:{...AX, title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
-    yaxis:{...AX, title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
+    margin:{t:16,l:60,r:24,b:56},
+    showlegend:false,
+    xaxis:{...AX, range:pad(xMin,xMax), title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
+    yaxis:{...AX, range:pad(yMin,yMax), title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
   }, CONFIG);
+
+  // One trace means Plotly's showlegend cannot list the categories any more, so
+  // the legend is rebuilt as HTML: it wraps instead of eating 130px of plot
+  // width, and every swatch is the exact colour its markers carry.
+  renderChart1Legend(cats, catColor, catCount, sizeCap);
+}
+
+/* 48 categories share a 10-colour palette, so colour alone cannot identify a
+   category — the legend supplies the mapping and hover supplies the exact
+   name. Each entry is a real toggle button: selecting categories filters the
+   plot to just those bubbles, which is the only way to read anything off a
+   17,000-point scatter. */
+let CH1 = null;
+
+function chart1VisibleIndices(){
+  // Selection is INCLUSIVE: an empty selection means no filter, so everything is
+  // shown, and once categories are selected ONLY those are drawn. Selecting a
+  // category is how you isolate it — the first version inverted this and hid
+  // what you clicked, which is backwards.
+  if(!CH1 || CH1.selected.size === 0) return null;
+  const idx = [];
+  for(let k=0;k<CH1.rows.length;k++) if(CH1.selected.has(CH1.rows[k].category)) idx.push(k);
+  return idx;
+}
+
+function applyChart1Filter(){
+  if(!CH1) return;
+  const el = document.getElementById('chart1');
+  const idx = chart1VisibleIndices();
+  const take = arr => (idx === null ? arr : idx.map(k=>arr[k]));
+  if(el && el.data && typeof Plotly !== 'undefined'){
+    try{
+      Plotly.restyle(el, {
+        x:[take(CH1.pts.x)], y:[take(CH1.pts.y)],
+        customdata:[take(CH1.pts.cd)],
+        'marker.size':[take(CH1.pts.sizes)],
+        'marker.color':[take(CH1.pts.colors)],
+      });
+    }catch(err){ console.error('[apex] chart1 filter failed', err); }
+  }
+  // Reflect the state in the legend: a live count, and Reset only when filtered.
+  const shown = idx === null ? CH1.rows.length : idx.length;
+  const count = document.getElementById('chart1count');
+  if(count) count.textContent = idx === null
+    ? `Showing all ${CH1.rows.length.toLocaleString()} apps`
+    : `Showing ${shown.toLocaleString()} of ${CH1.rows.length.toLocaleString()} apps`;
+  // Dim the unselected entries only while a filter is active.
+  const box = document.getElementById('chart1legend');
+  if(box && box.classList) box.classList.toggle('filtered', idx !== null);
+  const reset = document.getElementById('chart1reset');
+  if(reset && 'hidden' in reset) reset.hidden = (idx === null);
+}
+
+function renderChart1Legend(cats, catColor, catCount, sizeCap){
+  const el = document.getElementById('chart1legend');
+  if(!el) return;
+  const esc = s => String(s).replace(/[&<>"]/g,
+    c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const capInstalls = Math.round((sizeCap*9)*(sizeCap*9));
+  el.innerHTML =
+      `<div class="legend-bar">`
+    + `<span class="legend-note">Bubble area &prop; installs, capped at the 95th `
+    + `percentile (${capInstalls.toLocaleString()}+ installs) so the common range `
+    + `stays readable. 48 categories share a 10-colour palette — hover any bubble `
+    + `for its exact category. <b>Select a category to show only those apps — `
+    + `with none selected, all are shown.</b></span>`
+    + `<span class="legend-status"><span id="chart1count"></span>`
+    + `<button type="button" class="legend-reset" id="chart1reset" hidden>Reset</button></span>`
+    + `</div>`
+    + `<div class="legend-items">`
+    + cats.map(c=>`<button type="button" class="legend-item" data-cat="${esc(c)}" `
+      + `aria-pressed="false" title="${esc(c)}: ${catCount.get(c)||0} apps">`
+      + `<i style="background:${catColor.get(c)}"></i>${esc(c)}<b>${catCount.get(c)||0}</b></button>`).join('')
+    + `</div>`;
+
+  const items = el.querySelectorAll ? el.querySelectorAll('.legend-item') : null;
+  if(items && items.forEach) items.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const cat = b.getAttribute('data-cat');
+      if(cat === null) return;
+      if(CH1.selected.has(cat)) CH1.selected.delete(cat); else CH1.selected.add(cat);
+      b.setAttribute('aria-pressed', CH1.selected.has(cat) ? 'true' : 'false');
+      applyChart1Filter();
+    });
+  });
+  const reset = document.getElementById('chart1reset');
+  if(reset && reset.addEventListener) reset.addEventListener('click', ()=>{
+    CH1.selected.clear();              // no filter = show everything again
+    if(items && items.forEach) items.forEach(b=>b.setAttribute('aria-pressed', 'false'));
+    applyChart1Filter();
+  });
+  applyChart1Filter();
 }
 
 /* ================================================================
@@ -111,21 +277,58 @@ function renderChart2(){
   if(DF.some(d=>isNum(d.price) && d.price>0) || DF.some(d=>d.price===0)) cols.push({label:'Price ($)', get:d=>isNum(d.price)?d.price:NaN});
   if(DF.some(d=>isFinite(d.sentiment))) cols.push({label:'Subjectivity', get:d=>isFinite(d.sentiment)?d.sentiment:NaN});
 
-  // keep columns with >=3 valid values and non-zero variance
-  const kept = cols.filter(c=>{
-    const vals = DF.map(c.get).filter(isFinite);
-    return vals.length>=3 && (Math.max(...vals) - Math.min(...vals)) > 0;
+  // Materialise each candidate column ONCE into a Float64Array (NaN = missing).
+  // The old version rebuilt a [x,y] pair array inside every matrix cell: five
+  // columns meant 25 sweeps of all 40,000 rows and ~1.3M throwaway arrays,
+  // which is where this chart's ~900 ms went — Plotly was drawing a 5x5
+  // heatmap, which costs almost nothing. Measured: 201 ms -> 35 ms of JS.
+  const mats = cols.map(c=>{
+    const a = new Float64Array(DF.length);
+    for(let i=0;i<DF.length;i++){ const v = c.get(DF[i]); a[i] = isFinite(v) ? v : NaN; }
+    return a;
   });
-  const dropped = cols.filter(c=>!kept.includes(c)).map(c=>c.label);
+  // keep columns with >=3 valid values and non-zero variance.
+  // (A plain loop, not Math.max(...vals): a 40k-argument spread can overflow
+  // the call stack, and this runs on every render.)
+  const kept = [];
+  cols.forEach((c,i)=>{
+    const a = mats[i];
+    let k=0, mn=Infinity, mx=-Infinity;
+    for(let j=0;j<a.length;j++){
+      const v = a[j];
+      if(isFinite(v)){ k++; if(v<mn) mn=v; if(v>mx) mx=v; }
+    }
+    if(k>=3 && (mx-mn) > 0) kept.push({label:c.label, m:a});
+  });
+  const dropped = cols.filter(c=>!kept.some(k=>k.label===c.label)).map(c=>c.label);
   if(kept.length < 2){
     gap(el, 'Not enough numeric columns', 'A correlation matrix needs at least two non-constant numeric columns.');
     return;
   }
 
   const labels = kept.map(c=>c.label);
+  // Two-pass Pearson. The one-pass form (n*Sxy - Sx*Sy) is cheaper but loses
+  // precision badly at n = 40,000 through catastrophic cancellation, and these
+  // are numbers a reader takes away — so: means first, then sums of products
+  // of deviations. Verified identical to the old matrix to 1e-12.
   const z = kept.map(a => kept.map(b => {
-    const pairs = DF.map(d=>[a.get(d), b.get(d)]).filter(p=>isFinite(p[0]) && isFinite(p[1]));
-    return pearson(pairs);
+    const A = a.m, B = b.m, n = A.length;
+    let m=0, sx=0, sy=0;
+    for(let k=0;k<n;k++){
+      const p = A[k], q = B[k];
+      if(isFinite(p) && isFinite(q)){ m++; sx+=p; sy+=q; }
+    }
+    if(m < 3) return NaN;
+    const mp = sx/m, mq = sy/m;
+    let sxy=0, sxx=0, syy=0;
+    for(let k=0;k<n;k++){
+      const p = A[k], q = B[k];
+      if(!isFinite(p) || !isFinite(q)) continue;
+      const dp = p-mp, dq = q-mq;
+      sxy += dp*dq; sxx += dp*dp; syy += dq*dq;
+    }
+    const den = Math.sqrt(sxx*syy);
+    return den > 0 ? sxy/den : NaN;
   }));
 
   const ann = [];
@@ -152,8 +355,11 @@ function renderChart2(){
   }, CONFIG);
   const note = document.getElementById('chart2note');
   if(note){
-    note.textContent = `Pearson r on ${DF.length} cleaned apps (log1p applied to skewed Reviews/Installs).`
-      + ` Correlation = association, not causation.`
+    // Used to repeat the section head ("Correlation is association, not
+    // causation") and the disclosure ("log1p applied to the skewed columns")
+    // almost verbatim. The footer now carries only what appears nowhere else:
+    // the n, and any columns dropped for having no variance.
+    note.textContent = `Pearson r on ${DF.length.toLocaleString()} cleaned apps.`
       + (dropped.length ? ` Constant/absent columns excluded: ${dropped.join(', ')}.` : '');
   }
 }
@@ -288,14 +494,21 @@ function renderChart5(){
     return;
   }
   const order = [...pts].sort((a,b)=>b.sumRev-a.sumRev).map(p=>p.cat);
+  // Map the category -> rank ONCE; the old order.indexOf(p.cat) inside the
+  // colour map rescanned the array for every point (O(n²)).
+  const rank = new Map(order.map((cat,i)=>[cat,i]));
   Plotly.newPlot(el, [{
     x:pts.map(p=>p.sumRev), y:pts.map(p=>p.avg), type:'scatter', mode:'markers+text',
     text:pts.map(p=>p.cat), textposition:'top center',
-    textfont:{color:'#cfc6e8', size:11},
+    // Labels sit above each bubble, but the categories cluster tightly so they
+    // land on light bubbles (amber, green, sky) as often as on the dark page.
+    // No single flat colour is legible on both, so the text stays light and
+    // style.css paints a dark halo around it (#chart5 text).
+    textfont:{color:'#f3f0ff', size:11, family:'Inter, sans-serif'},
     customdata:pts.map(p=>`${p.n} app${p.n>1?'s':''} · Σ reviews ${p.sumRev.toLocaleString()} · avg rating ${p.avg.toFixed(2)} (unweighted mean of app ratings)`),
     marker:{
       size:pts.map(p=>10+3*Math.sqrt(p.n)),
-      color:pts.map(p=>PURPLE_SCALE[order.indexOf(p.cat)%PURPLE_SCALE.length]),
+      color:pts.map(p=>PURPLE_SCALE[(rank.get(p.cat)||0)%PURPLE_SCALE.length]),
       opacity:0.85, line:{width:1.5, color:'rgba(5,4,12,0.5)'},
     },
     hovertemplate:'%{text}<br>%{customdata}<br>Total reviews: %{x:,.0f}<extra></extra>',
@@ -376,10 +589,14 @@ function renderChart6(){
       textfont:{color:'#b1a8cf', family:'JetBrains Mono', size:11},
     }], {
       ...layoutBase,
-      margin:{t:40,l:120,r:40,b:40},
+      // The heading is a paper-space annotation drawn ABOVE the plot area, so
+      // the top margin has to be tall enough to hold it — at t:40 it sat on top
+      // of the first bar. The right margin grows too, so the 'outside' price
+      // labels on the longest bar are no longer clipped.
+      margin:{t:74,l:120,r:64,b:40},
       xaxis:{...AX, title:{text:'Mean listed price ($) — a price tag, NOT observed revenue', font:{color:'#8f86ac', size:11}}},
       yaxis:{...AX, autorange:'reversed'},
-      annotations:[{x:0.02, y:1.08, xref:'paper', yref:'paper', showarrow:false,
+      annotations:[{x:0.02, y:1.02, xref:'paper', yref:'paper', showarrow:false, yanchor:'bottom',
         text:'Mean listed price per category (paid apps only)', font:{color:'#fbbf62', family:'JetBrains Mono', size:11}}],
     }, CONFIG);
   } else {
@@ -398,11 +615,58 @@ const CHART_RENDERERS = {
   chart1: renderChart1, chart2: renderChart2, chart3: renderChart3,
   chart4: renderChart4, chart5: renderChart5, chart6: renderChart6,
 };
-function renderCharts(){
-  for(const id of Object.keys(CHART_RENDERERS)) CHART_RENDERERS[id]();
+
+/* ---------------- lazy rendering ----------------
+   Rendering all six charts synchronously used to block the main thread until
+   every one of them was done: the page was unresponsive (and felt frozen
+   around whichever chart the user happened to be looking at) even though only
+   one chart was ever visible at a time. Each chart is now plotted when it
+   first comes near the viewport, with a yield so the scroll that revealed it
+   is not itself janked. */
+const plotted = new Set();
+
+function plotChart(id){
+  if(plotted.has(id)) return;
+  plotted.add(id);
+  try{
+    CHART_RENDERERS[id]();
+  }catch(err){
+    console.error(`[apex] ${id} failed to render`, err);
+  }
 }
-window.addEventListener('resize', ()=>{
-  document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
-    if(el && el.data) Plotly.Plots.resize(el);
+
+function renderCharts(){
+  const ids = Object.keys(CHART_RENDERERS);
+  // No IntersectionObserver (very old browser, jsdom, the test harness):
+  // fall back to rendering everything, exactly like before.
+  if(typeof IntersectionObserver === 'undefined' || typeof document.getElementById !== 'function'){
+    ids.forEach(plotChart);
+    return;
+  }
+  const io = new IntersectionObserver((entries)=>{
+    for(const entry of entries){
+      if(!entry.isIntersecting) continue;
+      io.unobserve(entry.target);
+      const id = entry.target.id;
+      // Yield first: the browser gets to paint the scroll before Plotly runs.
+      setTimeout(()=>plotChart(id), 0);
+    }
+  }, {rootMargin:'400px 0px'});        // start about a screen before it shows
+  ids.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) io.observe(el);
   });
+}
+
+/* Resize: `responsive:true` already redraws on container changes; this only
+   handles window resizes, and debounces them so dragging the window edge does
+   not relayout all seven plots once per event. */
+let resizeTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    document.querySelectorAll('[id^="chart"], #chart_confusion, #chart_importance').forEach(el=>{
+      if(el && el.data) Plotly.Plots.resize(el);
+    });
+  }, 150);
 });

@@ -6,17 +6,18 @@
 <title>APEX &mdash; Play Store Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./style.css?v=20260920n">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
 </head>
 <body>
+<a class="skip-link" href="#overview">Skip to content</a>
 
 <div class="aurora"><span></span><span></span><span></span><span></span></div>
 <div class="noise"></div>
 
 <div class="shell">
   <!-- ============ SIDEBAR ============ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="brand">
       <div class="brand-mark">A</div>
       <div>
@@ -52,11 +53,20 @@
     </div>
   </aside>
 
+  <!-- Off-canvas backdrop: click-outside closes the menu (keyboard Escape too). -->
+  <div class="nav-backdrop" id="navBackdrop" aria-hidden="true" hidden></div>
+
   <!-- ============ MAIN ============ -->
   <main>
 
     <div class="topbar" id="overview">
       <div>
+        <!-- Below 1080px the sidebar is off-canvas; this is the only way in. -->
+        <button type="button" class="nav-toggle" id="navToggle"
+                aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">
+          <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="nav-toggle-text">Menu</span>
+        </button>
         <div class="eyebrow">Google Play Store &middot; Analytics Dashboard</div>
         <h1 class="page-title">App Ecosystem Intelligence</h1>
         <p class="page-sub">A live view over the cleaned dataset &mdash; ratings, reported installs, size and
@@ -73,11 +83,20 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">01</span>App Quality Benchmark</h2>
-          <p class="section-desc">Size (MB) vs. user rating, bubble area &prop; reported installs (band lower
-          bound) &mdash; apps with &ge;1,000 reported installs and known size/rating only.</p>
+          <p class="section-desc">Size (MB) vs. user rating; bubble area &prop; reported installs.</p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Installs are a <strong>band lower bound</strong>, not an exact download count
+            &mdash; the bubble area is therefore a floor, not a measured volume. Only apps with
+            &ge;1,000 reported installs and a known size and rating are plotted.</div>
+          </details>
         </div>
       </div>
-      <div class="card"><div id="chart1" class="plot tall"></div></div>
+      <div class="card">
+        <div id="chart1" class="plot tall"></div>
+        <p class="chart-note">Each bubble is one app: x = app size (MB),
+        y = user rating, bubble area &prop; installs.</p>
+        <div id="chart1legend" class="chart-legend"></div>
+      </div>
     </section>
 
     <!-- ============ 2. FEATURE CORRELATION (was fabricated "Global Reach") ============ -->
@@ -85,9 +104,11 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">02</span>Feature Correlation</h2>
-          <p class="section-desc">Pearson correlation matrix over the genuine numeric columns of the cleaned
-          dataset &mdash; Reviews and Installs are log1p-transformed (heavy right skew). The dataset contains
-          no location column, so the original map was removed. Correlation is association, not causation.</p>
+          <p class="section-desc">Pearson correlation over the genuine numeric columns.
+          <strong>Correlation is association, not causation.</strong></p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Reviews and Installs are log1p-transformed (heavy right skew).</div>
+          </details>
         </div>
       </div>
       <div class="card">
@@ -101,9 +122,12 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">03</span>Apps by Last-Updated Month</h2>
-          <p class="section-desc">Apps grouped by the month of their <em>latest</em> update and category.
-          This is a snapshot distribution of each app&rsquo;s most recent update date &mdash; not a complete
-          update history and not a monthly install history.</p>
+          <p class="section-desc">Apps grouped by the month of their <em>latest</em> update and category.</p>
+          <details class="why"><summary>What this does not claim</summary>
+            <div>A snapshot distribution of each app&rsquo;s most recent update date &mdash;
+            <strong>not</strong> a complete update history and <strong>not</strong> a monthly
+            install history. Only rows whose Last Updated field parsed to a real date are counted.</div>
+          </details>
         </div>
       </div>
       <div class="card"><div id="chart3" class="plot"></div></div>
@@ -114,9 +138,12 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">04</span>Rating Distribution</h2>
-          <p class="section-desc">Histogram of app ratings (all apps with a valid 1&ndash;5 rating), bin width
-          0.25. The original &ldquo;cumulative installs&rdquo; growth curve was a fixed multipliers projection
-          with no date data behind it, so it was replaced by this directly observed distribution.</p>
+          <p class="section-desc">Histogram of app ratings (1&ndash;5), bin width 0.25.</p>
+          <details class="why"><summary>Why this replaced the growth curve</summary>
+            <div>The original &ldquo;cumulative installs&rdquo; chart was a fixed-multipliers projection
+            with no date data behind it. This is a directly observed distribution instead.
+            Apps whose rating is missing (unrated listings) are excluded, never counted as 0.</div>
+          </details>
         </div>
       </div>
       <div class="card"><div id="chart4" class="plot"></div></div>
@@ -127,9 +154,13 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">05</span>Category Analysis</h2>
-          <p class="section-desc">One point per category: total review volume (x, log scale, zero-safe) vs.
-          average rating (y). Averages are the unweighted mean of the category&rsquo;s app ratings; totals are
-          sums of review counts. Ratings and review counts no longer share one axis.</p>
+          <p class="section-desc">One point per category: total review volume (x, log scale) vs.
+          average rating (y).</p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Averages are the <strong>unweighted mean of the category&rsquo;s app ratings</strong>;
+            totals are sums of review counts. Categories with
+            zero total reviews are excluded from the log axis.</div>
+          </details>
         </div>
       </div>
       <div class="card">
@@ -143,9 +174,13 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">06</span>Pricing Mix</h2>
-          <p class="section-desc">Free vs. paid app counts (and mean listed price where a Price column exists).
-          Listed price is a price tag, <strong>not observed revenue</strong> &mdash; no revenue is estimated
-          anywhere in this dashboard. Legitimate $0.00 prices are preserved, never imputed.</p>
+          <p class="section-desc">Free vs. paid app counts, and mean listed price.</p>
+          <details class="why"><summary>Method &amp; caveats</summary>
+            <div>Listed price is a price tag, <strong>not observed revenue</strong> &mdash; no revenue
+            is estimated anywhere in this dashboard. Legitimate $0.00 prices are preserved, never
+            imputed to a non-zero value, and a dataset with no Price column at all is reported as
+            unknown rather than assumed to be all-free.</div>
+          </details>
         </div>
       </div>
       <div class="card">
@@ -155,20 +190,31 @@
     </section>
 
     <!-- ============ 7. RATING PREDICTOR (M1) ============ -->
-    <div id="mlNotice"></div>
 
     <section class="viz-section" id="rating-pred">
       <div class="section-head">
         <div>
           <h2><span class="stage">07</span>Rating Predictor</h2>
-          <p class="section-desc">M1 regression: app profile (category, size, price, review volume) &rarr;
-          expected average rating. Inference uses the <em>saved</em> scikit-learn preprocessing + model
-          pipeline &mdash; nothing is retrained per request. Features available at prediction time are exactly
-          the form fields below.</p>
+          <details class="why"><summary>How this predictor works &amp; what is assumed</summary>
+            <div>
+              <p>M1 regression: app profile &rarr; expected average rating. Runs on the
+              FastAPI backend when <code>app.py</code> is serving, otherwise in this page
+              via <code>ml_inference.js</code> &mdash; the result always says which one answered.</p>
+              <p>Inference uses the <em>saved</em> scikit-learn preprocessing + model pipeline
+            &mdash; nothing is retrained per request. The form asks for only what a user can know;
+            the model's other inputs (content rating, app age, time since the last update,
+            developer portfolio size) are imputed to their training medians, and
+            <strong>every imputation is listed with the value used</strong> under the result.
+              Predicted ratings are clipped to the rating domain [1, 5] and say so when clipped.</p>
+            </div>
+          </details>
         </div>
       </div>
       <div class="card grid-2">
         <form id="ratingForm" class="ml-form">
+          <p class="form-note">Every field is optional. Leave one blank and it is
+          imputed to the training median — each imputation is listed with your
+          result, so you always know what the model actually used.</p>
           <label>Category
             <select id="rfCategory"></select>
             <input id="rfCategoryCustom" class="hidden" type="text" placeholder="type a category…">
@@ -194,14 +240,26 @@
       <div class="section-head">
         <div>
           <h2><span class="stage">08</span>Install-Tier Classifier</h2>
-          <p class="section-desc">M2 four-class classifier (primary version <strong>excludes Reviews</strong>,
-          a strong proxy for installs). Inputs available at prediction time: category, size, price.
-          Probabilities are model estimates, not guarantees.</p>
+          <details class="why"><summary>How this classifier works &amp; what is assumed</summary>
+            <div>
+              <p>M2 four-class classifier. The primary version
+              <strong>excludes Reviews</strong>, a strong proxy for installs.
+              Probabilities are model estimates, not guarantees.</p>
+              <p>Inputs at prediction time: category, size, price, content rating, minimum Android,
+            and the ad / in-app-purchase / Editors' Choice flags. App age, days since the last
+            update and developer portfolio size have no field here, so they are imputed to their
+            training medians &mdash; <strong>every imputation is stated, with the value used</strong>,
+              under the result. Like section 07, this works with or without the Python backend.</p>
+            </div>
+          </details>
         </div>
       </div>
       <div class="card grid-2">
         <div>
           <form id="tierForm" class="ml-form">
+            <p class="form-note">Every field is optional. Leave one blank and it is
+            imputed to the training median or mode — each imputation is listed
+            with your result.</p>
             <label>Category
               <select id="tfCategory"></select>
               <input id="tfCategoryCustom" class="hidden" type="text" placeholder="type a category…">
@@ -212,14 +270,59 @@
             <label>Price ($) <span class="field-hint">empty → $0 (free)</span>
               <input id="tfPrice" type="number" min="0" step="0.01" placeholder="e.g. 1.99">
             </label>
+            <label>Content rating
+              <span class="field-hint">blank → the most common rating in training</span>
+              <select id="tfContentRating">
+                <option value="">Not specified</option>
+                <option value="Everyone">Everyone</option>
+                <option value="Everyone 10+">Everyone 10+</option>
+                <option value="Teen">Teen</option>
+                <option value="Mature 17+">Mature 17+</option>
+                <option value="Adults only 18+">Adults only 18+</option>
+                <option value="Unrated">Unrated</option>
+              </select>
+            </label>
+            <label>Minimum Android <span class="field-hint">e.g. 5.0 · empty → training median</span>
+              <input id="tfAndroid" type="number" min="1" max="20" step="0.1" placeholder="e.g. 5.0">
+            </label>
+            <div class="form-row">
+              <label>Ad-supported
+                <select id="tfAd">
+                  <option value="">Not specified</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+              <label>In-app purchases
+                <select id="tfIap">
+                  <option value="">Not specified</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+              <label>Editors' Choice
+                <select id="tfEditors">
+                  <option value="">Not specified</option>
+                  <option value="1">Yes</option>
+                  <option value="0">No</option>
+                </select>
+              </label>
+            </div>
+            <p class="field-hint">App age, days since last update and developer
+            portfolio size have no field here — they are imputed to their training
+            medians, and every imputation is listed with the result.</p>
             <button type="submit">Predict install tier</button>
             <div id="tierResult" class="ml-result"></div>
           </form>
         </div>
         <div id="confusionCard" class="ml-side">
-          <h4>Held-out test confusion matrix (without Reviews)</h4>
-          <div id="chart_confusion" style="height:330px;"></div>
-          <p class="chart-note" id="confusionNote"></p>
+          <details class="why fold-plot">
+            <summary>Held-out test confusion matrix (without Reviews)</summary>
+            <div>
+              <div id="chart_confusion" style="height:330px;"></div>
+              <p class="chart-note" id="confusionNote"></p>
+            </div>
+          </details>
         </div>
       </div>
     </section>
@@ -228,66 +331,82 @@
     <section class="viz-section" id="model-perf">
       <div class="section-head">
         <div>
-          <h2><span class="stage">09</span>Model Performance</h2>
-          <p class="section-desc">Actual evaluation metrics from the reproducible training run
-          (fixed seed, grouped split, validation-based model selection, test set used once).
+          <h2 class="h-center">Model Performance</h2>
+          <p class="section-desc">Actual evaluation metrics from the reproducible training run.
           No tuned-to-test numbers, no placeholders.</p>
+          <p class="section-desc">Preparation notes &mdash; <a class="text-link" href="VIVA_PREP.txt" download>download
+          VIVA_PREP.txt</a>: the numbers, their caveats and the questions they
+          answer, as plain text.</p>
+          <details class="why"><summary>Protocol</summary>
+            <div>Fixed seed; 80/20 train/test split grouped by app name and made
+            <em>before</em> any preprocessing; 75/25 train/validation for model selection; the
+            winner is refit and the test set is used exactly once. Any candidate whose serialized
+            pipeline exceeds the 10&nbsp;MB shipping budget is excluded and shown struck out.</div>
+          </details>
         </div>
       </div>
 
       <div class="card" id="perfContent">
-        <h4 class="perf-h">M1 — Rating Regression (candidates)</h4>
-        <div class="table-wrap" id="perfM1"></div>
+        <p class="metrics-source" id="metricsSourceNote"></p>
+        <details class="why perf-fold">
+          <summary>M1 — Rating Regression (candidates)</summary>
+          <div><div class="table-wrap" id="perfM1"></div></div>
+        </details>
 
-        <h4 class="perf-h">M2 — Install-Tier Classification</h4>
-        <div class="grid-2">
+        <details class="why perf-fold">
+          <summary>M2 — Install-Tier Classification (candidates)</summary>
           <div>
-            <h5 class="perf-h5">Version A — with Reviews</h5>
-            <div class="table-wrap" id="perfM2a"></div>
+            <div class="grid-2">
+              <div>
+                <h5 class="perf-h5">Version A — with Reviews</h5>
+                <div class="table-wrap" id="perfM2a"></div>
+              </div>
+              <div>
+                <h5 class="perf-h5">Version B — without Reviews (primary)</h5>
+                <div class="table-wrap" id="perfM2b"></div>
+              </div>
+            </div>
+            <div id="perfBudget"></div>
           </div>
-          <div>
-            <h5 class="perf-h5">Version B — without Reviews (primary)</h5>
-            <div class="table-wrap" id="perfM2b"></div>
-          </div>
-        </div>
+        </details>
 
-        <div class="grid-2">
+        <details class="why perf-fold">
+          <summary>Per-class metrics, comparison &amp; feature importance</summary>
           <div>
-            <h5 class="perf-h5">Per-class metrics — final M2 (B), held-out test</h5>
-            <div class="table-wrap" id="perfPerClass"></div>
-            <h5 class="perf-h5">With-Reviews vs without-Reviews (test)</h5>
-            <div id="perfCompare"></div>
+            <div class="grid-2">
+              <div>
+                <h5 class="perf-h5">Per-class metrics — final M2 (B), held-out test</h5>
+                <div class="table-wrap" id="perfPerClass"></div>
+                <h5 class="perf-h5">With-Reviews vs without-Reviews (test)</h5>
+                <div id="perfCompare"></div>
+              </div>
+              <div>
+                <h5 class="perf-h5">Feature importance — M2 (B)</h5>
+                <div id="chart_importance" style="height:380px;"></div>
+              </div>
+            </div>
           </div>
-          <div>
-            <h5 class="perf-h5">Feature importance — M2 (B)</h5>
-            <div id="chart_importance" style="height:380px;"></div>
-          </div>
-        </div>
+        </details>
 
-        <h4 class="perf-h">Dataset, split &amp; limitations</h4>
-        <div id="perfSummary"></div>
+        <details class="why perf-fold">
+          <summary>Dataset &amp; split</summary>
+          <div><div id="perfSummary"></div></div>
+        </details>
+
+        <details class="why perf-fold">
+          <summary>Limitations</summary>
+          <div><div id="perfLimits"></div></div>
+        </details>
       </div>
     </section>
-
-    <div class="footer-note">
-      <strong>Data note</strong> &mdash; dataset: <span id="footSource">loading…</span>.
-      Primary source: the MIT-licensed <em>gauthamp10/Google-Playstore-Dataset</em> scrape
-      (June 2021, 24 attributes); the committed default is a deterministic stratified sample
-      and <code>python fetch_dataset.py</code> builds the full 2,312,944-row file
-      (<code>data/raw/playstore_full.csv</code>, auto-detected by <code>clean.py</code>).
-      Cleaning follows the documented rules in <code>clean.py</code> (install bands treated as lower
-      bounds, zero prices preserved, one category typo fixed, exact duplicates removed).
-      ML: scikit-learn pipelines, seed 42, grouped train/test split; models are trained by
-      <code>python train_models.py</code> and served by <code>python app.py</code> (no retraining per request).
-      No revenue, geography, or historical trends are fabricated anywhere on this page.
-    </div>
 
   </main>
 </div>
 
-<!-- load order: data (helpers+loader) → charts (01-06) → ml (07-09 + bootstrap) -->
-<script src="./data.js"></script>
-<script src="./charts.js"></script>
-<script src="./ml_dashboard.js"></script>
+<!-- load order: data (helpers+loader) → charts (01-06) → inference engine → ml (07-09 + bootstrap) -->
+<script src="./data.js?v=20260920n"></script>
+<script src="./charts.js?v=20260920n"></script>
+<script src="./ml_inference.js?v=20260920n"></script>
+<script src="./ml_dashboard.js?v=20260920n"></script>
 </body>
 </html>

@@ -1,0 +1,3624 @@
+{
+ "generated_at": "2026-09-19T18:10:58+00:00",
+ "note": "Inputs plus the sklearn pipeline's own output \u2014 ml_inference.js must reproduce these exactly.",
+ "tasks": {
+  "m1_rating": {
+   "cases": [
+    {
+     "category": "News & Magazines",
+     "size_mb": null,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 55,
+     "developer_app_count": 50,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 102.909,
+     "price": 0.0,
+     "content_rating": "Unrated",
+     "reviews": 402829,
+     "app_age_days": 3031,
+     "days_since_update": 812,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Educational",
+     "size_mb": 207.438,
+     "price": 39.99,
+     "content_rating": "Everyone 10+",
+     "reviews": 1652875,
+     "app_age_days": 2769,
+     "days_since_update": 56,
+     "developer_app_count": 62,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 86.629,
+     "price": 2.49,
+     "content_rating": "Everyone 10+",
+     "reviews": null,
+     "app_age_days": 2209,
+     "days_since_update": null,
+     "developer_app_count": 16,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "educational",
+     "size_mb": 124.442,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 3773898,
+     "app_age_days": null,
+     "days_since_update": 3370,
+     "developer_app_count": 44,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Music_&_Audio",
+     "size_mb": 175.509,
+     "price": null,
+     "content_rating": null,
+     "reviews": 2796032,
+     "app_age_days": 436,
+     "days_since_update": 3206,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Shopping",
+     "size_mb": 233.721,
+     "price": 9.99,
+     "content_rating": "Teen",
+     "reviews": null,
+     "app_age_days": 3791,
+     "days_since_update": 480,
+     "developer_app_count": 51,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Productivity",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "reviews": 893437,
+     "app_age_days": 1903,
+     "days_since_update": null,
+     "developer_app_count": 63,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 176.392,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "reviews": 3252957,
+     "app_age_days": null,
+     "days_since_update": 3359,
+     "developer_app_count": 70,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 240.846,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": 27,
+     "days_since_update": 1442,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "casino",
+     "size_mb": 59.786,
+     "price": null,
+     "content_rating": null,
+     "reviews": 4808217,
+     "app_age_days": 42,
+     "days_since_update": 807,
+     "developer_app_count": 39,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Personalization",
+     "size_mb": 192.976,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": 3257386,
+     "app_age_days": 58,
+     "days_since_update": null,
+     "developer_app_count": 91,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 50.822,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 1662,
+     "developer_app_count": 9,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Sports",
+     "size_mb": 43.534,
+     "price": 0.99,
+     "content_rating": "Unrated",
+     "reviews": 2380631,
+     "app_age_days": 2748,
+     "days_since_update": 635,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Arcade",
+     "size_mb": null,
+     "price": 2.49,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 1829489,
+     "app_age_days": 4499,
+     "days_since_update": 2798,
+     "developer_app_count": 1,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 256.103,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": 591,
+     "days_since_update": null,
+     "developer_app_count": 119,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "arcade",
+     "size_mb": 75.759,
+     "price": 2.49,
+     "content_rating": "Teen",
+     "reviews": 3307543,
+     "app_age_days": null,
+     "days_since_update": 2745,
+     "developer_app_count": 39,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Board",
+     "size_mb": 121.387,
+     "price": 2.49,
+     "content_rating": "Unrated",
+     "reviews": 320349,
+     "app_age_days": 513,
+     "days_since_update": 2818,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 263.572,
+     "price": 2.49,
+     "content_rating": "Unrated",
+     "reviews": null,
+     "app_age_days": 110,
+     "days_since_update": 2219,
+     "developer_app_count": 61,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Art & Design",
+     "size_mb": 268.425,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 1555246,
+     "app_age_days": 2431,
+     "days_since_update": null,
+     "developer_app_count": 112,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": 272.502,
+     "price": null,
+     "content_rating": null,
+     "reviews": 3318730,
+     "app_age_days": null,
+     "days_since_update": 823,
+     "developer_app_count": 39,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": null,
+     "price": 0.99,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": 1010,
+     "days_since_update": 3099,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "music",
+     "size_mb": 114.915,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "reviews": 4152879,
+     "app_age_days": 1014,
+     "days_since_update": 774,
+     "developer_app_count": 63,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 81.81,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "reviews": 2060625,
+     "app_age_days": 2064,
+     "days_since_update": null,
+     "developer_app_count": 90,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 259.944,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 3369,
+     "developer_app_count": 8,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Medical",
+     "size_mb": 220.409,
+     "price": null,
+     "content_rating": null,
+     "reviews": 2011199,
+     "app_age_days": 1795,
+     "days_since_update": 2831,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Video Players & Editors",
+     "size_mb": 219.221,
+     "price": 9.99,
+     "content_rating": "Unrated",
+     "reviews": 215246,
+     "app_age_days": 926,
+     "days_since_update": 3526,
+     "developer_app_count": 54,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 197.857,
+     "price": 9.99,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": 3948,
+     "days_since_update": null,
+     "developer_app_count": 2,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "travel & local",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "reviews": 3344520,
+     "app_age_days": null,
+     "days_since_update": 1752,
+     "developer_app_count": 81,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Travel_&_Local",
+     "size_mb": 238.926,
+     "price": 2.49,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 1650552,
+     "app_age_days": 2863,
+     "days_since_update": 2047,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Music",
+     "size_mb": 179.125,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": 1684,
+     "days_since_update": 3585,
+     "developer_app_count": 53,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": 126.367,
+     "price": 39.99,
+     "content_rating": "Everyone 10+",
+     "reviews": 2527527,
+     "app_age_days": 3036,
+     "days_since_update": null,
+     "developer_app_count": 119,
+     "min_android": 8.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 79.365,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "reviews": 1567318,
+     "app_age_days": null,
+     "days_since_update": 3971,
+     "developer_app_count": 94,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 291.511,
+     "price": 2.49,
+     "content_rating": "Unrated",
+     "reviews": null,
+     "app_age_days": 4004,
+     "days_since_update": 2362,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "comics",
+     "size_mb": 262.678,
+     "price": 2.49,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 2089183,
+     "app_age_days": 3949,
+     "days_since_update": 2902,
+     "developer_app_count": 37,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Social",
+     "size_mb": null,
+     "price": null,
+     "content_rating": null,
+     "reviews": 3253096,
+     "app_age_days": 3968,
+     "days_since_update": null,
+     "developer_app_count": 92,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Role Playing",
+     "size_mb": 31.547,
+     "price": 2.49,
+     "content_rating": "Everyone 10+",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 88,
+     "developer_app_count": 14,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Casual",
+     "size_mb": 7.282,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "reviews": 2669784,
+     "app_age_days": 2382,
+     "days_since_update": 1655,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Social",
+     "size_mb": 54.145,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "reviews": 3416023,
+     "app_age_days": 3467,
+     "days_since_update": 331,
+     "developer_app_count": 14,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 213.874,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": 1026,
+     "days_since_update": null,
+     "developer_app_count": 32,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "sports",
+     "size_mb": 190.018,
+     "price": null,
+     "content_rating": null,
+     "reviews": 4573577,
+     "app_age_days": null,
+     "days_since_update": 1092,
+     "developer_app_count": 40,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 151.242,
+     "price": 0.99,
+     "content_rating": "Teen",
+     "reviews": 2093500,
+     "app_age_days": 1097,
+     "days_since_update": 3861,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Arcade",
+     "size_mb": null,
+     "price": 9.99,
+     "content_rating": "Everyone 10+",
+     "reviews": null,
+     "app_age_days": 796,
+     "days_since_update": 1396,
+     "developer_app_count": 52,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Business",
+     "size_mb": 117.121,
+     "price": 39.99,
+     "content_rating": "Unrated",
+     "reviews": 4728502,
+     "app_age_days": 2026,
+     "days_since_update": null,
+     "developer_app_count": 79,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Auto & Vehicles",
+     "size_mb": 89.614,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 3326793,
+     "app_age_days": null,
+     "days_since_update": 2560,
+     "developer_app_count": 29,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 248.189,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": 3950,
+     "days_since_update": 3306,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "beauty",
+     "size_mb": 294.608,
+     "price": 9.99,
+     "content_rating": "Teen",
+     "reviews": 863334,
+     "app_age_days": 3898,
+     "days_since_update": 2206,
+     "developer_app_count": 80,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Personalization",
+     "size_mb": 109.505,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "reviews": 4337500,
+     "app_age_days": 1836,
+     "days_since_update": null,
+     "developer_app_count": 98,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 273.134,
+     "price": 0.0,
+     "content_rating": "Teen",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 1830,
+     "developer_app_count": 111,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Maps & Navigation",
+     "size_mb": null,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 3621179,
+     "app_age_days": 744,
+     "days_since_update": 2344,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Entertainment",
+     "size_mb": 44.783,
+     "price": null,
+     "content_rating": null,
+     "reviews": 737066,
+     "app_age_days": 1398,
+     "days_since_update": 2288,
+     "developer_app_count": 20,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 295.69,
+     "price": 0.0,
+     "content_rating": "Unrated",
+     "reviews": null,
+     "app_age_days": 4226,
+     "days_since_update": null,
+     "developer_app_count": 76,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "board",
+     "size_mb": 106.213,
+     "price": 2.49,
+     "content_rating": "Teen",
+     "reviews": 1875108,
+     "app_age_days": null,
+     "days_since_update": 3592,
+     "developer_app_count": 39,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 103.639,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "reviews": 3005393,
+     "app_age_days": 3658,
+     "days_since_update": 3479,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Word",
+     "size_mb": 79.184,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": 4118,
+     "days_since_update": 1647,
+     "developer_app_count": 66,
+     "min_android": 8.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Simulation",
+     "size_mb": 133.138,
+     "price": null,
+     "content_rating": null,
+     "reviews": 3820757,
+     "app_age_days": 229,
+     "days_since_update": null,
+     "developer_app_count": 1,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Education",
+     "size_mb": null,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "reviews": 2425905,
+     "app_age_days": null,
+     "days_since_update": 1209,
+     "developer_app_count": 116,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 226.451,
+     "price": 0.99,
+     "content_rating": "Teen",
+     "reviews": null,
+     "app_age_days": 1940,
+     "days_since_update": 713,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "music & audio",
+     "size_mb": 63.909,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "reviews": 15885,
+     "app_age_days": 469,
+     "days_since_update": 2931,
+     "developer_app_count": 41,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Action",
+     "size_mb": 229.517,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 1834367,
+     "app_age_days": 1439,
+     "days_since_update": null,
+     "developer_app_count": 36,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    }
+   ],
+   "expected": [
+    4.0896461668,
+    4.2840266391,
+    4.2944596407,
+    4.4041871499,
+    4.1838086642,
+    4.2477661185,
+    4.054150517,
+    4.6369808112,
+    3.8407552023,
+    4.3075213159,
+    4.2648921437,
+    4.3321729247,
+    4.3368584758,
+    4.1549644206,
+    4.106572407,
+    4.2609742371,
+    4.1244007969,
+    4.2396081105,
+    4.1994066522,
+    4.6018410002,
+    4.1282107583,
+    4.0443561881,
+    4.3327828612,
+    4.4543228563,
+    4.2122124519,
+    4.2527332482,
+    4.2785025286,
+    4.0552432985,
+    4.1250949614,
+    4.2956555773,
+    3.2546971627,
+    4.6513491618,
+    4.2844014537,
+    3.9603402663,
+    4.1691239701,
+    4.1263036234,
+    4.1880080819,
+    4.5657137193,
+    4.3992194135,
+    4.3406811233,
+    4.2900423079,
+    4.1228949992,
+    4.1882785415,
+    4.4001935173,
+    3.9959654352,
+    3.9642497574,
+    3.8239749996,
+    4.0228753667,
+    4.6608581949,
+    4.0832269352,
+    4.3362724659,
+    4.1108281974,
+    4.2304164895,
+    4.0051506488,
+    4.0408215883,
+    4.0411483342,
+    4.4466607591,
+    4.0644314274,
+    4.3327910125,
+    4.2024173417
+   ]
+  },
+  "m2_tier_without_reviews": {
+   "cases": [
+    {
+     "category": "Strategy",
+     "size_mb": null,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": null,
+     "days_since_update": 1302,
+     "developer_app_count": 9,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Business",
+     "size_mb": 34.504,
+     "price": 0.99,
+     "content_rating": "Everyone 10+",
+     "app_age_days": 4240,
+     "days_since_update": 1582,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 236.311,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "app_age_days": 503,
+     "days_since_update": 2978,
+     "developer_app_count": 118,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 123.97,
+     "price": 9.99,
+     "content_rating": "Everyone",
+     "app_age_days": 3779,
+     "days_since_update": null,
+     "developer_app_count": 68,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "arcade",
+     "size_mb": 93.139,
+     "price": 2.49,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": null,
+     "days_since_update": 672,
+     "developer_app_count": 73,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Libraries_&_Demo",
+     "size_mb": 102.489,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 2359,
+     "days_since_update": 1305,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Medical",
+     "size_mb": 197.964,
+     "price": 2.49,
+     "content_rating": "Mature 17+",
+     "app_age_days": 3907,
+     "days_since_update": 621,
+     "developer_app_count": 81,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Sports",
+     "size_mb": null,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "app_age_days": 1749,
+     "days_since_update": null,
+     "developer_app_count": 76,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 184.469,
+     "price": 2.49,
+     "content_rating": "Everyone",
+     "app_age_days": null,
+     "days_since_update": 1588,
+     "developer_app_count": 110,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 245.412,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 2466,
+     "days_since_update": 2122,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "news & magazines",
+     "size_mb": 281.377,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 2578,
+     "days_since_update": 3784,
+     "developer_app_count": 53,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Personalization",
+     "size_mb": 29.949,
+     "price": 9.99,
+     "content_rating": "Everyone 10+",
+     "app_age_days": 4175,
+     "days_since_update": null,
+     "developer_app_count": 22,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Productivity",
+     "size_mb": 268.725,
+     "price": 0.99,
+     "content_rating": "Everyone 10+",
+     "app_age_days": null,
+     "days_since_update": 2959,
+     "developer_app_count": 29,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Adventure",
+     "size_mb": 162.096,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "app_age_days": 3336,
+     "days_since_update": 552,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 3841,
+     "days_since_update": 3713,
+     "developer_app_count": 65,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 292.224,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 4489,
+     "days_since_update": null,
+     "developer_app_count": 26,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "shopping",
+     "size_mb": 180.642,
+     "price": 0.99,
+     "content_rating": "Everyone 10+",
+     "app_age_days": null,
+     "days_since_update": 2671,
+     "developer_app_count": 81,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Shopping",
+     "size_mb": 105.579,
+     "price": 2.49,
+     "content_rating": "Everyone 10+",
+     "app_age_days": 4335,
+     "days_since_update": 892,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Personalization",
+     "size_mb": 285.503,
+     "price": 0.0,
+     "content_rating": "Everyone",
+     "app_age_days": 3110,
+     "days_since_update": 2122,
+     "developer_app_count": 54,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "News & Magazines",
+     "size_mb": 204.004,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 2519,
+     "days_since_update": null,
+     "developer_app_count": 62,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Lifestyle",
+     "size_mb": 130.785,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": null,
+     "days_since_update": 2935,
+     "developer_app_count": 53,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "app_age_days": 665,
+     "days_since_update": 942,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "strategy",
+     "size_mb": 240.793,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": 2882,
+     "days_since_update": 815,
+     "developer_app_count": 21,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "News_&_Magazines",
+     "size_mb": 134.116,
+     "price": 0.0,
+     "content_rating": "Everyone",
+     "app_age_days": 3196,
+     "days_since_update": null,
+     "developer_app_count": 27,
+     "min_android": 4.2,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Auto & Vehicles",
+     "size_mb": 2.43,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": null,
+     "days_since_update": 1717,
+     "developer_app_count": 10,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Parenting",
+     "size_mb": 57.145,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 818,
+     "days_since_update": 2900,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Dating",
+     "size_mb": 129.619,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "app_age_days": 2494,
+     "days_since_update": 200,
+     "developer_app_count": 102,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 23.346,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "app_age_days": 2827,
+     "days_since_update": null,
+     "developer_app_count": 118,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "racing",
+     "size_mb": null,
+     "price": 2.49,
+     "content_rating": "Mature 17+",
+     "app_age_days": null,
+     "days_since_update": 378,
+     "developer_app_count": 22,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Video_Players_&_Editors",
+     "size_mb": 231.725,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 2932,
+     "days_since_update": 3697,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "House & Home",
+     "size_mb": 87.267,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 4102,
+     "days_since_update": 1467,
+     "developer_app_count": 7,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "House & Home",
+     "size_mb": 153.073,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "app_age_days": 3361,
+     "days_since_update": null,
+     "developer_app_count": 24,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Simulation",
+     "size_mb": 272.831,
+     "price": 0.0,
+     "content_rating": "Teen",
+     "app_age_days": null,
+     "days_since_update": 96,
+     "developer_app_count": 1,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 198.72,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "app_age_days": 1347,
+     "days_since_update": 1719,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "trivia",
+     "size_mb": 151.723,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 1898,
+     "days_since_update": 1924,
+     "developer_app_count": 28,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": null,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 1543,
+     "days_since_update": null,
+     "developer_app_count": 55,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Communication",
+     "size_mb": 233.384,
+     "price": 2.49,
+     "content_rating": "Mature 17+",
+     "app_age_days": null,
+     "days_since_update": 1156,
+     "developer_app_count": 16,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Adventure",
+     "size_mb": 55.785,
+     "price": 0.0,
+     "content_rating": "Teen",
+     "app_age_days": 148,
+     "days_since_update": 1447,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Finance",
+     "size_mb": 64.022,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": 1649,
+     "days_since_update": 354,
+     "developer_app_count": 55,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 284.081,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 4108,
+     "days_since_update": null,
+     "developer_app_count": 69,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "video players & editors",
+     "size_mb": 219.573,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": null,
+     "days_since_update": 2800,
+     "developer_app_count": 73,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Tools",
+     "size_mb": 254.259,
+     "price": 9.99,
+     "content_rating": "Everyone",
+     "app_age_days": 1215,
+     "days_since_update": 1457,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Lifestyle",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "app_age_days": 1897,
+     "days_since_update": 2789,
+     "developer_app_count": 93,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Communication",
+     "size_mb": 75.27,
+     "price": 0.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": 2512,
+     "days_since_update": null,
+     "developer_app_count": 71,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Business",
+     "size_mb": 161.833,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": null,
+     "days_since_update": 3089,
+     "developer_app_count": 48,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 154.505,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 356,
+     "days_since_update": 3027,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "adventure",
+     "size_mb": 205.821,
+     "price": 0.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": 3704,
+     "days_since_update": 3631,
+     "developer_app_count": 60,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Art_&_Design",
+     "size_mb": 290.73,
+     "price": 0.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": 2843,
+     "days_since_update": null,
+     "developer_app_count": 58,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Books & Reference",
+     "size_mb": 191.611,
+     "price": 0.0,
+     "content_rating": "Everyone",
+     "app_age_days": null,
+     "days_since_update": 322,
+     "developer_app_count": 59,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 2922,
+     "days_since_update": 1222,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Music & Audio",
+     "size_mb": 149.217,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 194,
+     "days_since_update": 3201,
+     "developer_app_count": 20,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 142.011,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": 2632,
+     "days_since_update": null,
+     "developer_app_count": 7,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "shopping",
+     "size_mb": 54.045,
+     "price": 0.0,
+     "content_rating": "Everyone",
+     "app_age_days": null,
+     "days_since_update": 2828,
+     "developer_app_count": 58,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Word",
+     "size_mb": 288.747,
+     "price": 9.99,
+     "content_rating": "Everyone 10+",
+     "app_age_days": 1576,
+     "days_since_update": 1860,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Racing",
+     "size_mb": 179.362,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 2797,
+     "days_since_update": 2649,
+     "developer_app_count": 91,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Libraries & Demo",
+     "size_mb": 214.302,
+     "price": null,
+     "content_rating": null,
+     "app_age_days": 999,
+     "days_since_update": null,
+     "developer_app_count": 67,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Art & Design",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "app_age_days": null,
+     "days_since_update": 2665,
+     "developer_app_count": 38,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 227.427,
+     "price": 2.49,
+     "content_rating": "Mature 17+",
+     "app_age_days": 1620,
+     "days_since_update": 3299,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "house & home",
+     "size_mb": 212.61,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "app_age_days": 4376,
+     "days_since_update": 449,
+     "developer_app_count": 18,
+     "min_android": 4.2,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "House_&_Home",
+     "size_mb": 13.105,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "app_age_days": 3512,
+     "days_since_update": null,
+     "developer_app_count": 72,
+     "min_android": 4.2,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    }
+   ],
+   "expected": [
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.6680204889,
+      "10K-1M": 0.0251780822,
+      "1M-100M": 0.0586122474,
+      "Under 10K": 0.2481891816
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0035158969,
+      "10K-1M": 0.0169178572,
+      "1M-100M": 0.7522267092,
+      "Under 10K": 0.2273395366
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0016824507,
+      "10K-1M": 0.3395645488,
+      "1M-100M": 0.0057329372,
+      "Under 10K": 0.6530200633
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7344309496,
+      "10K-1M": 0.0029880817,
+      "1M-100M": 0.2392306332,
+      "Under 10K": 0.0233503355
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.028993692,
+      "10K-1M": 0.0583150267,
+      "1M-100M": 0.0227682643,
+      "Under 10K": 0.889923017
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0161004356,
+      "10K-1M": 0.2939424797,
+      "1M-100M": 0.5182042475,
+      "Under 10K": 0.1717528372
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.2111996433,
+      "10K-1M": 0.053789244,
+      "1M-100M": 0.0185830818,
+      "Under 10K": 0.7164280309
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7299287691,
+      "10K-1M": 0.0066362605,
+      "1M-100M": 0.1087116567,
+      "Under 10K": 0.1547233137
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0014478078,
+      "10K-1M": 0.0896474833,
+      "1M-100M": 0.0119637705,
+      "Under 10K": 0.8969409384
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0243552605,
+      "10K-1M": 0.1951591208,
+      "1M-100M": 0.2067386064,
+      "Under 10K": 0.5737470123
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0265025859,
+      "10K-1M": 0.0522804273,
+      "1M-100M": 0.176079559,
+      "Under 10K": 0.7451374278
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7189473239,
+      "10K-1M": 0.0017583706,
+      "1M-100M": 0.2626172344,
+      "Under 10K": 0.0166770712
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.6119878255,
+      "10K-1M": 0.0740626352,
+      "1M-100M": 0.0935106268,
+      "Under 10K": 0.2204389125
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0503784781,
+      "10K-1M": 0.2204579919,
+      "1M-100M": 0.5611857994,
+      "Under 10K": 0.1679777307
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.3748087063,
+      "10K-1M": 0.0122359265,
+      "1M-100M": 0.1162013692,
+      "Under 10K": 0.4967539981
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.5040097132,
+      "10K-1M": 0.0164112282,
+      "1M-100M": 0.4113821169,
+      "Under 10K": 0.0681969416
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.003387167,
+      "10K-1M": 0.2666945436,
+      "1M-100M": 0.0145188659,
+      "Under 10K": 0.7153994235
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0442567867,
+      "10K-1M": 0.02343722,
+      "1M-100M": 0.8729252565,
+      "Under 10K": 0.0593807368
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.1274245235,
+      "10K-1M": 0.5453796377,
+      "1M-100M": 0.0552809682,
+      "Under 10K": 0.2719148706
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.3853223135,
+      "10K-1M": 0.0097705814,
+      "1M-100M": 0.0568655889,
+      "Under 10K": 0.5480415161
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.1168376664,
+      "10K-1M": 0.0484917211,
+      "1M-100M": 0.7360802687,
+      "Under 10K": 0.0985903437
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.001044722,
+      "10K-1M": 0.0389792434,
+      "1M-100M": 0.0016541419,
+      "Under 10K": 0.9583218928
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.6672041478,
+      "10K-1M": 0.0825473429,
+      "1M-100M": 0.0114320874,
+      "Under 10K": 0.2388164218
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.2572251079,
+      "10K-1M": 0.1808740088,
+      "1M-100M": 0.1798739111,
+      "Under 10K": 0.3820269722
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.002382276,
+      "10K-1M": 0.4192931568,
+      "1M-100M": 0.0155487916,
+      "Under 10K": 0.5627757757
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0013591086,
+      "10K-1M": 0.5222911161,
+      "1M-100M": 0.0246353963,
+      "Under 10K": 0.4517143789
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0236403798,
+      "10K-1M": 0.0462303238,
+      "1M-100M": 0.0341270756,
+      "Under 10K": 0.8960022208
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8870229541,
+      "10K-1M": 0.0139592197,
+      "1M-100M": 0.0761632884,
+      "Under 10K": 0.0228545378
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9672712169,
+      "10K-1M": 0.0014663728,
+      "1M-100M": 0.019493179,
+      "Under 10K": 0.0117692313
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0197719291,
+      "10K-1M": 0.0333990951,
+      "1M-100M": 0.8387729853,
+      "Under 10K": 0.1080559905
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.001553995,
+      "10K-1M": 0.0037801875,
+      "1M-100M": 0.9924955959,
+      "Under 10K": 0.0021702215
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8957173853,
+      "10K-1M": 0.0007922679,
+      "1M-100M": 0.0900657114,
+      "Under 10K": 0.0134246354
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0694685213,
+      "10K-1M": 0.2289363933,
+      "1M-100M": 0.1811682743,
+      "Under 10K": 0.5204268111
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0014237363,
+      "10K-1M": 0.1621765621,
+      "1M-100M": 0.0259287672,
+      "Under 10K": 0.8104709344
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0168777475,
+      "10K-1M": 0.0659912022,
+      "1M-100M": 0.0162305739,
+      "Under 10K": 0.9009004764
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.008698318,
+      "10K-1M": 0.0213026183,
+      "1M-100M": 0.0048242757,
+      "Under 10K": 0.965174788
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.4212615767,
+      "10K-1M": 0.020214562,
+      "1M-100M": 0.1944828608,
+      "Under 10K": 0.3640410005
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0064605777,
+      "10K-1M": 0.1109238873,
+      "1M-100M": 0.0856754616,
+      "Under 10K": 0.7969400734
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0090686972,
+      "10K-1M": 0.082818034,
+      "1M-100M": 0.0493625905,
+      "Under 10K": 0.8587506782
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.3562949036,
+      "10K-1M": 0.0008393121,
+      "1M-100M": 0.6420759885,
+      "Under 10K": 0.0007897958
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.19785879,
+      "10K-1M": 0.1281729051,
+      "1M-100M": 0.6421649446,
+      "Under 10K": 0.0318033604
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0119492916,
+      "10K-1M": 0.3620224083,
+      "1M-100M": 0.3268582739,
+      "Under 10K": 0.2991700261
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0070862624,
+      "10K-1M": 0.0527383185,
+      "1M-100M": 0.0018748802,
+      "Under 10K": 0.9383005389
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0519480539,
+      "10K-1M": 0.1258298911,
+      "1M-100M": 0.129672879,
+      "Under 10K": 0.692549176
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.6083349881,
+      "10K-1M": 0.079413521,
+      "1M-100M": 0.162776145,
+      "Under 10K": 0.1494753458
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0035072035,
+      "10K-1M": 0.0851530836,
+      "1M-100M": 0.6070260284,
+      "Under 10K": 0.3043136845
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0482484741,
+      "10K-1M": 0.0328828781,
+      "1M-100M": 0.783232447,
+      "Under 10K": 0.1356362008
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.852600664,
+      "10K-1M": 0.0084646868,
+      "1M-100M": 0.1348307534,
+      "Under 10K": 0.0041038959
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.007248692,
+      "10K-1M": 0.2629285365,
+      "1M-100M": 0.057498229,
+      "Under 10K": 0.6723245425
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0122240688,
+      "10K-1M": 0.4128500418,
+      "1M-100M": 0.0394544725,
+      "Under 10K": 0.5354714169
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0091909435,
+      "10K-1M": 0.1199253068,
+      "1M-100M": 0.0187942645,
+      "Under 10K": 0.8520894852
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0508102655,
+      "10K-1M": 0.3053778843,
+      "1M-100M": 0.1232771863,
+      "Under 10K": 0.5205346639
+     }
+    },
+    {
+     "tier": "10K-1M",
+     "probabilities": {
+      "100M+": 0.0017029227,
+      "10K-1M": 0.5254814289,
+      "1M-100M": 0.0175164322,
+      "Under 10K": 0.4552992162
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.011923735,
+      "10K-1M": 0.1382774581,
+      "1M-100M": 0.1226407666,
+      "Under 10K": 0.7271580402
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.4619635849,
+      "10K-1M": 0.2474761499,
+      "1M-100M": 0.0924840144,
+      "Under 10K": 0.1980762508
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0040300177,
+      "10K-1M": 0.0002236968,
+      "1M-100M": 0.9919673477,
+      "Under 10K": 0.0037789379
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8983259487,
+      "10K-1M": 0.0849425416,
+      "1M-100M": 0.0142859612,
+      "Under 10K": 0.0024455486
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.003751697,
+      "10K-1M": 0.103583203,
+      "1M-100M": 0.2424429048,
+      "Under 10K": 0.6502221951
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.3665318437,
+      "10K-1M": 0.0111688158,
+      "1M-100M": 0.3925362366,
+      "Under 10K": 0.2297631039
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.3779541334,
+      "10K-1M": 0.0135610521,
+      "1M-100M": 0.5538753433,
+      "Under 10K": 0.0546094713
+     }
+    }
+   ]
+  },
+  "m2_tier_with_reviews": {
+   "cases": [
+    {
+     "category": "Food & Drink",
+     "size_mb": null,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 2381,
+     "developer_app_count": 90,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Comics",
+     "size_mb": 171.611,
+     "price": 0.0,
+     "content_rating": "Everyone",
+     "reviews": 1636752,
+     "app_age_days": 2229,
+     "days_since_update": 1760,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 41.477,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "reviews": 2419736,
+     "app_age_days": 3471,
+     "days_since_update": 3000,
+     "developer_app_count": 81,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 158.776,
+     "price": 2.49,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": 3152,
+     "days_since_update": null,
+     "developer_app_count": 109,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "casual",
+     "size_mb": 67.75,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 100216,
+     "app_age_days": null,
+     "days_since_update": 2925,
+     "developer_app_count": 115,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Music_&_Audio",
+     "size_mb": 107.305,
+     "price": null,
+     "content_rating": null,
+     "reviews": 3057243,
+     "app_age_days": 4122,
+     "days_since_update": 773,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Racing",
+     "size_mb": 141.215,
+     "price": 2.49,
+     "content_rating": "Teen",
+     "reviews": null,
+     "app_age_days": 233,
+     "days_since_update": 397,
+     "developer_app_count": 36,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Beauty",
+     "size_mb": null,
+     "price": 2.49,
+     "content_rating": "Everyone",
+     "reviews": 586832,
+     "app_age_days": 3696,
+     "days_since_update": null,
+     "developer_app_count": 89,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": 127.726,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "reviews": 4208560,
+     "app_age_days": null,
+     "days_since_update": 2727,
+     "developer_app_count": 38,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 104.804,
+     "price": 9.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": 2521,
+     "days_since_update": 2453,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "simulation",
+     "size_mb": 280.019,
+     "price": null,
+     "content_rating": null,
+     "reviews": 939299,
+     "app_age_days": 3894,
+     "days_since_update": 1378,
+     "developer_app_count": 17,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Music_&_Audio",
+     "size_mb": 66.079,
+     "price": 9.99,
+     "content_rating": "Teen",
+     "reviews": 1711175,
+     "app_age_days": 4111,
+     "days_since_update": null,
+     "developer_app_count": 97,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Video Players & Editors",
+     "size_mb": 134.929,
+     "price": 0.0,
+     "content_rating": "Everyone 10+",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 3929,
+     "developer_app_count": 29,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Lifestyle",
+     "size_mb": 289.216,
+     "price": 0.0,
+     "content_rating": "Everyone 10+",
+     "reviews": 3871344,
+     "app_age_days": 4037,
+     "days_since_update": 1639,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "Role Playing",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 555779,
+     "app_age_days": 4042,
+     "days_since_update": 719,
+     "developer_app_count": 49,
+     "min_android": 4.2,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 294.851,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": 2930,
+     "days_since_update": null,
+     "developer_app_count": 56,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "card",
+     "size_mb": 127.184,
+     "price": 9.99,
+     "content_rating": "Everyone",
+     "reviews": 4712698,
+     "app_age_days": null,
+     "days_since_update": 49,
+     "developer_app_count": 94,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Education",
+     "size_mb": 62.912,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": 1013223,
+     "app_age_days": 2767,
+     "days_since_update": 121,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Action",
+     "size_mb": 286.989,
+     "price": 2.49,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": 2894,
+     "days_since_update": 974,
+     "developer_app_count": 69,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 132.043,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 3569839,
+     "app_age_days": 473,
+     "days_since_update": null,
+     "developer_app_count": 36,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Trivia",
+     "size_mb": 30.532,
+     "price": null,
+     "content_rating": null,
+     "reviews": 4009230,
+     "app_age_days": null,
+     "days_since_update": 2481,
+     "developer_app_count": 23,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": null,
+     "price": 2.49,
+     "content_rating": "Teen",
+     "reviews": null,
+     "app_age_days": 3631,
+     "days_since_update": 431,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "arcade",
+     "size_mb": 161.103,
+     "price": 9.99,
+     "content_rating": "Mature 17+",
+     "reviews": 3573186,
+     "app_age_days": 227,
+     "days_since_update": 1950,
+     "developer_app_count": 51,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Music",
+     "size_mb": 153.115,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "reviews": 4583571,
+     "app_age_days": 925,
+     "days_since_update": null,
+     "developer_app_count": 98,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Health & Fitness",
+     "size_mb": 100.728,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 2464,
+     "developer_app_count": 1,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Weather",
+     "size_mb": 109.859,
+     "price": null,
+     "content_rating": null,
+     "reviews": 262823,
+     "app_age_days": 4248,
+     "days_since_update": 215,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Puzzle",
+     "size_mb": 174.833,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "reviews": 596513,
+     "app_age_days": 4329,
+     "days_since_update": 3011,
+     "developer_app_count": 114,
+     "min_android": 1.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 165.401,
+     "price": 39.99,
+     "content_rating": "Everyone 10+",
+     "reviews": null,
+     "app_age_days": 3275,
+     "days_since_update": null,
+     "developer_app_count": 23,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "art & design",
+     "size_mb": null,
+     "price": 0.0,
+     "content_rating": "Everyone 10+",
+     "reviews": 3246489,
+     "app_age_days": null,
+     "days_since_update": 1743,
+     "developer_app_count": 90,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Card",
+     "size_mb": 228.625,
+     "price": 2.49,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 447475,
+     "app_age_days": 1733,
+     "days_since_update": 735,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 278.887,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": 21,
+     "days_since_update": 1014,
+     "developer_app_count": 117,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Shopping",
+     "size_mb": 241.148,
+     "price": 39.99,
+     "content_rating": "Teen",
+     "reviews": 3889402,
+     "app_age_days": 559,
+     "days_since_update": null,
+     "developer_app_count": 88,
+     "min_android": 4.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Strategy",
+     "size_mb": 288.478,
+     "price": 2.49,
+     "content_rating": "Everyone",
+     "reviews": 1204282,
+     "app_age_days": null,
+     "days_since_update": 2518,
+     "developer_app_count": 38,
+     "min_android": 4.2,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 219.948,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": null,
+     "app_age_days": 1653,
+     "days_since_update": 1391,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "travel & local",
+     "size_mb": 101.629,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 2833452,
+     "app_age_days": 818,
+     "days_since_update": 1427,
+     "developer_app_count": 57,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Simulation",
+     "size_mb": null,
+     "price": null,
+     "content_rating": null,
+     "reviews": 106910,
+     "app_age_days": 1599,
+     "days_since_update": null,
+     "developer_app_count": 99,
+     "min_android": 8.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Video Players & Editors",
+     "size_mb": 139.816,
+     "price": 9.99,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 2724,
+     "developer_app_count": 91,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Racing",
+     "size_mb": 221.269,
+     "price": 0.99,
+     "content_rating": "Mature 17+",
+     "reviews": 1913210,
+     "app_age_days": 2840,
+     "days_since_update": 430,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Dating",
+     "size_mb": 256.815,
+     "price": 9.99,
+     "content_rating": "Mature 17+",
+     "reviews": 4771059,
+     "app_age_days": 2140,
+     "days_since_update": 164,
+     "developer_app_count": 17,
+     "min_android": 4.2,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 229.168,
+     "price": 0.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": 1746,
+     "days_since_update": null,
+     "developer_app_count": 35,
+     "min_android": 4.2,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "parenting",
+     "size_mb": 17.939,
+     "price": null,
+     "content_rating": null,
+     "reviews": 461793,
+     "app_age_days": null,
+     "days_since_update": 1571,
+     "developer_app_count": 78,
+     "min_android": 1.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Libraries_&_Demo",
+     "size_mb": 149.962,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": 1386010,
+     "app_age_days": 3427,
+     "days_since_update": 3771,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Events",
+     "size_mb": null,
+     "price": 39.99,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": 2055,
+     "days_since_update": 1053,
+     "developer_app_count": 69,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 1,
+     "editors_choice": null
+    },
+    {
+     "category": "Education",
+     "size_mb": 165.612,
+     "price": 39.99,
+     "content_rating": "Everyone 10+",
+     "reviews": 1873504,
+     "app_age_days": 3889,
+     "days_since_update": null,
+     "developer_app_count": 59,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    },
+    {
+     "category": "Lifestyle",
+     "size_mb": 62.503,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 4901424,
+     "app_age_days": null,
+     "days_since_update": 2843,
+     "developer_app_count": 20,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 135.999,
+     "price": null,
+     "content_rating": null,
+     "reviews": null,
+     "app_age_days": 4321,
+     "days_since_update": 2491,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 0
+    },
+    {
+     "category": "role playing",
+     "size_mb": 205.903,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": 1050586,
+     "app_age_days": 4241,
+     "days_since_update": 3524,
+     "developer_app_count": 57,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Weather",
+     "size_mb": 54.045,
+     "price": 0.99,
+     "content_rating": "Everyone 10+",
+     "reviews": 370482,
+     "app_age_days": 3546,
+     "days_since_update": null,
+     "developer_app_count": 17,
+     "min_android": 8.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Entertainment",
+     "size_mb": 10.891,
+     "price": 0.0,
+     "content_rating": "Everyone",
+     "reviews": null,
+     "app_age_days": null,
+     "days_since_update": 157,
+     "developer_app_count": 42,
+     "min_android": 5.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 1
+    },
+    {
+     "category": "Parenting",
+     "size_mb": null,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 3401598,
+     "app_age_days": 4035,
+     "days_since_update": 2798,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "Casual",
+     "size_mb": 228.856,
+     "price": null,
+     "content_rating": null,
+     "reviews": 2134498,
+     "app_age_days": 1393,
+     "days_since_update": 591,
+     "developer_app_count": 8,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 296.996,
+     "price": 0.0,
+     "content_rating": "Mature 17+",
+     "reviews": null,
+     "app_age_days": 511,
+     "days_since_update": null,
+     "developer_app_count": 11,
+     "min_android": 1.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "social",
+     "size_mb": 108.498,
+     "price": 9.99,
+     "content_rating": "Everyone 10+",
+     "reviews": 2739967,
+     "app_age_days": null,
+     "days_since_update": 502,
+     "developer_app_count": 33,
+     "min_android": 8.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Shopping",
+     "size_mb": 230.125,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "reviews": 929300,
+     "app_age_days": 3805,
+     "days_since_update": 1243,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Role Playing",
+     "size_mb": 2.262,
+     "price": 39.99,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": null,
+     "app_age_days": 1452,
+     "days_since_update": 3328,
+     "developer_app_count": 76,
+     "min_android": 5.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Auto & Vehicles",
+     "size_mb": 59.5,
+     "price": null,
+     "content_rating": null,
+     "reviews": 1500215,
+     "app_age_days": 1513,
+     "days_since_update": null,
+     "developer_app_count": 51,
+     "min_android": 8.0,
+     "ad_supported": 1,
+     "in_app_purchases": 1,
+     "editors_choice": 1
+    },
+    {
+     "category": "Travel & Local",
+     "size_mb": null,
+     "price": 0.99,
+     "content_rating": "Everyone",
+     "reviews": 4838251,
+     "app_age_days": null,
+     "days_since_update": 1223,
+     "developer_app_count": 2,
+     "min_android": 4.0,
+     "ad_supported": null,
+     "in_app_purchases": null,
+     "editors_choice": 0
+    },
+    {
+     "category": "Totally Unseen Category",
+     "size_mb": 113.378,
+     "price": 2.49,
+     "content_rating": "Everyone",
+     "reviews": null,
+     "app_age_days": 3656,
+     "days_since_update": 1015,
+     "developer_app_count": null,
+     "min_android": null,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 0
+    },
+    {
+     "category": "role playing",
+     "size_mb": 157.579,
+     "price": 39.99,
+     "content_rating": "Everyone",
+     "reviews": 4237944,
+     "app_age_days": 1692,
+     "days_since_update": 1539,
+     "developer_app_count": 40,
+     "min_android": 5.0,
+     "ad_supported": 1,
+     "in_app_purchases": 0,
+     "editors_choice": null
+    },
+    {
+     "category": "Beauty",
+     "size_mb": 160.045,
+     "price": 0.0,
+     "content_rating": "Unseen Rating 21+",
+     "reviews": 4451618,
+     "app_age_days": 2839,
+     "days_since_update": null,
+     "developer_app_count": 103,
+     "min_android": 4.0,
+     "ad_supported": 0,
+     "in_app_purchases": 0,
+     "editors_choice": 1
+    }
+   ],
+   "expected": [
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.73915e-05,
+      "1M-100M": 7.47e-08,
+      "Under 10K": 0.9999825339
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.4964982053,
+      "10K-1M": 0.0001420969,
+      "1M-100M": 0.5033596977,
+      "Under 10K": 1e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9994726855,
+      "10K-1M": 3.63e-08,
+      "1M-100M": 0.0005272783,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.64133e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999835867
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9999716153,
+      "10K-1M": 1.153e-07,
+      "1M-100M": 2.82692e-05,
+      "Under 10K": 2e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8432620292,
+      "10K-1M": 6.43469e-05,
+      "1M-100M": 0.1566736239,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0001148542,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9998851457
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9992165376,
+      "10K-1M": 2.1002e-06,
+      "1M-100M": 0.0007813622,
+      "Under 10K": 1e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.58361601,
+      "10K-1M": 6.1911e-06,
+      "1M-100M": 0.4163777976,
+      "Under 10K": 1.3e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0001364335,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9998635665
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8702842095,
+      "10K-1M": 0.000104886,
+      "1M-100M": 0.1296109043,
+      "Under 10K": 1e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9999886028,
+      "10K-1M": 2e-10,
+      "1M-100M": 1.1397e-05,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 7.8293e-05,
+      "1M-100M": 3.62e-08,
+      "Under 10K": 0.9999216708
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.5341183533,
+      "10K-1M": 0.0001313715,
+      "1M-100M": 0.4657502752,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.2253341532,
+      "10K-1M": 0.0097207812,
+      "1M-100M": 0.7649445958,
+      "Under 10K": 4.697e-07
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0016004332,
+      "1M-100M": 5.94e-08,
+      "Under 10K": 0.9983995074
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9999875581,
+      "10K-1M": 1.5e-08,
+      "1M-100M": 1.24269e-05,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0058702561,
+      "10K-1M": 0.0001133723,
+      "1M-100M": 0.994016359,
+      "Under 10K": 1.26e-08
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 2.80893e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999719107
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9995815158,
+      "10K-1M": 5.8713e-06,
+      "1M-100M": 0.0004126127,
+      "Under 10K": 1e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9961794945,
+      "10K-1M": 3.5e-09,
+      "1M-100M": 0.0038205019,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0005101025,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9994898974
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9984638436,
+      "10K-1M": 1.05515e-05,
+      "1M-100M": 0.0015256045,
+      "Under 10K": 4e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9999968481,
+      "10K-1M": 0.0,
+      "1M-100M": 3.1519e-06,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.01533e-05,
+      "1M-100M": 2e-10,
+      "Under 10K": 0.9999898464
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.134458042,
+      "10K-1M": 7.2196e-06,
+      "1M-100M": 0.8655347382,
+      "Under 10K": 2e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9998803818,
+      "10K-1M": 8.6e-08,
+      "1M-100M": 0.0001195322,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0003019037,
+      "1M-100M": 2e-10,
+      "Under 10K": 0.9996980961
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9999967186,
+      "10K-1M": 0.0,
+      "1M-100M": 3.2814e-06,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.1827203164,
+      "10K-1M": 0.0014743816,
+      "1M-100M": 0.8158040184,
+      "Under 10K": 1.2836e-06
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 2.7356e-05,
+      "1M-100M": 4e-10,
+      "Under 10K": 0.9999726436
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9982388274,
+      "10K-1M": 6.552e-07,
+      "1M-100M": 0.0017605174,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9731129283,
+      "10K-1M": 0.0027755369,
+      "1M-100M": 0.0241113528,
+      "Under 10K": 1.819e-07
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 5.7031e-06,
+      "1M-100M": 2e-10,
+      "Under 10K": 0.9999942967
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9998121469,
+      "10K-1M": 6.979e-07,
+      "1M-100M": 0.0001871552,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9996456255,
+      "10K-1M": 1.8e-09,
+      "1M-100M": 0.0003543726,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.54219e-05,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999845781
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7262719774,
+      "10K-1M": 8.359e-06,
+      "1M-100M": 0.2737196633,
+      "Under 10K": 2e-10
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7169567483,
+      "10K-1M": 0.0006156134,
+      "1M-100M": 0.282427637,
+      "Under 10K": 1.2e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 1.32068e-05,
+      "1M-100M": 1.2e-09,
+      "Under 10K": 0.999986792
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9991779981,
+      "10K-1M": 1.9e-09,
+      "1M-100M": 0.000822,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.0012539106,
+      "10K-1M": 5.84044e-05,
+      "1M-100M": 0.9986876797,
+      "Under 10K": 5.3e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 2.92604e-05,
+      "1M-100M": 1e-10,
+      "Under 10K": 0.9999707395
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.8910129447,
+      "10K-1M": 3.8516e-06,
+      "1M-100M": 0.1089832016,
+      "Under 10K": 2.1e-09
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9971565114,
+      "10K-1M": 3.1e-09,
+      "1M-100M": 0.0028434855,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0113516537,
+      "1M-100M": 6.99e-08,
+      "Under 10K": 0.9886482763
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.4037365143,
+      "10K-1M": 0.0209470987,
+      "1M-100M": 0.5753136514,
+      "Under 10K": 2.7356e-06
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7193506941,
+      "10K-1M": 0.0334462311,
+      "1M-100M": 0.2471999722,
+      "Under 10K": 3.1026e-06
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 9.81194e-05,
+      "1M-100M": 3.639e-07,
+      "Under 10K": 0.9999015167
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7995708247,
+      "10K-1M": 4.91487e-05,
+      "1M-100M": 0.2003800265,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9566684404,
+      "10K-1M": 1.19469e-05,
+      "1M-100M": 0.0433196127,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.00025267,
+      "1M-100M": 5.646e-07,
+      "Under 10K": 0.9997467653
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9981771386,
+      "10K-1M": 2.2108e-05,
+      "1M-100M": 0.001800753,
+      "Under 10K": 4e-10
+     }
+    },
+    {
+     "tier": "1M-100M",
+     "probabilities": {
+      "100M+": 0.1317836771,
+      "10K-1M": 0.0001377522,
+      "1M-100M": 0.8680785629,
+      "Under 10K": 7.8e-09
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 6.0961e-06,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9999939039
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.994394137,
+      "10K-1M": 1.1e-09,
+      "1M-100M": 0.0056058619,
+      "Under 10K": 0.0
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.9796150678,
+      "10K-1M": 0.0001259067,
+      "1M-100M": 0.0202590252,
+      "Under 10K": 3e-10
+     }
+    },
+    {
+     "tier": "Under 10K",
+     "probabilities": {
+      "100M+": 0.0,
+      "10K-1M": 0.0003145628,
+      "1M-100M": 0.0,
+      "Under 10K": 0.9996854372
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.7072573814,
+      "10K-1M": 0.000804484,
+      "1M-100M": 0.2919381285,
+      "Under 10K": 6.2e-09
+     }
+    },
+    {
+     "tier": "100M+",
+     "probabilities": {
+      "100M+": 0.99999536,
+      "10K-1M": 0.0,
+      "1M-100M": 4.64e-06,
+      "Under 10K": 0.0
+     }
+    }
+   ]
+  }
+ }
+}

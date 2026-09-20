@@ -1,15 +1,30 @@
 /* ================================================================
    ml_dashboard.js — ML sections 07-09 + app bootstrap
 
-   Sections 07/08 perform REAL inference by calling the FastAPI
-   backend (app.py), which loads the saved scikit-learn pipelines
-   once at startup. No retraining per request. If the backend or
-   the artifacts are unavailable, a clear "unavailable" state is
-   shown — never random or demo predictions.
+   Sections 07/08 perform REAL inference. Two engines, tried in order:
+
+     1. the FastAPI backend (app.py), which loads the saved
+        scikit-learn pipelines once at startup — no retraining per
+        request;
+     2. the same fitted pipelines, exported to
+        ml/artifacts/browser/models.js and evaluated in this page by
+        ml_inference.js (impute -> scale -> one-hot -> walk the trees).
+
+   Engine 2 is why the forms keep working on GitHub Pages, under VS
+   Code Live Server, and on a page opened straight from disk, where
+   there is no /api behind it. It is NOT a stand-in model: it walks
+   the exported numbers of the trained pipeline, and
+   tests/browser_inference.test.js proves it matches scikit-learn to
+   ~1e-11 on 180 cases. If neither engine is available the section
+   shows a clear "unavailable" state — never random or demo values.
    ================================================================ */
 
 let METRICS = null;
 let METRICS_FROM_API = false;   // true = live backend; false = static snapshot / unknown
+
+/* Which engine is answering: 'api' | 'browser' | 'none' | 'unknown'. */
+let INFERENCE = { mode: 'unknown', models: null, error: null };
+const BROWSER_MODELS_URL = 'ml/artifacts/browser/models.js';
 
 /* Endpoints the read-only metrics may come from, in order of preference:
    1. the FastAPI route (live backend, also proves inference is available)
@@ -73,12 +88,300 @@ async function loadMetrics(){
   throw lastErr || new Error('metrics unreachable');
 }
 
+/* True when the failure means "that engine is not there", as opposed to
+   "your input was rejected" — only the former may fall through to the
+   other engine. A 422 is a validation error and must reach the user. */
+function isAvailabilityError(err){
+  const m = String((err && err.message) || err || '');
+  if(/Failed to fetch|NetworkError|Load failed|network|TypeError/i.test(m)) return true;
+  const code = (m.match(/HTTP\s+(\d{3})/) || [])[1];
+  return code ? ['404', '405', '500', '502', '503', '504'].indexOf(code) !== -1 : false;
+}
+
+/* ---------------- engine 2: the browser bundle ---------------- */
+
+function loadBrowserModels(){
+  if(INFERENCE.models) return Promise.resolve(INFERENCE.models);
+  return new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = BROWSER_MODELS_URL;
+    s.onload = ()=>{
+      const m = (window.APEX_BROWSER_MODELS || {}).models || null;
+      if(!m || !m.m1_rating){ reject(new Error(BROWSER_MODELS_URL + ' loaded but empty')); return; }
+      INFERENCE.models = m;
+      resolve(m);
+    };
+    s.onerror = ()=>reject(new Error('could not load ' + BROWSER_MODELS_URL));
+    document.head.appendChild(s);
+  });
+}
+
+async function ensureBrowserModels(){
+  if(INFERENCE.models) return INFERENCE.models;
+  if(typeof ApexInference === 'undefined'){
+    throw new Error('ml_inference.js is not loaded');
+  }
+  return loadBrowserModels();
+}
+
+/* Decide once, at bootstrap, so the UI can say which engine is live. */
+async function detectInference(){
+  if(!isFilePage()){
+    try{
+      const h = await fetchJSON('api/health');
+      if(h && h.models_loaded){
+        INFERENCE.mode = 'api';
+        return INFERENCE.mode;
+      }
+    }catch(err){ /* not served by app.py — try the browser bundle */ }
+  }
+  try{
+    await ensureBrowserModels();
+    INFERENCE.mode = 'browser';
+  }catch(err){
+    INFERENCE.mode = 'none';
+    INFERENCE.error = err;
+  }
+  return INFERENCE.mode;
+}
+
+/* ---------------- imputation bookkeeping (mirrors app.py) ----------------
+   Both models take inputs this page does not ask for. Whatever is left out is
+   handed to the pipeline as "missing", so the fitted median imputer fills it in
+   — the same in Python and in the browser — and each one is reported, with the
+   exact value that was used, instead of being silently assumed. */
+const FEATURE_LABELS = {
+  app_age_days: 'app age (days since release)',
+  days_since_update: 'days since last update',
+  developer_app_count: 'developer portfolio size (listings by this developer)',
+  min_android: 'minimum Android version',
+  ad_supported: 'ad-supported flag',
+  in_app_purchases: 'in-app-purchase flag',
+  editors_choice: "Editors' Choice flag",
+};
+const FLAG_COLS = ['ad_supported', 'in_app_purchases', 'editors_choice'];
+const COUNT_COLS = ['developer_app_count', 'app_age_days', 'days_since_update'];
+
+function fmtMedian(col, v){
+  if(v === null || v === undefined || !isFinite(Number(v))) return 'unknown';
+  if(FLAG_COLS.indexOf(col) !== -1) return `${Math.round(v)} (${Number(v) >= 0.5 ? 'yes' : 'no'})`;
+  if(COUNT_COLS.indexOf(col) !== -1) return Math.round(Number(v)).toLocaleString();
+  if(col === 'min_android') return Number(v).toFixed(1);
+  return Number(v).toFixed(2);
+}
+
+/* One-hot levels of categorical column `i` (handles the legacy single-column
+   bundle shape, where `categories` is a flat array). */
+function catLevels(model, i){
+  const c = (model.prep && model.prep.cat && model.prep.cat.categories) || [];
+  return Array.isArray(c[i]) ? c[i] : (i === 0 ? c : []);
+}
+
+function catDefault(model, i){
+  const d = (model.prep && model.prep.cat && model.prep.cat.defaults) || [];
+  return d[i] || ((model.prep.cat || {}).missing_fill) || '__missing__';
+}
+
+function imputationNotes(model, row){
+  const notes = [];
+  const cols = (model.prep && model.prep.num && model.prep.num.columns) || [];
+  Object.keys(FEATURE_LABELS).forEach(col=>{
+    const i = cols.indexOf(col);
+    if(i === -1) return;                       // model was not fitted with it
+    const v = row[col];
+    if(v === null || v === undefined){
+      notes.push(`${FEATURE_LABELS[col]} not provided → imputed to the training median `
+        + `(${fmtMedian(col, model.prep.num.medians[i])})`);
+    }
+  });
+  if(catLevels(model, 1).length && !row.content_rating){
+    notes.push(`content rating not provided → assumed “${catDefault(model, 1)}” `
+      + `(the most common value in training)`);
+  }
+  return notes;
+}
+
+/* "Not specified" (empty select) => null => the imputer. Yes/No => 1/0. */
+function flagOrNull(v){
+  if(v === '' || v === null || v === undefined) return null;
+  const n = Number(v);
+  return isFinite(n) ? (n ? 1 : 0) : null;
+}
+
+/* A number the caller supplied, or null (= "not provided" -> imputer). */
+function numOrNothing(v){
+  if(v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
+/* Build the model row from either form. Fields the form does not have stay
+   null, which is what makes the imputation above happen (and be reported).
+   Anything the caller DID supply is passed straight through, so the browser
+   engine and the API can never disagree about the same request. */
+function modelRow(inputs, withReviews){
+  const price = inputs.price === null || inputs.price === undefined ? 0 : inputs.price;
+  const row = {
+    category: inputs.category,
+    content_rating: inputs.content_rating || null,
+    size_mb: numOrNothing(inputs.size_mb),
+    price: price,
+    price_is_positive: price > 0 ? 1 : 0,
+    app_age_days: numOrNothing(inputs.app_age_days),
+    days_since_update: numOrNothing(inputs.days_since_update),
+    developer_app_count: numOrNothing(inputs.developer_app_count),
+    min_android: numOrNothing(inputs.min_android),
+    ad_supported: flagOrNull(inputs.ad_supported),
+    in_app_purchases: flagOrNull(inputs.in_app_purchases),
+    editors_choice: flagOrNull(inputs.editors_choice),
+  };
+  if(withReviews) row.reviews_log = Math.log1p(inputs.reviews || 0);
+  return row;
+}
+
+/* Mirrors app.py's response shape field-for-field, so the renderers below
+   cannot tell (or care) which engine answered. */
+function localRating(model, inputs){
+  const category = String(inputs.category || '');
+  const row = modelRow(inputs, true);
+  const raw = ApexInference.predictRegression(model, row);
+  // Play ratings live on [1, 5]; say so when extrapolation was clipped.
+  const pred = Math.min(5, Math.max(1, raw));
+
+  const assumptions = [];
+  if(inputs.size_mb === null) assumptions.push('size omitted → imputed to the training-set median');
+  if(inputs.price === null) assumptions.push('price omitted → treated as free ($0)');
+  if(inputs.reviews === null) assumptions.push('reviews omitted → treated as 0');
+  assumptions.push(...imputationNotes(model, row));
+  assumptions.push('listed price is a price tag, not observed revenue');
+
+  const categoryUsed = ApexInference.normalizeCategory(category) || category.trim();
+  const cats = catLevels(model, 0);
+  if(cats.indexOf(categoryUsed) === -1){
+    assumptions.push(`category ${categoryUsed} was not seen in training → encoded as an unknown `
+      + `category (the model knows ${cats.length} categories)`);
+  }
+  const ratings = catLevels(model, 1);
+  if(ratings.length && row.content_rating && ratings.indexOf(row.content_rating) === -1){
+    assumptions.push(`content rating ${row.content_rating} was not seen in training → `
+      + `encoded as an unknown rating (the model knows ${ratings.length})`);
+  }
+  if(pred !== raw){
+    assumptions.push(`raw prediction ${raw.toFixed(3)} clipped to the rating domain [1, 5]`);
+  }
+
+  return {
+    predicted_rating: Math.round(pred * 1000) / 1000,
+    category_used: categoryUsed,
+    category_changed: category.trim() !== categoryUsed,
+    model: model.model,
+    test_metrics: model.test_metrics || {},
+    n_test: model.n_test,
+    assumptions,
+    warning: 'Model estimate on a cross-sectional snapshot — not a pre-launch or future rating guarantee.',
+    engine: 'browser',
+  };
+}
+
+function localTier(model, inputs){
+  const category = String(inputs.category || '');
+  const row = modelRow(inputs, false);
+  const out = ApexInference.tier(model, row);
+  const probabilities = {};
+  Object.keys(out.probabilities).forEach(k=>{
+    probabilities[k] = Math.round(out.probabilities[k] * 10000) / 10000;
+  });
+
+  const assumptions = [];
+  if(inputs.size_mb === null) assumptions.push('size omitted → imputed to the training-set median');
+  if(inputs.price === null) assumptions.push('price omitted → treated as free ($0)');
+  assumptions.push(...imputationNotes(model, row));
+  assumptions.push('listed price is a price tag, not observed revenue');
+
+  const categoryUsed = ApexInference.normalizeCategory(category) || category.trim();
+  const cats = catLevels(model, 0);
+  if(cats.indexOf(categoryUsed) === -1){
+    assumptions.push(`category ${categoryUsed} was not seen in training → encoded as an unknown `
+      + `category (the model knows ${cats.length} categories)`);
+  }
+  const ratings = catLevels(model, 1);
+  if(ratings.length && row.content_rating && ratings.indexOf(row.content_rating) === -1){
+    assumptions.push(`content rating ${row.content_rating} was not seen in training → `
+      + `encoded as an unknown rating (the model knows ${ratings.length})`);
+  }
+
+  return {
+    predicted_tier: out.predicted_tier,
+    probabilities,
+    tier_order: model.labels || Object.keys(probabilities),
+    category_used: categoryUsed,
+    category_changed: category.trim() !== categoryUsed,
+    model: model.model,
+    test_metrics: model.test_metrics || {},
+    assumptions,
+    warning: 'Probabilities are model estimates, not guarantees. '
+      + 'This model deliberately excludes Reviews (target proxy).',
+    engine: 'browser',
+  };
+}
+
+/* Live API first; fall back to the browser engine only when the API is simply
+   not there. An API that ANSWERED with a rejection (422 validation, 503 with
+   missing artifacts) must be heard — substituting a local answer would hide a
+   real error behind a plausible number. */
+async function runInference(kind, inputs){
+  let apiErr = null;
+  if(INFERENCE.mode !== 'browser' && !isFilePage()){
+    try{
+      const out = await fetchJSON('api/predict/' + kind, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(inputs),
+      });
+      INFERENCE.mode = 'api';
+      out.engine = 'api';
+      return out;
+    }catch(err){ apiErr = err; }
+  }
+
+  let local;
+  try{
+    const models = await ensureBrowserModels();
+    INFERENCE.mode = 'browser';
+    local = kind === 'rating'
+      ? localRating(models.m1_rating, inputs)
+      : localTier(models.m2_tier_without_reviews, inputs);
+  }catch(err){
+    throw apiErr || err;                 // neither engine could answer
+  }
+  if(apiErr && !isAvailabilityError(apiErr)) throw apiErr;
+  return local;
+}
+
+function predictRating(inputs){ return runInference('rating', inputs); }
+function predictTier(inputs){ return runInference('tier', inputs); }
+
+/* One line saying WHO computed the number — never leave the user guessing. */
+function engineNote(out){
+  if(!out) return '';
+  if(out.engine === 'browser'){
+    return '<p class="tiny">Computed <strong>in your browser</strong> by '
+      + '<code>ml_inference.js</code> from the exported pipeline '
+      + '(<code>ml/artifacts/browser/models.js</code>) — the same fitted scikit-learn model '
+      + 'the API serves. No backend, no retraining.</p>';
+  }
+  if(out.engine === 'api'){
+    return '<p class="tiny">Computed by the FastAPI backend '
+      + '(<code>python app.py</code>) using the saved <code>ml/artifacts</code> pipelines.</p>';
+  }
+  return '';
+}
+
 /* Actionable hint for a failed inference call. */
 function backendHint(err){
   const m = String((err && err.message) || err || '');
   if(/Failed to fetch|NetworkError|Load failed|network/i.test(m)){
     return '<p class="tiny">The model service could not be reached from this page. '
-      + 'Predictions need the FastAPI backend: run <code>python app.py</code> and open the served page '
+      + 'Start the FastAPI backend with <code>python app.py</code> and open the served page '
       + '(<code>http://localhost:8000</code>, or the live preview of port 8000). '
       + 'Everything else on this page (charts, metrics tables) works without it.</p>';
   }
@@ -98,12 +401,16 @@ function unavailable(el, note, err){
   const detail = err ? ` <span class="tiny">(${String(err.message || err)})</span>` : '';
   el.innerHTML = `
     <div class="unavailable">
-      <h3>Model service not available</h3>
-      <p>These sections call a small FastAPI backend that loads the saved
-      scikit-learn pipelines (no retraining per request). Start it with:</p>
+      <h3>No inference engine available</h3>
+      <p>Predictions run the saved scikit-learn pipelines (no retraining per
+      request) through one of two engines:</p>
       <pre>pip install -r requirements.txt
 python clean.py &amp;&amp; python train_models.py
 python app.py</pre>
+      <p>Either start the backend above and open the page it serves, or (for a
+      static host / <code>file://</code> page) let <code>train_models.py</code> export
+      <code>ml/artifacts/browser/models.js</code> so the pipeline is evaluated in the
+      browser instead.</p>
       <p>Until then no predictions are shown — this project deliberately never
       returns random or demo values when models are absent.</p>
       ${note ? `<p class="tiny">${note}${detail}</p>` : ''}
@@ -112,19 +419,43 @@ python app.py</pre>
   wireRetry(el, ()=>renderML());
 }
 
-/* Banner when the read-only metrics came from a static file instead of the API:
-   the numbers are still the real measured ones, but inference is not available. */
-function showMlNotice(){
-  const el = document.getElementById('mlNotice');
-  if(!el) return;
-  if(METRICS && !METRICS_FROM_API){
-    el.innerHTML = `<p class="warn-note">⚠ Sections 08–09 below are reading the measured metrics snapshot
-    <code>ml/artifacts/metrics.json</code> directly (the live API did not answer). The numbers are the real
-    results of the reproducible training run, but the prediction forms need the backend —
-    run <code>python app.py</code> and open the page it serves.</p>`;
+/* Banner explaining WHERE the numbers came from. Nothing here is a fallback
+   value: the metrics are the measured training results either way, and the
+   prediction engine is stated explicitly. */
+/* Both predict forms used to give no feedback between "submit" and "result"
+   beyond a line of grey text, with the button still looking clickable — so it
+   was double-submittable. The button now carries the state: disabled,
+   aria-busy, and a spinner. */
+function setBusy(btn, busy, busyLabel){
+  if(!btn) return;
+  if(busy){
+    if(btn.dataset.idleLabel === undefined) btn.dataset.idleLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>' + busyLabel;
   }else{
-    el.innerHTML = '';
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    if(btn.dataset.idleLabel !== undefined) btn.innerHTML = btn.dataset.idleLabel;
   }
+}
+
+/* Where the metrics came from, stated once where they are shown.
+
+   This used to be a two-sentence banner above section 07 covering two separate
+   facts. One — which engine produced a prediction — is already disclosed on
+   every single result by engineNote(), so repeating it here was noise. The
+   other — that these numbers were read from the committed snapshot rather than
+   a live API — appears nowhere else, and this project's position is that a
+   fallback is never silent, so it stays: as one line in section 09, next to
+   the numbers it describes, instead of a banner at the top of the page. */
+function showMetricsSource(){
+  const el = document.getElementById('metricsSourceNote');
+  if(!el) return;
+  el.innerHTML = (METRICS && !METRICS_FROM_API)
+    ? 'Reading the measured metrics snapshot <code>ml/artifacts/metrics.json</code> '
+      + '(no live backend answered) — the real results of the reproducible training run.'
+    : '';
 }
 
 /* Honest, dataset-driven caveat: never claim "11-row" when the model was
@@ -195,15 +526,14 @@ function initRatingForm(){
       return;
     }
     result.innerHTML = '<p class="tiny">Predicting…</p>';
+    const btn = form.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Predicting…');
     try{
-      const out = await fetchJSON('api/predict/rating', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          category: cat,
-          size_mb: numOrNull(document.getElementById('rfSize')),
-          price: numOrNull(document.getElementById('rfPrice')),
-          reviews: intOrNull(document.getElementById('rfReviews')),
-        }),
+      const out = await predictRating({
+        category: cat,
+        size_mb: numOrNull(document.getElementById('rfSize')),
+        price: numOrNull(document.getElementById('rfPrice')),
+        reviews: intOrNull(document.getElementById('rfReviews')),
       });
       const tm = out.test_metrics || {};
       const catNote = out.category_used
@@ -215,10 +545,13 @@ function initRatingForm(){
         ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> · held-out test:
         MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}
-        (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>`;
+        (n_test = ${out.n_test ?? '—'}). ${out.warning}</p>
+        ${engineNote(out)}`;
     }catch(err){
       result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
         + backendHint(err) + sampleNote();
+    }finally{
+      setBusy(btn, false);   // never leave the button stuck in its busy state
     }
   });
 }
@@ -227,29 +560,56 @@ function renderRatingModelCard(){
   const el = document.getElementById('ratingModelCard');
   const m = METRICS.models.m1_rating;
   const tm = m.test_metrics || {};
+  // "Selected model", "Inputs", "Split" and the held-out metrics all appear
+  // again in section 09, so this card is folded rather than deleted — it is
+  // useful beside the form, but it should not be the first thing you read.
   el.innerHTML = `
-    <h4>Model M1 — rating regression</h4>
-    <dl class="kv">
+    <details class="why side-fold">
+      <summary>Model M1 — rating regression</summary>
+      <div>
+      <dl class="kv">
       <dt>Selected model</dt><dd>${m.model} (chosen by ${m.selection_metric})</dd>
       <dt>Target</dt><dd>${m.target} (excluded from inputs)</dd>
       <dt>Inputs</dt><dd>${m.features.join(', ')}</dd>
       <dt>Split</dt><dd>${m.n_train} train / ${m.n_val} val / ${m.n_test} test (grouped by app name)</dd>
       <dt>Held-out test</dt><dd>MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}</dd>
     </dl>
-    <p class="tiny">Limitations: cross-sectional snapshot, so this is <em>not</em> a pre-launch or
-    future rating predictor; installs are excluded from inputs; weak R² is reported honestly in
-    section 09.</p>`;
+      <p class="tiny">Limitations: cross-sectional snapshot, so this is <em>not</em> a pre-launch or
+      future rating predictor; installs are excluded from inputs; weak R² is reported honestly in
+      section 09.</p>
+      </div>
+    </details>`;
 }
 
 /* ================================================================
    SECTION 08 — Install-Tier Classifier (M2, without Reviews)
    ================================================================ */
+/* Content rating is not in apps.json, so the authoritative list is the one the
+   fitted encoder was trained on. Use it when the bundle is already in memory
+   (static host / file://), and leave the static list in index.html alone
+   otherwise — populating the select is never worth downloading the bundle for
+   in backend mode. */
+function refreshContentRatings(){
+  const sel = document.getElementById('tfContentRating');
+  if(!sel) return;
+  const models = INFERENCE.models;
+  const m = models && (models.m2_tier_without_reviews || models.m1_rating);
+  if(!m) return;
+  const cats = catLevels(m, 1);
+  if(!cats.length) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Not specified</option>'
+    + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  sel.value = cats.indexOf(current) === -1 ? '' : current;
+}
+
 function initTierForm(){
   const sel = document.getElementById('tfCategory');
   const custom = document.getElementById('tfCategoryCustom');
   const form = document.getElementById('tierForm');
   const result = document.getElementById('tierResult');
   wireCategoryPair(sel, custom);
+  refreshContentRatings();
 
   form.addEventListener('submit', async (e)=>{
     e.preventDefault();
@@ -259,14 +619,18 @@ function initTierForm(){
       return;
     }
     result.innerHTML = '<p class="tiny">Predicting…</p>';
+    const btn = form.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Predicting…');
     try{
-      const out = await fetchJSON('api/predict/tier', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({
-          category: cat,
-          size_mb: numOrNull(document.getElementById('tfSize')),
-          price: numOrNull(document.getElementById('tfPrice')),
-        }),
+      const out = await predictTier({
+        category: cat,
+        size_mb: numOrNull(document.getElementById('tfSize')),
+        price: numOrNull(document.getElementById('tfPrice')),
+        content_rating: document.getElementById('tfContentRating').value || null,
+        min_android: numOrNull(document.getElementById('tfAndroid')),
+        ad_supported: flagOrNull(document.getElementById('tfAd').value),
+        in_app_purchases: flagOrNull(document.getElementById('tfIap').value),
+        editors_choice: flagOrNull(document.getElementById('tfEditors').value),
       });
       const order = out.tier_order || Object.keys(out.probabilities);
       const bars = order.map(t=>{
@@ -287,10 +651,13 @@ function initTierForm(){
         ${catNote}
         <p class="tiny"><strong>${out.model || 'model'}</strong> (without Reviews) · held-out test:
         accuracy ${tm.accuracy?.toFixed(3)} · macro-F1 ${tm['macro_f1']?.toFixed(3)}
-        · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>`;
+        · weighted-F1 ${tm['weighted_f1']?.toFixed(3)}. ${out.warning}</p>
+        ${engineNote(out)}`;
     }catch(err){
       result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
         + backendHint(err) + sampleNote();
+    }finally{
+      setBusy(btn, false);   // never leave the button stuck in its busy state
     }
   });
 }
@@ -342,17 +709,35 @@ function tableHTML(headers, rows, selectedRow){
   return `<table class="metric-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
 }
 
+/* A candidate can score well and still be unshippable. The training run
+   measures every fitted pipeline and excludes anything over the artifact
+   budget; the tables show the size and say why the row is struck out, instead
+   of quietly dropping it. */
+function sizeCell(name, r){
+  if(r.artifact_mb === undefined) return '';
+  if(r.rejected){
+    return `${r.artifact_mb >= 100 ? Math.round(r.artifact_mb) : r.artifact_mb.toFixed(1)} MB`
+      + `<span class="tiny"> · excluded: over the shipping budget</span>`;
+  }
+  return r.artifact_mb >= 100 ? `${Math.round(r.artifact_mb)} MB` : `${r.artifact_mb.toFixed(1)} MB`;
+}
+
+function candidateNameCell(name, r){
+  return r.rejected ? `<s>${name}</s>` : name;
+}
+
 function renderPerfM1(){
   const el = document.getElementById('perfM1');
   const m = METRICS.models.m1_rating;
   const rows = Object.entries(m.candidates).map(([name, r])=>{
-    if(!r.val) return [name, 'FAILED', r.error, '', '', ''];
-    return [name,
+    if(!r.val) return [name, 'FAILED', r.error, '', '', '', ''];
+    return [candidateNameCell(name, r),
       r.val.mae?.toFixed(3), r.val.rmse?.toFixed(3), r.val.r2?.toFixed(3),
-      r.test.mae?.toFixed(3), r.test.rmse?.toFixed(3), r.test.r2?.toFixed(3)];
+      r.test.mae?.toFixed(3), r.test.rmse?.toFixed(3), r.test.r2?.toFixed(3),
+      sizeCell(name, r)];
   });
   el.innerHTML = tableHTML(
-    ['Model','MAE (val)','RMSE (val)','R² (val)','MAE (test)','RMSE (test)','R² (test)'],
+    ['Model','MAE (val)','RMSE (val)','R² (val)','MAE (test)','RMSE (test)','R² (test)','Artifact'],
     rows, rows.findIndex(r=>r[0]===m.model));
 }
 
@@ -360,13 +745,44 @@ function renderPerfM2(version){
   const el = document.getElementById(version === 'with_reviews' ? 'perfM2a' : 'perfM2b');
   const m = METRICS.models.m2_tier[version];
   const rows = Object.entries(m.candidates).map(([name, r])=>{
-    if(!r.val) return [name, 'FAILED', r.error, '', '', ''];
-    return [name, r.val.accuracy?.toFixed(3), r.val['macro_f1']?.toFixed(3),
-            r.test.accuracy?.toFixed(3), r.test['macro_f1']?.toFixed(3), r.test['weighted_f1']?.toFixed(3)];
+    if(!r.val) return [name, 'FAILED', r.error, '', '', '', ''];
+    return [candidateNameCell(name, r),
+            r.val.accuracy?.toFixed(3), r.val['macro_f1']?.toFixed(3),
+            r.test.accuracy?.toFixed(3), r.test['macro_f1']?.toFixed(3),
+            r.test['weighted_f1']?.toFixed(3), sizeCell(name, r)];
   });
   el.innerHTML = tableHTML(
-    ['Model','Acc (val)','Macro-F1 (val)','Acc (test)','Macro-F1 (test)','Weighted-F1 (test)'],
+    ['Model','Acc (val)','Macro-F1 (val)','Acc (test)','Macro-F1 (test)','Weighted-F1 (test)','Artifact'],
     rows, rows.findIndex(r=>r[0]===m.model));
+}
+
+/* One line saying what the struck-out rows mean. */
+function renderBudgetNote(){
+  const el = document.getElementById('perfBudget');
+  if(!el) return;
+  const budget = METRICS.artifact_budget_mb;
+  const rejected = [];
+  for(const key of ['m1_rating']){
+    Object.entries((METRICS.models[key].candidates)).forEach(([n, r])=>{
+      if(r.rejected) rejected.push([key, n, r.artifact_mb]);
+    });
+  }
+  for(const v of ['with_reviews', 'without_reviews']){
+    Object.entries(METRICS.models.m2_tier[v].candidates).forEach(([n, r])=>{
+      if(r.rejected) rejected.push(['m2 ' + v, n, r.artifact_mb]);
+    });
+  }
+  if(!rejected.length || budget === undefined){
+    el.innerHTML = '';
+    return;
+  }
+  const biggest = rejected.reduce((a, b)=>(b[2] > a[2] ? b : a));
+  el.innerHTML = `<p class="chart-note">Selection is not only about score: every candidate is `
+    + `also measured, and anything over the <strong>${budget} MB</strong> shipping budget is `
+    + `excluded — it has to be committed to git, served by the API and exported to the browser `
+    + `bundle. The largest rejected candidate here is <strong>${biggest[1]}</strong> at `
+    + `${Math.round(biggest[2])} MB. Its scores stay in the table (struck out) so the trade-off `
+    + `is visible rather than hidden.</p>`;
 }
 
 function renderPerClass(){
@@ -430,10 +846,13 @@ function renderCompare(){
 
 function renderSummary(){
   const el = document.getElementById('perfSummary');
+  const lim = document.getElementById('perfLimits');
   const d = METRICS.dataset || {};
   const a = METRICS.models.m2_tier.without_reviews;
   const m1 = METRICS.models.m1_rating;
-  el.innerHTML = `
+  // Limitations are rendered into their own container so they can be labelled
+  // and collapsed separately from the dataset/split facts.
+  if(el) el.innerHTML = `
     <dl class="kv">
       <dt>Dataset</dt><dd>${d.source || '—'} (${d.rows_cleaned ?? '—'} cleaned rows${d.is_sample ? ', SAMPLE' : ''}) · md5 ${d.md5 || '—'}${d.sample_note ? `<br><span class="tiny">${d.sample_note}</span>` : ''}</dd>
       <dt>Split</dt><dd>80/20 train/test before any preprocessing; GroupShuffleSplit on app name (same app never on both sides); 75/25 train/val for selection; test used exactly once</dd>
@@ -442,7 +861,8 @@ function renderSummary(){
       <dt>M2 inputs (B)</dt><dd>${a.features.join(', ')} → 4 install bands</dd>
       <dt>Tier bounds</dt><dd>${(a.tier_bounds||[]).map(([lo,hi,n])=>`${n}: [${lo.toLocaleString()}, ${hi===null?'∞':hi.toLocaleString()})`).join('; ')}</dd>
       <dt>Class counts (full data)</dt><dd>${Object.entries(a.class_counts_full_data||{}).map(([k,v])=>`${k} ${v}`).join(' · ')}</dd>
-    </dl>
+    </dl>`;
+  if(lim) lim.innerHTML = `
     <ul class="limit-list">
       <li>Installs are reported download-band <strong>lower bounds</strong>, not exact downloads.</li>
       <li>Listed price is a price tag, <strong>not observed revenue</strong>; no revenue is estimated anywhere.</li>
@@ -456,6 +876,21 @@ function renderML(){
   initRatingForm();
   initTierForm();
   (async ()=>{
+    /* Inference and the read-only metrics are independent: decide the engine
+       first so the forms are usable even when metrics.json is unreachable. */
+    await detectInference();
+    refreshContentRatings();   // now that we know whether the bundle is loaded
+    if(INFERENCE.mode === 'none'){
+      const note = 'No inference engine is available: neither the FastAPI backend '
+        + '(<code>api/health</code>) nor the exported browser bundle '
+        + '(<code>' + BROWSER_MODELS_URL + '</code>) could be loaded.';
+      ['ratingResult','tierResult'].forEach(id=>{
+        const e = document.getElementById(id);
+        if(e) unavailable(e, note, INFERENCE.error);
+      });
+    }
+    showMetricsSource();
+
     try{
       const hit = await loadMetrics();
       METRICS = hit.data;
@@ -463,21 +898,21 @@ function renderML(){
     }catch(err){
       METRICS = null;
       METRICS_FROM_API = false;
-      showMlNotice();
+      showMetricsSource();
       const note = 'Backend reachable but no artifacts yet? Run: python clean.py && python train_models.py';
-      ['ratingResult','tierResult'].forEach(id=>unavailable(document.getElementById(id), note, err));
       ['ratingModelCard','confusionCard','perfContent'].forEach(id=>{
         const e = document.getElementById(id);
         if(e) unavailable(e, note, err);
       });
       return;
     }
-    showMlNotice();
+    showMetricsSource();
     renderRatingModelCard();
     renderConfusionMatrix();
     renderPerfM1();
     renderPerfM2('with_reviews');
     renderPerfM2('without_reviews');
+    renderBudgetNote();
     renderPerClass();
     renderImportance();
     renderCompare();
@@ -488,6 +923,50 @@ function renderML(){
 /* ================================================================
    BOOTSTRAP
    ================================================================ */
+/* ---------------- off-canvas nav (below 1080px) ----------------
+   The sidebar is a drawer under the same breakpoint at which it would
+   otherwise eat a quarter of a narrow viewport. Everything here degrades
+   safely: on desktop the toggle is display:none, so nothing can get stuck. */
+const NAV_BREAKPOINT = 1080;
+
+function isDrawerLayout(){
+  return window.matchMedia ? window.matchMedia(`(max-width:${NAV_BREAKPOINT}px)`).matches
+                           : window.innerWidth <= NAV_BREAKPOINT;
+}
+
+function setNavOpen(open){
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('navBackdrop');
+  const toggle = document.getElementById('navToggle');
+  if(!sidebar) return;
+  sidebar.classList.toggle('open', open);
+  if(toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if(backdrop) backdrop.hidden = !open;
+  // Scroll-locking the body while the drawer is open would shift the layout on
+  // iOS; the drawer scrolls internally instead (overflow-y:auto).
+}
+
+function initNavToggle(){
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('navBackdrop');
+  const toggle = document.getElementById('navToggle');
+  if(!sidebar || !toggle) return;
+
+  toggle.addEventListener('click', ()=>setNavOpen(!sidebar.classList.contains('open')));
+  if(backdrop) backdrop.addEventListener('click', ()=>setNavOpen(false));
+  // Tapping a nav link must both navigate AND close the drawer.
+  sidebar.querySelectorAll('.nav-list a').forEach(a=>{
+    a.addEventListener('click', ()=>setNavOpen(false));
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape') setNavOpen(false);
+  });
+  // Crossing back to the desktop layout must never leave a drawer stuck open.
+  const mq = window.matchMedia ? window.matchMedia(`(max-width:${NAV_BREAKPOINT}px)`) : null;
+  if(mq && mq.addEventListener) mq.addEventListener('change', (e)=>{ if(!e.matches) setNavOpen(false); });
+  window.addEventListener('resize', ()=>{ if(!isDrawerLayout()) setNavOpen(false); });
+}
+
 function initNav(){
   const links = document.querySelectorAll('.nav-list a');
   window.addEventListener('scroll', ()=>{
@@ -501,9 +980,31 @@ function initNav(){
   }, {passive:true});
 }
 
+/* A plot inside a collapsed <details> has no layout box, so Plotly cannot size
+   it — it draws at a stub size and stays wrong after the panel is opened.
+   Re-fit any plot that has already been drawn each time a fold opens. Charts
+   not drawn yet are covered by the lazy IntersectionObserver in charts.js,
+   which fires once the element becomes visible. */
+function initFoldPlots(){
+  const folds = document.querySelectorAll('details.fold-plot, details.perf-fold');
+  if(!folds || !folds.forEach) return;
+  folds.forEach(d=>{
+    d.addEventListener('toggle', ()=>{
+      if(!d.open) return;
+      const plots = d.querySelectorAll('[id^="chart"], .plot');
+      if(!plots || !plots.forEach) return;
+      plots.forEach(el=>{
+        if(el && el.data && typeof Plotly !== 'undefined') Plotly.Plots.resize(el);
+      });
+    });
+  });
+}
+
 function bootstrap(){
   initNav();
-  loadApps().then(({rows, source, is_sample})=>{
+  initNavToggle();
+  initFoldPlots();
+  loadApps().then(({rows, source, is_sample, degraded, errors})=>{
     DF = rows;
     APP_SOURCE = source;
     APP_IS_SAMPLE = is_sample;
@@ -511,6 +1012,23 @@ function bootstrap(){
     document.getElementById('runTime').textContent = source;
     const fs = document.getElementById('footSource');
     if(fs) fs.textContent = rows.length.toLocaleString() + ' cleaned rows · ' + source;
+
+    // Never let the 11-row sample pass silently for the real dataset.
+    if(degraded){
+      const top = document.getElementById('overview');
+      if(top && top.insertAdjacentHTML){
+        top.insertAdjacentHTML('afterend',
+          '<div class="gap-banner"><strong>⚠ Showing the embedded 11-row sample</strong> — '
+          + 'the cleaned dataset could not be loaded, so every chart below describes '
+          + 'those 11 rows only.'
+          + (errors && errors.length ? ` <span class="tiny">(${errors.join(' · ')})</span>` : '')
+          + ' A page opened straight from disk (<code>file://</code>) cannot <code>fetch()</code>; '
+          + 'open the page served by <code>python app.py</code>, or keep '
+          + '<code>data/apps_bundle.js</code> (built by <code>python clean.py</code>) next to '
+          + '<code>index.html</code>.</div>');
+      }
+    }
+
     renderKPIs();
     renderCharts();
     renderML();

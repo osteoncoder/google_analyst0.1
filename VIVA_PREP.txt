@@ -1,0 +1,514 @@
+================================================================================
+  APEX - GOOGLE PLAY STORE INTELLIGENCE DASHBOARD
+  Viva preparation notes - verified numbers only
+================================================================================
+
+Every number below comes from a measured artifact in this repository
+(ml/artifacts/metrics.json, data/cleaning_report.json, the test suites) or a
+documented measurement recorded in PLAN.md / README.md. Nothing here is
+aspirational. Prepared 2026-09-20, branch arena/01a0ba27-google-analyst0-1.
+
+How to use: sections 1-3 are the facts to keep at your fingertips. Section
+4 explains the models and their prediction techniques in plain words, one
+analogy each - simple enough for someone hearing about them for the first
+time. Sections 5-7 are the questions you are likely to be asked, answered
+using only those facts. Appendix B says where every number lives and how to
+reproduce it.
+
+
+--------------------------------------------------------------------------------
+1. ONE-PAGE SUMMARY
+--------------------------------------------------------------------------------
+
+GOAL        Turn a raw public Play Store scrape into an honest analytics
+            dashboard: clean the data with documented rules, train and
+            evaluate two scikit-learn models under a leakage-guarded
+            protocol, and serve everything - data, charts and live
+            predictions - from one page that works even with no backend.
+
+DATASET     gauthamp10/Google-Playstore-Dataset (MIT licence), a June-2021
+            scrape of 2,312,944 apps x 24 attributes. The repo ships a
+            deterministic 40,000-row stratified sample so it runs out of the
+            box; one command rebuilds the full 666 MB CSV.
+
+PIPELINE    fetch_dataset.py (download + stratified sample)
+            -> clean.py (13 documented rules, writes apps_cleaned.csv,
+               apps.json and a provenance report)
+            -> train_models.py (15 candidate pipelines, seed 42, grouped
+               split, 10 MB artifact budget; writes ml/artifacts/)
+            -> app.py (FastAPI) or any static host / file:// (the models are
+               exported to JS and evaluated in the browser).
+
+STACK       Python (pandas, scikit-learn, FastAPI) + plain HTML/CSS/JS with
+            Plotly.js from a CDN. No build step, no npm.
+
+RESULT      M1 rating regression, Gradient Boosting: test MAE 0.494,
+            RMSE 0.654, R^2 +0.071 (mean baseline MAE 0.522 - honest small
+            lift, ratings cluster near 4.2). M2 install-tier classifier,
+            primary version WITHOUT Reviews, Gradient Boosting: 0.768
+            accuracy / 0.544 macro-F1 (majority baseline 0.724 / 0.210).
+            Both selected under a 10 MB shipping budget that excluded
+            334-412 MB random forests which scored marginally higher.
+
+
+--------------------------------------------------------------------------------
+2. THE PIPELINE, STAGE BY STAGE - THE NUMBER THAT MATTERS AT EACH
+--------------------------------------------------------------------------------
+
+  2,312,944  apps in the source scrape (June 2021)
+            -> fetch_dataset.py downloads 3 tar.gz parts (~666 MB),
+               byte-concatenates them (only Part1 has a header) and builds
+      40,000  deterministic stratified sample rows
+               (48 categories x 4 install tiers = 211 non-empty strata,
+               every stratum keeps >= 25 rows, rows chosen by smallest
+               content hash - no RNG, reproduces on any machine).
+               Rare tiers are deliberately over-represented: 100M+ is
+               1.23% of the sample vs 0.03% of the source, so every class
+               is present in training.
+      40,000  cleaned rows on the sample (0 dropped: no missing identity,
+               no corrupted rows, no exact duplicates; 396 same-name
+               variants kept as distinct listings).
+               On the FULL dataset, measured: 2,312,944 -> 2,312,222
+               (5 missing identity, 717 exact duplicates) in 80 s wall,
+               3.0 GB peak RSS.
+     22,418  rows with a valid rating (1-5) -> M1 regression
+               (unrated apps are stored as 0.0 in the source ~47%; they
+               become MISSING, never fake zeros).
+     39,893  rows with a valid installs bound -> M2 classification.
+
+  Splits (seed 42, GroupShuffleSplit on app name, made BEFORE any
+  preprocessing; imputer / one-hot / scaler fit on the train slice only;
+  candidates ranked on validation; the winner refit on train+val; the test
+  set used exactly once):
+
+     M1:   13,454 train / 4,482 validation / 4,482 test   (n = 22,418)
+     M2:   23,966 train / 7,960 validation / 7,967 test   (n = 39,893)
+
+  Class mix M2 (full cleaned data = the sample here):
+     Under 10K  29,023   10K-1M   8,461   1M-100M  1,916   100M+    493
+
+
+--------------------------------------------------------------------------------
+3. NUMBERS TO QUOTE - AND THE CAVEAT ATTACHED TO EACH
+--------------------------------------------------------------------------------
+
+M1 - RATING REGRESSION (selected: Gradient Boosting, 0.26 MB artifact)
+  Test MAE 0.494, RMSE 0.654, R^2 +0.071.
+  CAVEAT: the mean-baseline already achieves MAE 0.522 because ratings are
+  tightly clustered (median 4.2). The model adds ~0.03 MAE. Rating is driven
+  by app quality, which profile features cannot capture. A defensible
+  negative result, reported as such - not hidden. The engineered features
+  moved R^2 from +0.051 to +0.071.
+
+M2-A - INSTALL TIER, WITH REVIEWS (selected: Logistic Regression, 0.007 MB)
+  Test accuracy 0.908, macro-F1 0.838, weighted-F1 0.907.
+  CAVEAT: Reviews is a strong proxy for installs (installed apps accumulate
+  reviews), so A largely measures how well a popularity signal predicts
+  popularity. It is shown for comparison; it is NOT the primary model.
+
+M2-B - INSTALL TIER, WITHOUT REVIEWS - PRIMARY (sel.: Gradient Boosting,
+  0.99 MB)
+  Test accuracy 0.768, macro-F1 0.544, weighted-F1 0.740.
+  Per-class F1: Under 10K 0.876, 10K-1M 0.376, 1M-100M 0.365, 100M+ 0.559
+  (test support 5770 / 1692 / 410 / 95).
+  CAVEATS:
+   - Macro-F1 is the headline, chosen up front because 72.6% of rows are
+     "Under 10K": the do-nothing majority baseline scores 0.724 accuracy,
+     so accuracy alone is actively misleading.
+   - The minority/middle tiers remain the weakness (see section 7).
+
+MAJORITY (CLASS-PRIOR) BASELINE
+  Accuracy 0.724, macro-F1 0.210. M2-B clears it on BOTH metrics
+  (0.768 / 0.544). It originally sat BELOW it (0.673 / 0.307) before the
+  enriched features - that history is the strongest thing to narrate.
+
+THE ENRICHED-FEATURE LIFT (measured, seed 42, sample)
+  Before (Decision Tree, old features):    accuracy 0.673, macro-F1 0.307
+  After  (Gradient Boosting, + 8 features): accuracy 0.768, macro-F1 0.544
+  Ablation without developer_app_count:     macro-F1 0.549 -> 0.534
+  CAVEAT: developer_app_count is the one feature computed across the whole
+  frame (it can straddle the app-name grouped split). The ablation shows
+  the lift does not rest on it - it costs only ~0.015 macro-F1.
+
+FEATURE IMPORTANCES (random-forest candidate for M2-B, measured)
+  app_age_days 0.236, days_since_update 0.193, size_mb 0.155,
+  min_android 0.075, developer_app_count 0.046.
+  On the OLD feature set size_mb alone carried 0.79 of the mass.
+
+MODEL INPUTS (13)
+  Numeric: size_mb, price, price_is_positive, app_age_days,
+  days_since_update, developer_app_count, min_android, ad_supported,
+  in_app_purchases, editors_choice, log1p(reviews).
+  Categorical: category (48), content_rating (5).
+  NEVER inputs: Rating and Installs for M1 (target/leak), Installs and the
+  tier label for M2; Reviews additionally excluded from M2-B by design.
+
+INSTALLS ARE BAND LOWER BOUNDS
+  "50,000+" -> 50,000, the floor of the reported band, never an exact
+  download count. Every chart label says so. Listed price is a price tag;
+  NO revenue is estimated anywhere in the project.
+
+TRAINING COST (2-core sandbox, 40k sample)
+  Full 15-candidate run: 2 min 34 s. HistGradientBoosting benchmarked ~14x
+  faster with metrics inside noise but was REJECTED: it exposes no public
+  accessor for its binned trees, so it cannot be exported to the browser
+  engine. RandomForest(n_jobs=-1) measured bit-identical at a fixed seed.
+
+REPRODUCIBILITY
+  Seed 42 everywhere; the sample is deterministic (smallest content hash
+  per stratum, no RNG); metrics.json records the dataset MD5
+  (7bb2de92ec61 for the committed sample) and the dashboard prints it.
+
+BROWSER ENGINE PARITY
+  The fitted pipelines are exported to ml/artifacts/browser/models.js and
+  evaluated by ml_inference.js (impute -> scale -> one-hot -> trees;
+  GradientBoostingClassifier = log(prior) + lr * sum of leaves, softmax).
+  60 parity cases per model (180 total) must match scikit-learn exactly;
+  measured max abs error ~5e-11. The engine used is stated on every
+  prediction, and static-metrics fallbacks are always labelled - nothing
+  degrades silently.
+
+TESTS
+  tests/smoke_frontend.js: 49 checks against the real artifacts.
+  tests/browser_inference.test.js: 17 checks (the parity suite).
+  Live API checks: /api/health, /api/metrics, 422 validation, 503 (not
+  500) when models are missing, dot-directory protection (404).
+
+
+--------------------------------------------------------------------------------
+4. THE MODELS IN PLAIN WORDS - HOW EACH ONE MAKES ITS PREDICTION
+--------------------------------------------------------------------------------
+
+No maths in this section. Each model gets one everyday analogy, chosen so
+you can retell it to someone who has never heard of machine learning. The
+measured numbers behind all of it are in section 3.
+
+4.1 TWO KINDS OF PREDICTION
+
+  M1 predicts a NUMBER on a scale - a rating between 1 and 5. That is like
+  reading a bathroom scale: being close is what counts.
+
+  M2 predicts a BUCKET - one of four install tiers (Under 10K, 10K-1M,
+  1M-100M, 100M+). That is like sorting parcels into letter / parcel /
+  bulky / oversized boxes: nearly right is still wrong, you must pick the
+  right box.
+
+  Both M2 versions (A with Reviews, B without) are bucket-pickers. What
+  differs below is HOW each model arrives at its answer.
+
+4.2 THE BUILDING BLOCK: A DECISION TREE (a game of 20 Questions)
+
+  A decision tree is a flowchart of yes/no questions: "Is it free?" ->
+  "Is it bigger than 50 MB?" -> "Was it updated in the last year?" ...
+  each answer narrows the crowd until the model lands on a guess. You
+  have played this game before: "animal, vegetable or mineral?"
+
+  A single tree is a mediocre guesser - a few dozen questions can only
+  slice the data so finely. The strong models on this project are ways
+  of combining many trees so their blind spots cancel out.
+
+4.3 GRADIENT BOOSTING - M1 (rating) and M2-B (install tiers, primary)
+
+  Analogy: revising for an exam with practice tests.
+
+  Round 1. Make a crude starter guess for everything. For M1 that is
+  literally "predict the average rating, 4.1, for every app". Mark the
+  practice test. What you got wrong is now the study material.
+
+  Round 2. Train ONE small tree on the MISTAKES - not on the ratings,
+  on the errors the starter guess left behind. Where it succeeds, the
+  combined guess (starter + correction) gets closer.
+
+  Round 3 and on. Repeat: each new tree trains on whatever is still
+  wrong, so the errors shrink round by round. M1 uses 200 rounds. M2-B
+  uses 200 rounds with one small tree per tier - 800 trees in all.
+
+  Trust each fix only a little. The learning rate is 0.1: every round's
+  correction is applied at a tenth of its strength. Small careful steps
+  - if one tree learns a bad habit, the next 199 can still correct it.
+  This is also the "gradient" in the name: each round steps in the
+  direction that reduces the remaining error the most.
+
+  Predicting the NUMBER (M1). The final answer is
+
+      starter (4.1)  +  0.1 x (the sum of all 200 corrections)
+
+  then clipped to stay inside the legal 1-to-5 range. A tree saying
+  "apps like this one sit about 0.4 below average" moves the guess
+  down by 0.04.
+
+  Picking the BUCKET (M2-B). Picture four scoreboards, one per tier.
+  The starting scores simply reflect how common each tier is in the
+  training data (Under 10K starts clearly ahead, 100M+ starts deep
+  behind). Every round, each tier's tree drops a small weight into the
+  box it believes in. After 200 rounds the heaviest box wins, and the
+  four scores are squeezed into percentages that add up to 100 - which
+  is why the dashboard can show "72% Under 10K, 19% 10K-1M, ..." rather
+  than a bare verdict. (The squeeze is the softmax in the maths.)
+
+  Worth knowing - the OTHER way to team up trees. A random forest grows
+  many trees INDEPENDENTLY on random slices of the data and takes a
+  majority vote: a committee of equals, voting in parallel. Boosting
+  learns IN SEQUENCE, each tree cleaning up after the last. Here the
+  forest scored marginally better but weighed 334 MB and was excluded
+  by the shipping budget (Appendix A).
+
+4.4 LOGISTIC REGRESSION - M2-A (install tiers, with Reviews)
+
+  Despite the word "regression" in its name, it is a CLASSIFIER - a
+  classic viva trap; say it before anyone asks.
+
+  Analogy: a bank's loan scorecard.
+
+  Every fact about the app adds or removes points from each tier's
+  running total, and the point values were LEARNED from thousands of
+  real past examples. A large review count earns many points toward
+  the higher tiers; a niche category nudges points toward Under 10K; a
+  $4.99 price nudges them away from 100M+. At the end the four totals
+  are squeezed into percentages (softmax again) and the largest wins.
+  The dashboard's probability bars ARE those percentages.
+
+  Why it is liked: at 0.007 MB it is tiny, fast and READABLE - every
+  weight can be read aloud as "this fact pushes that tier". Its limit:
+  it can only draw straight-line boundaries. It cannot express a rule
+  that bends in the middle, such as "free apps behave one way under
+  100 MB and a different way above".
+
+4.5 WHY THE PRIMARY MODEL BOOSTS AND THE OTHER KEEPS A SCORECARD
+
+  With the reviews column present (M2-A), the tier is nearly a
+  straight-line story - reviews alone separate the tiers, so the simple
+  scorecard reaches 0.838 macro-F1. Remove Reviews (M2-B, the primary
+  model) and what remains is subtler and full of bending rules, so the
+  error-correcting team of trees wins instead. The two techniques are
+  not rivals: each is the right tool for its version, and Appendix A
+  shows them competing honestly under the same protocol.
+
+4.6 BEFORE ANY MODEL SEES YOUR ANSWERS (the shared front door)
+
+  The form and the API pass every answer through the same three steps,
+  fitted during training and frozen into the saved pipeline:
+
+    1. A BLANK field is filled with the typical value from training -
+       the median for numbers, the most common class for categories.
+       In the M1 pipeline a blank size becomes 12 MB and a blank app
+       age becomes 1,093 days. Every value the model had to assume is
+       listed under your result, so nothing is silently invented.
+    2. Numbers are put on ONE COMMON SCALE (standardised), so a size
+       measured in thousands of MB cannot shout down a price in single
+       dollars.
+    3. Each category becomes a row of yes/no switches, one per value
+       seen in training - 48 switches for category, 5 for content
+       rating. A value never seen in training simply leaves all its
+       switches off, and the result says so explicitly.
+
+  Then the model takes over - scorecard or team of trees - exactly as
+  described above, and the browser engine walks the very same numbers.
+
+--------------------------------------------------------------------------------
+5. ANTICIPATED QUESTIONS AND ANSWERS
+--------------------------------------------------------------------------------
+
+Q1. Why a 40,000-row sample instead of the full 2.31M?
+A.  Three reasons. Git: the raw CSV is 666 MB - unshippable. Reproducibility:
+    the sample is deterministic (smallest content hash per stratum), so it
+    rebuilds identically on any machine. Coverage: stratifying on
+    48 categories x 4 install tiers with a 25-row floor guarantees every
+    class is represented (100M+ would otherwise be 0.03%). The full run is
+    one command away and the pipeline auto-detects the full file.
+
+Q2. Why is install count a band lower bound?
+A.  Play Store publishes bands ("1,000,000+"), not exact downloads. The
+    pipeline stores the band floor, and every UI label says "band lower
+    bound". Inventing an exact count would be fabrication.
+
+Q3. Why exclude Reviews from the primary classifier when it obviously
+    helps?
+A.  Reviews is a target proxy: more installed apps accumulate more reviews.
+    Keeping it would measure how well a popularity signal predicts
+    popularity (that is version A: 0.838 macro-F1). Version B, without
+    Reviews, is the honest feature set - and the A/B comparison is shown
+    side by side in section 09. Neither model claims to be a pre-launch or
+    future-growth predictor; the data is a cross-sectional 2021 snapshot.
+
+Q4. Your primary classifier was originally WORSE than doing nothing. True?
+A.  Yes - and it is the best part of the project. Before the enriched
+    features, M2-B was a Decision Tree at 0.673 accuracy / 0.307 macro-F1,
+    below the 0.724 majority baseline. I parsed the eight app-profile
+    columns the dataset already carried but the pipeline ignored (app age,
+    days since update, developer portfolio size, minimum Android, the
+    ad/IAP/Editors' Choice flags, content rating), retrained under the
+    identical protocol, and it now reaches 0.768 / 0.544 - above the
+    baseline on both. I checked the lift is not leakage: the one feature
+    computed across the whole frame (developer_app_count) is worth only
+    ~0.015 macro-F1 in ablation. Feature importances are now led by the
+    engineered features, not by size alone (which used to carry 0.79).
+
+Q5. Why a grouped split on app name?
+A.  The same app appears as multiple listings (396 same-name variants in
+    the sample). A random split would put near-identical rows on both
+    sides of the split - duplicate leakage. GroupShuffleSplit on the app
+    name guarantees an app lands on exactly one side. The split is made
+    before preprocessing so the imputer/scaler/one-hot are fit on training
+    rows only.
+
+Q6. What is the difference between listed price and revenue?
+A.  Price is a tag on the listing. Nothing in the project estimates
+    revenue - the original template invented "Est. Revenue" from free
+    installs x 0.05 x $2.99; that was removed. Pricing mix charts count
+    apps by price, nothing more.
+
+Q7. Why is R^2 only ~0.07 on the rating regression?
+A.  Because ratings are high and tightly clustered (median 4.2): the mean
+    baseline already gets MAE 0.522. The model adds ~0.03 MAE and R^2
+    +0.071 over the +0.051 before the engineered features. Rating is
+    driven by app quality, which no available feature encodes. I report it
+    as a defensible negative result rather than tuning until the number
+    looks better.
+
+Q8. How is reproducibility guaranteed?
+A.  Seed 42 everywhere; the sample is deterministic by content hash (no
+    RNG to vary); cleaning is deterministic apart from a build timestamp;
+    the split is a fixed grouped shuffle; metrics.json records the dataset
+    MD5 and the dashboard prints it, so stale artifacts are detectable.
+
+Q9. How do predictions work with no backend?
+A.  The fitted pipelines are exported to a JS bundle; ml_inference.js
+    walks the same numbers - impute, scale, one-hot, trees - in the
+    browser. A parity suite of 60 cases per model (180 total) requires an
+    exact match with scikit-learn (max error ~5e-11). The page works on
+    GitHub Pages, Live Server and file://, states which engine answered
+    each prediction, and labels the static-metrics snapshot as a snapshot.
+
+Q10. Ethics, licensing, provenance?
+A.  The dataset is MIT-licensed and was a public scrape (June 2021); it
+    contains no personal user data. Installs are band floors, unrated
+    apps become missing rather than fake zeros, no revenue is estimated,
+    and the original template's fabricated charts (countries, growth
+    curves, revenue) were replaced with charts of data that exists, each
+    labelled with how it was aggregated.
+
+Q11. Why Gradient Boosting and not the faster HistGradientBoosting?
+A.  HistGB measured ~14x faster with metrics inside noise, but it has no
+    public accessor for its binned trees, so it cannot be exported to the
+    browser engine - adopting it would silently kill the no-backend path.
+    Exact Gradient Boosting is exportable at ~1 MB.
+
+Q12. Why is model selection not just "highest score"?
+A.  Every candidate is also measured after fitting. Anything whose
+    serialized pipeline exceeds a 10 MB budget is excluded, however good:
+    the winner has to be committed to git, served by the API and exported
+    into the browser bundle. Random Forest scored marginally higher and
+    was rejected at 334-412 MB; Gradient Boosting gets ~99% of the lift at
+    ~1 MB. Rejected candidates keep their scores in the section-09 tables,
+    struck out, so the trade-off is visible.
+
+
+--------------------------------------------------------------------------------
+6. CHALLENGE QUESTIONS
+--------------------------------------------------------------------------------
+
+"Isn't this just a dashboard?"
+    It is a pipeline with a dashboard on top. The charts are the visible
+    part; underneath there is a documented cleaning stage with a
+    provenance report, two models trained under a leakage-guarded
+    protocol, a measured evaluation of 15 candidate pipelines, an
+    artifact-size-aware selection rule, and a parity-tested JS inference
+    engine so the whole thing also runs with no server.
+
+"How do I know the numbers are real?"
+    metrics.json is written by the training run itself; sections 08-09
+    render that file, not hand-typed numbers. It records the dataset MD5,
+    the seed, the split sizes, per-candidate validation and test scores
+    and which candidates the budget excluded. Re-running the two commands
+    reproduces it; the test suites assert against the real artifacts.
+
+"What would you change with more time?"
+    See section 7.
+
+
+--------------------------------------------------------------------------------
+7. LIMITATIONS AND WHAT COMES NEXT
+--------------------------------------------------------------------------------
+
+  1. Sample scale. The committed models are trained on 40,000 rows (1.7%
+     of the source); numbers are representative, not full-scale. The full
+     run is one command (measured: 80 s cleaning at 3.0 GB peak RSS, then
+     longer training over 1.23M rated rows).
+  2. Minority tiers. M2-B's per-class F1 shows where it struggles:
+     10K-1M 0.376 and 1M-100M 0.365 against Under 10K 0.876. Next: class
+     weights or per-tier thresholds tuned ON VALIDATION, never on test.
+  3. M1's ceiling. Profile features cannot encode app quality. Next:
+     text-derived features (description embeddings) - not more tabular
+     features.
+  4. No temporal validation. The scrape is a June-2021 cross-section; a
+     train-on-earlier / test-on-later design would need release-date
+     aware splits and honest handling of survivorship.
+  5. Browser payload cap. On full-scale runs apps.json carries 60,000 of
+     2.31M rows; chart shapes are stable but exact KPI counts refer to the
+     exported rows (training and apps_cleaned.csv use every row).
+
+
+--------------------------------------------------------------------------------
+APPENDIX A - CANDIDATE TABLES AS MEASURED (seed 42, committed sample)
+--------------------------------------------------------------------------------
+
+M1 rating regression - selection metric: validation R^2
+  candidate             val R^2    test R^2   test MAE   artifact
+  Mean baseline         -0.0004    -0.0000     0.522     0.003 MB
+  Linear Regression     +0.0335    +0.0354     0.507     0.005 MB
+  Decision Tree         -0.8651    -0.8487     0.684     1.5 MB
+  Random Forest         +0.0304    +0.0587     0.499     411.7 MB  EXCLUDED
+  Gradient Boosting     +0.0607    +0.0688     0.494     0.28 MB   SELECTED
+  Selected model refit on train+val, evaluated once on test:
+  MAE 0.4936  RMSE 0.6543  R^2 +0.0711.
+
+M2-A install tier WITH Reviews - selection metric: validation macro-F1
+  candidate             val mF1    test mF1   test acc   artifact
+  Dummy (class prior)    0.2112     0.2100     0.7242    0.004 MB
+  Logistic Regression    0.8420     0.8302     0.9069    0.006 MB  SELECTED
+  Decision Tree          0.7820     0.7900     0.8732    0.4 MB
+  Random Forest          0.8315     0.8387     0.9114    175.8 MB  EXCLUDED
+  Gradient Boosting      0.8336     0.8353     0.9095    1.0 MB
+  Selected (refit) test: accuracy 0.9077  macro-F1 0.8385  weighted 0.9068.
+
+M2-B install tier WITHOUT Reviews (primary) - selection: validation macro-F1
+  candidate             val mF1    test mF1   test acc   artifact
+  Dummy (class prior)    0.2112     0.2100     0.7242    0.004 MB
+  Logistic Regression    0.4818     0.4939     0.7630    0.006 MB
+  Decision Tree          0.4585     0.4589     0.6892    0.97 MB
+  Random Forest          0.5347     0.5305     0.7629    333.7 MB  EXCLUDED
+  Gradient Boosting      0.5302     0.5383     0.7688    1.06 MB   SELECTED
+  Selected (refit) test: accuracy 0.7682  macro-F1 0.5440  weighted 0.7400.
+  Per-class F1: Under 10K 0.876, 10K-1M 0.376, 1M-100M 0.365, 100M+ 0.559.
+
+Install-tier bounds (left-inclusive, aligned with Play's own band grid):
+  Under 10K [0, 10k)   10K-1M [10k, 1M)   1M-100M [1M, 100M)   100M+ [100M, inf)
+
+
+--------------------------------------------------------------------------------
+APPENDIX B - WHERE EVERY NUMBER LIVES, AND HOW TO REPRODUCE
+--------------------------------------------------------------------------------
+
+  Metrics, splits, candidates, per-class F1, importances
+        ml/artifacts/metrics.json  (rendered by dashboard sections 08-09)
+  Cleaning counts, feature coverage, tier mix
+        data/cleaning_report.json
+  Sample provenance (strata, quotas, tier shares)
+        data/playstore_sample.meta.json
+  Browser-engine parity cases (60 per model)
+        ml/artifacts/browser/parity_cases.json
+  The measured tables and honest readings above
+        README.md (sections: Measured cleaning report / evaluation results)
+  Phase-by-phase decisions, benchmarks and rejected alternatives
+        PLAN.md
+
+  Reproduce everything (about 2.5 minutes on the 40k sample):
+        python clean.py
+        python train_models.py
+        python app.py            -> http://localhost:8000
+        node tests/smoke_frontend.js
+        node tests/browser_inference.test.js
+
+  This file: VIVA_PREP.txt - plain text on purpose; it opens anywhere.
+================================================================================

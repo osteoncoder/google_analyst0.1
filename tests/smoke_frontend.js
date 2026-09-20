@@ -48,13 +48,40 @@ class El {
       contains(c) { return self.classList._s.has(c); },
     };
     this.parentElement = { innerHTML: '', _banners: '', insertAdjacentHTML(pos, html) { this.innerHTML += html; } };
+    this.dataset = {};
+    this.attrs = {};
   }
   addEventListener(ev, fn) { (this.listeners[ev] = this.listeners[ev] || []).push(fn); }
   insertAdjacentHTML(pos, html) { this.innerHTML += html; }
   focus() {}
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  /* Real elements return a NodeList; the tests only ever iterate it. */
+  querySelectorAll() { return { forEach() {} }; }
+  /* The submit button the predict forms drive through their busy state. Kept on
+     the element so a test can inspect it afterwards. */
+  querySelector() {
+    if (!this._submitBtn) {
+      this._submitBtn = {
+        dataset: {}, innerHTML: '', disabled: false, attrs: {},
+        setAttribute(k, v) { this.attrs[k] = String(v); },
+        removeAttribute(k) { delete this.attrs[k]; },
+        getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+      };
+    }
+    return this._submitBtn;
+  }
 }
 const docListeners = {};
 const plots = {};
+/* Minimal <script> injection support: ml_dashboard.js / data.js load the
+   browser bundles this way (it is the only route a file:// page has). The
+   stub reads the real file and executes it in the sandbox, like a browser. */
+function makeScriptEl() {
+  const el = { tag: 'script', onload: null, onerror: null, _src: '' };
+  Object.defineProperty(el, 'src', { get: () => el._src, set: (v) => { el._src = v; } });
+  return el;
+}
 const sandbox = {
   console,
   Date, JSON, Math, Promise, setTimeout, clearTimeout,
@@ -64,9 +91,21 @@ const sandbox = {
     getElementById(id) { if (!elements.has(id)) elements.set(id, new El(id)); return elements.get(id); },
     addEventListener(ev, fn) { (docListeners[ev] = docListeners[ev] || []).push(fn); },
     querySelectorAll() { return { forEach() {} }; },
+    createElement(tag) { return makeScriptEl(); },
+    head: {
+      appendChild(el) {
+        try {
+          vm.runInContext(fs.readFileSync(path.join(ROOT, el.src), 'utf8'), sandbox, { filename: el.src });
+          if (el.onload) el.onload();
+        } catch (e) { if (el.onerror) el.onerror(e); }
+      },
+    },
   },
   fetch: async (url) => {
     if (url === 'data/apps.json') return { ok: true, json: async () => appsJson };
+    // A live-backend answer, so the assertions below exercise app.py's route.
+    // The static-host section further down switches the API off on purpose.
+    if (url === 'api/health') return { ok: true, json: async () => ({ ok: true, models_loaded: true, m1_rating: true, m2_tier_without_reviews: true, trained_on_sample_dataset: true }) };
     if (url === 'api/metrics') return { ok: true, json: async () => metricsJson };
     // static mount serves the artifact file too (used by the degraded-hosting path)
     if (url === 'ml/artifacts/metrics.json') return { ok: true, json: async () => metricsJson };
@@ -82,8 +121,11 @@ const sandbox = {
     return { ok: false, status: 404, json: async () => ({}) };
   },
   Plotly: {
-    newPlot(el, traces, layout) { el.data = { traces, layout }; plots[el.id] = { traces, layout }; },
+    // Counted so the "plotted at most once" check can assert on real draw
+    // calls instead of on timing instrumentation (which no longer exists).
+    newPlot(el, traces, layout) { newPlotCount.n++; el.data = { traces, layout }; plots[el.id] = { traces, layout }; },
     Plots: { resize() {} },
+    restyle(el, update) { restyleCalls.push(update); },
   },
 };
 sandbox.window = sandbox;
@@ -91,13 +133,18 @@ sandbox.globalThis = sandbox;
 sandbox.addEventListener = () => {}; // window.addEventListener (resize/scroll)
 vm.createContext(sandbox);
 
-/* ---------------- load the three frontend files in order ---------------- */
-for (const f of ['data.js', 'charts.js', 'ml_dashboard.js']) {
+/* ---------------- load the frontend files in order ---------------- */
+for (const f of ['data.js', 'charts.js', 'ml_inference.js', 'ml_dashboard.js']) {
   const code = fs.readFileSync(path.join(ROOT, f), 'utf8');
   try { vm.runInContext(code, sandbox, { filename: f }); }
   catch (e) { fail(`${f} threw at load: ${e.message}`); process.exit(1); }
 }
-ok('data.js + charts.js + ml_dashboard.js load without errors');
+ok('data.js + charts.js + ml_inference.js + ml_dashboard.js load without errors');
+
+const newPlotCount = { n: 0 };
+const restyleCalls = [];
+sandbox.__restyleCalls = restyleCalls;
+sandbox.__newPlotCount = newPlotCount;
 
 const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
 
@@ -116,17 +163,50 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
 
   const c1 = plots['chart1'];
   const cats1 = new Set(rows.map(r => r.category)).size;
-  if (c1 && c1.traces.length === cats1) ok(`chart1: ${cats1} category traces (one per real category)`);
-  else fail(`chart1 trace count ${c1 ? c1.traces.length : 'none'} != ${cats1}`);
+  // Chart 1 is ONE trace with a per-point colour array, not one trace per
+  // category: 48 traces cost 48x Plotly's per-trace setup for the same markers
+  // (1.4 s measured). The category colour and name must survive the merge.
+  if (c1 && c1.traces.length === 1) ok(`chart1: single trace (${cats1} categories carried as per-point colours)`);
+  else fail(`chart1 trace count ${c1 ? c1.traces.length : 'none'} != 1`);
+  if (c1 && c1.traces[0].y.length === rows.filter(r => r.installs >= 1000 && r.rating && r.size_mb).length)
+    ok(`chart1: ${c1.traces[0].y.length} markers, one per app passing the ≥1,000-install filter`);
+  else fail('chart1 marker count does not match the filtered rows');
+  if (c1 && c1.traces[0].marker.color.length === c1.traces[0].y.length)
+    ok('chart1: every marker has its own category colour');
+  else fail('chart1 per-point colour array is missing or the wrong length');
+  const knownCats = new Set(rows.map(r => r.category));
+  if (c1 && c1.traces[0].customdata.every(s => knownCats.has(/Category: ([^<]+)<br>/.exec(s)[1])))
+    ok('chart1: hover still names a real category for every point');
+  else fail('chart1 hover lost the category when the traces were merged');
   if (c1 && c1.traces.every(t => t.y.every(v => v >= 1 && v <= 5))) ok('chart1: all ratings within 1-5');
+  // The legend must be interactive: real toggle buttons (not spans) carrying a
+  // pressed state, plus a reset. The click wiring itself is covered by the
+  // standalone legend check, which needs a DOM richer than this stub.
+  const legendEl = elements.get('chart1legend');
+  const toggles = legendEl ? (legendEl.innerHTML.match(/class="legend-item"/g) || []).length : 0;
+  // Nothing is selected on load, so no entry is pressed and every app is shown:
+  // selection is inclusive (pick categories to isolate them), not exclusive.
+  const pressed = legendEl ? (legendEl.innerHTML.match(/aria-pressed="(true|false)"/g) || []) : [];
+  if (legendEl && toggles === 48 && pressed.length === 48
+      && legendEl.innerHTML.includes('aria-pressed="false"')
+      && !legendEl.innerHTML.includes('aria-pressed="true"')
+      && legendEl.innerHTML.includes('id="chart1reset"')
+      && legendEl.innerHTML.includes('<button'))
+    ok(`chart1: legend is 48 toggle buttons, none pressed on load (inclusive filter) + reset`);
+  else fail(`chart1 legend is not interactive (${toggles} items, hasReset=${legendEl ? legendEl.innerHTML.includes('chart1reset') : 'no element'})`);
 
   const c2 = plots['chart2'];
   if (c2 && c2.traces[0].type === 'heatmap' && c2.traces[0].z.length === c2.traces[0].x.length && c2.traces[0].z.length >= 4)
     ok(`chart2: ${c2.traces[0].z.length}x${c2.traces[0].z.length} Pearson matrix over real columns`);
   else fail('chart2 missing/invalid');
-  if (elements.get('chart2note') && elements.get('chart2note').textContent.includes('association, not causation'))
-    ok('chart2: "correlation = association, not causation" note present');
-  else fail('chart2 causation note missing');
+  // The causation caveat belongs in the section head; the footer used to repeat
+  // it and the log1p note verbatim. Assert the de-duplication so it cannot
+  // creep back, and that the footer still carries the one thing unique to it.
+  const c2n = elements.get('chart2note');
+  if (c2n && !/association, not causation|log1p applied/.test(c2n.textContent)
+      && /Pearson r on [\d,]+ cleaned apps/.test(c2n.textContent))
+    ok('chart2: footer no longer repeats the heading/disclosure text (keeps n)');
+  else fail(`chart2 footer still duplicated or lost its content: ${c2n ? c2n.textContent.slice(0, 90) : 'missing'}`);
 
   // chart3 is data-aware: real date column → stacked bars; no dates → gap card
   const hasDates = rows.some(r => r.last_updated);
@@ -180,11 +260,23 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   const pM2a = elements.get('perfM2a'), pM2b = elements.get('perfM2b');
   if (pM2a && pM2b && pM2b.innerHTML.length > 50) ok('section 09: both M2 version tables rendered');
   else fail('section 09 M2 tables missing');
+  // A candidate that scores well can still be unshippable — the table must show
+  // it struck out with its size, not quietly drop it.
+  const pBudget = elements.get('perfBudget');
+  if (pBudget && /shipping budget/.test(pBudget.innerHTML) && /<s>/.test(pM1.innerHTML))
+    ok('section 09: oversized candidates struck out with the shipping-budget reason');
+  else fail(`section 09 artifact-budget rejection not surfaced (budget=${pBudget ? pBudget.innerHTML.slice(0, 80) : 'none'})`);
+  // Limitations moved out of perfSummary into their own labelled, collapsible
+  // block, so the two are asserted separately.
   const pSum = elements.get('perfSummary');
-  if (pSum && pSum.innerHTML.includes('lower bounds') && pSum.innerHTML.includes('not observed revenue'))
-    ok('section 09: limitation notes present (install bands, price ≠ revenue)');
-  else fail('section 09 limitation notes missing');
-  if (metricsJson.dataset.is_sample && pSum.innerHTML.includes('sample')) ok('section 09: sample-dataset warning surfaced');
+  const pLim = elements.get('perfLimits');
+  if (pSum && pSum.innerHTML.includes('Dataset') && pSum.innerHTML.includes('80/20 train/test'))
+    ok('section 09: dataset & split facts in their own block');
+  else fail('section 09 dataset/split block missing');
+  if (pLim && pLim.innerHTML.includes('lower bounds') && pLim.innerHTML.includes('not observed revenue'))
+    ok('section 09: limitations labelled separately (install bands, price ≠ revenue)');
+  else fail('section 09 limitations block missing or not separated');
+  if (metricsJson.dataset.is_sample && pLim && pLim.innerHTML.includes('sample')) ok('section 09: sample-dataset warning surfaced');
 
   /* ---------------- chart3 with DATES (exercises the non-gap path) ---------------- */
   // The real sample has no dates, so also run renderChart3 on synthetic dated
@@ -217,7 +309,30 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   await tick();
   const rr = elements.get('ratingResult');
   if (rr && rr.innerHTML.includes('predicted rating')) ok('section 07: submit → inference result rendered');
-  else fail('rating form submission did not render a result');
+  // The button must never be left stuck in its busy state, on success or error.
+  const btnAfter = vm.runInContext(`(() => {
+    const f = document.getElementById('ratingForm');
+    const b = f && f._submitBtn;
+    return b ? { busy: b.getAttribute('aria-busy'), disabled: b.disabled, label: b.innerHTML } : null;
+  })()`, sandbox);
+  if (btnAfter && btnAfter.busy === null && btnAfter.disabled === false)
+    ok('section 07: submit button leaves its busy state (aria-busy cleared, re-enabled)');
+  else fail(`section 07: submit button stuck busy (${JSON.stringify(btnAfter)})`);
+  const spun = vm.runInContext(`(() => {
+    const f = document.getElementById('ratingForm');
+    const b = f && f._submitBtn;
+    if (!b) return false;
+    let sawBusy = false;
+    const realSet = b.setAttribute.bind(b);
+    b.setAttribute = (k, v) => { if (k === 'aria-busy' && v === 'true') sawBusy = true; realSet(k, v); };
+    document.getElementById('ratingForm').listeners['submit'][0]({ preventDefault() {} });
+    return sawBusy;
+  })()`, sandbox);
+  if (spun) ok('section 07: button is marked busy while the prediction is in flight');
+  else fail('section 07: no busy state was set during submit');
+  await tick();
+  if (!(rr && rr.innerHTML.includes('predicted rating')))
+    fail('rating form submission did not render a result');
   if (rr && rr.innerHTML.includes('Category used: <strong>Education</strong>') && rr.innerHTML.includes('normalized from your input'))
     ok('section 07: normalized category is shown to the user');
   else fail('section 07 should report the category actually used (and that it was normalized)');
@@ -243,12 +358,37 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   g('tfSize').value = '50';
   g('tfPrice').value = '';
   g('tfCategory').value = rows[0].category;
+  // The M2 form asks for the inputs a user can actually know (option 2):
+  // content rating, minimum Android, and the ad / IAP / Editors' Choice flags.
+  // The rating form's 422 case above makes runInference fall through to the
+  // browser engine, which flips the recorded mode; reset it so this submit
+  // exercises the API route (and its payload) rather than the bundle.
+  vm.runInContext('INFERENCE.mode = "api";', sandbox);
+  let tierPayload = null;
+  const tierFetch = sandbox.fetch;
+  sandbox.fetch = async (url, opts) => {
+    if (url === 'api/predict/tier') tierPayload = JSON.parse(opts.body);
+    return tierFetch(url, opts);
+  };
+  g('tfContentRating').value = 'Teen';
+  g('tfAndroid').value = '8.0';
+  g('tfAd').value = '1';
+  g('tfIap').value = '0';
+  g('tfEditors').value = '';
   (tform.listeners['submit'] || [])[0]({ preventDefault() {} });
   await tick();
+  sandbox.fetch = tierFetch;
   const tr = elements.get('tierResult');
   if (tr && tr.innerHTML.includes('prob-fill') && tr.innerHTML.includes('model estimates, not guarantees'))
     ok('section 08: submit → tier + probability bars + disclaimer rendered');
   else fail('tier form submission did not render result');
+
+  const payloadOk = tierPayload && tierPayload.content_rating === 'Teen'
+    && tierPayload.min_android === 8 && tierPayload.ad_supported === 1
+    && tierPayload.in_app_purchases === 0 && tierPayload.editors_choice === null;
+  if (payloadOk) ok('section 08: content rating / min Android / ad / IAP sent; '
+    + 'a blank Editors\' Choice stays null (imputed, not guessed)');
+  else fail(`tier form payload wrong: ${JSON.stringify(tierPayload)}`);
 
   /* ---------------- hosting-mode resilience (static / dead backend) ---------------- */
   // Metrics fall back to the static ml/artifacts/metrics.json when api/* is unreachable,
@@ -270,7 +410,144 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (unavailableHtml.includes('HTTP 503') && unavailableHtml.includes('retry-btn'))
     ok('hosting: unavailable panel shows the real error and a retry button');
   else fail('unavailable panel should include the error detail and a retry button');
+
+  /* ------- regression: a page with NO working fetch must not show 11 rows -------
+     This is the VS Code "Run Active File" / double-click case: fetch() is blocked
+     on file://, so the dataset has to come from the <script> bundle instead of
+     silently collapsing to the embedded 11-row sample. */
+  sandbox.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  const offline = await vm.runInContext('loadApps()', sandbox);
+  if (offline.mode === 'bundle' && offline.rows.length === rows.length)
+    ok(`file:// path: dataset loaded from data/apps_bundle.js (${offline.rows.length.toLocaleString()} rows, not 11)`);
+  else fail(`file:// path: expected ${rows.length} bundle rows, got ${offline.rows.length} (${offline.mode})`);
+
+  /* ------- regression: predictions must work with no backend at all ------- */
+  const mode = await vm.runInContext('detectInference()', sandbox);
+  if (mode === 'browser') ok('hosting: inference falls back to the in-browser exported pipeline');
+  else fail(`detectInference() => ${mode} (expected "browser" when no API answers)`);
+
+  g('rfSize').value = '86';
+  g('rfPrice').value = '0';
+  g('rfReviews').value = '1200';
+  g('rfCategory').value = rows[0].category;
+  (form.listeners['submit'] || [])[0]({ preventDefault() {} });
+  await tick();
+  const rrLocal = elements.get('ratingResult').innerHTML;
+  if (rrLocal.includes('predicted rating') && rrLocal.includes('in your browser'))
+    ok('hosting: rating form predicts with no backend and says the browser engine did it');
+  else fail(`browser-engine rating result missing: ${rrLocal.slice(0, 200)}`);
+
+  g('tfSize').value = '50';
+  g('tfPrice').value = '';
+  g('tfCategory').value = rows[0].category;
+  (tform.listeners['submit'] || [])[0]({ preventDefault() {} });
+  await tick();
+  const trLocal = elements.get('tierResult').innerHTML;
+  if (trLocal.includes('prob-fill') && trLocal.includes('in your browser'))
+    ok('hosting: tier form predicts with no backend and discloses the engine');
+  else fail(`browser-engine tier result missing: ${trLocal.slice(0, 200)}`);
+
   sandbox.fetch = origFetch;
+
+  /* ---------------- off-canvas nav (hamburger) ---------------- */
+  const sidebarEl = g('sidebar'), toggleEl = g('navToggle'), backdropEl = g('navBackdrop');
+  const clickToggle = () => (toggleEl.listeners['click'] || [])[0]({});
+  const pressEscape = () => (docListeners['keydown'] || []).forEach(fn => fn({ key: 'Escape' }));
+  clickToggle();
+  if (sidebarEl.classList.contains('open') && toggleEl.getAttribute('aria-expanded') === 'true'
+      && backdropEl.hidden === false)
+    ok(`nav: toggle opens the drawer (aria-expanded=true, backdrop shown)`);
+  else fail(`nav: drawer did not open (open=${sidebarEl.classList.contains('open')}, aria=${toggleEl.getAttribute('aria-expanded')})`);
+  (backdropEl.listeners['click'] || [])[0]({});
+  if (!sidebarEl.classList.contains('open') && backdropEl.hidden === true)
+    ok('nav: clicking the backdrop closes the drawer');
+  else fail('nav: backdrop click did not close the drawer');
+  clickToggle();
+  pressEscape();
+  if (!sidebarEl.classList.contains('open') && toggleEl.getAttribute('aria-expanded') === 'false')
+    ok('nav: Escape closes the drawer and resets aria-expanded');
+  else fail('nav: Escape did not close the drawer');
+
+  /* ---------------- lazy chart rendering ---------------- */
+  // Charts must be plotted at most once each. Asserted by counting real
+  // Plotly.newPlot calls, not by reading any timing map.
+  const plottedOnce = vm.runInContext(`(() => {
+    const before = __newPlotCount.n;
+    plotChart('chart1'); plotChart('chart1'); plotChart('chart4');
+    return { before, after: __newPlotCount.n };
+  })()`, sandbox);
+  if (plottedOnce.before >= 6 && plottedOnce.after === plottedOnce.before)
+    ok(`charts: each chart is plotted at most once (${plottedOnce.before} draws on record, re-plot draws nothing new)`);
+  else fail(`charts: re-plotting a chart re-ran the renderer (${JSON.stringify(plottedOnce)})`);
+
+  // With an IntersectionObserver present nothing is plotted until it fires.
+  const lazy = vm.runInContext(`(() => {
+    const seen = [];
+    globalThis.IntersectionObserver = class {
+      constructor(cb){ this.cb = cb; globalThis.__io = this; }
+      observe(el){ seen.push(el.id); }
+      unobserve(){}
+    };
+    let plottedNames = 0;
+    const realPlot = globalThis.Plotly.newPlot;
+    globalThis.Plotly.newPlot = function(){ plottedNames++; return realPlot.apply(this, arguments); };
+    renderCharts();
+    const observedImmediately = seen.slice();
+    const plottedBeforeScroll = plottedNames;
+    globalThis.__io.cb([{ isIntersecting: true, target: { id: 'chart2' } }]);
+    globalThis.Plotly.newPlot = realPlot;
+    delete globalThis.IntersectionObserver;
+    return { observedImmediately, plottedBeforeScroll };
+  })()`, sandbox);
+  if (lazy.observedImmediately.length === 6 && lazy.plottedBeforeScroll === 0)
+    ok('charts: with IntersectionObserver, nothing renders before it fires (6 observed, 0 plotted)');
+  else fail(`charts: lazy render not wired up (${JSON.stringify(lazy)})`);
+  await tick();
+  if (plots['chart2'] && plots['chart2'].traces.length)
+    ok('charts: a chart revealed by the observer is rendered on the next tick');
+  else fail('charts: observed chart was never rendered');
+
+  /* ---------------- WCAG 2.2 contrast ----------------
+     Every text colour in the palette is asserted against every surface it can
+     land on. AA needs 4.5:1 for normal text (3:1 for large text and UI), so a
+     dimmed "low" colour is exactly the kind of thing that silently regresses. */
+  const cssText = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
+  const hex = h => {
+    h = h.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  };
+  const lum = rgb => {
+    const f = c => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2]);
+  };
+  const contrast = (a, b) => {
+    const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const varOf = name => {
+    const m = new RegExp(`\\-\\-${name}\\s*:\\s*(#[0-9a-fA-F]{3,6})`).exec(cssText);
+    return m ? hex(m[1]) : null;
+  };
+  // Surfaces a text colour can sit on, darkest to lightest.
+  const surfaces = { void: varOf('void'), base: varOf('base'), surface: varOf('surface'),
+                     inputs: varOf('surface-2') };
+  const textColours = { 'text-hi': varOf('text-hi'), 'text-mid': varOf('text-mid'),
+                        'text-low': varOf('text-low'), 'purple-glow': varOf('purple-glow'),
+                        'purple-neon': varOf('purple-neon'), cyan: varOf('cyan'),
+                        amber: varOf('amber'), pink: varOf('pink') };
+  const contrastFails = [];
+  for (const [name, fg] of Object.entries(textColours)) {
+    if (!fg) { contrastFails.push(`${name}: variable missing`); continue; }
+    for (const [sName, bg] of Object.entries(surfaces)) {
+      if (!bg) continue;
+      const r = contrast(fg, bg);
+      if (r < 4.5) contrastFails.push(`${name} on ${sName} = ${r.toFixed(2)}:1`);
+    }
+  }
+  if (!contrastFails.length)
+    ok(`WCAG 2.2 AA: all ${Object.keys(textColours).length} text colours >= 4.5:1 on every surface`);
+  else fail(`WCAG 2.2 AA contrast failures:\n     ${contrastFails.join('\n     ')}`);
 
   console.log(failures.length ? `\nSMOKE TEST: ${failures.length} FAILURE(S)` : '\nSMOKE TEST: ALL CHECKS PASSED');
   process.exit(failures.length ? 1 : 0);

@@ -1,61 +1,14 @@
-/* ============================================================
-   TOKENS
-   :root {
-  --bg: #ffffff;
-  --text: #1a1a1a;
-  --card-bg: #f5f5f5;
-  --border: #e0e0e0;
-}
-
-[data-theme="dark"] {
-  --bg: #121212;
-  --text: #e5e5e5;
-  --card-bg: #1e1e1e;
-  --border: #333333;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-}
-   ============================================================ */
-   :root{
-    --bg:#0f1117;
-    --card:#1b1e29;
-    --text:#ffffff;
-    --subtext:#b6bfd3;
-    --border:#2b2f3f;
-}
-
-.light-mode{
-    --bg:#f5f7fb;
-    --card:#ffffff;
-    --text:#111111;
-    --subtext:#555555;
-    --border:#d7dce5;
-}
-
-body{
-    background:var(--bg);
-    color:var(--text);
-    transition:.35s ease;
-}
-
-.card{
-    background:var(--card);
-    border:1px solid var(--border);
-    transition:.35s ease;
-}
-
-p,span{
-    color:var(--subtext);
-}
 :root{
+  /* Without this the browser renders native controls - selects, their
+     popup lists, scrollbars - with LIGHT defaults no matter what the CSS
+     says, which is where the white edge came from. It makes the UA paint
+     them dark, so the CSS below can finish the job. */
+  color-scheme:dark;
   --void:#05040c;
   --base:#0a0918;
   --surface:#120f24;
   --surface-2:#181432;
-  --purple-neon:#a855f7;
+  --purple-neon:#ae63fa;
   --purple-deep:#7c3aed;
   --purple-glow:#d8b4fe;
   --cyan:#2dd4ea;
@@ -63,11 +16,34 @@ p,span{
   --amber:#fbbf62;
   --text-hi:#f3f0ff;
   --text-mid:#b1a8cf;
-  --text-low:#6c6390;
+  --text-low:#8a80b2;
   --border:rgba(168,85,247,0.16);
   --border-hi:rgba(168,85,247,0.45);
   --glass:rgba(255,255,255,0.035);
   --glass-hi:rgba(255,255,255,0.06);
+  /* --purple and --purple-lt were referenced by the focus-outline rules but
+     never declared, so those outlines computed to no colour at all and focus
+     was effectively invisible on keyboard navigation. Declared now. */
+  --purple:#8b5cf6;
+  --purple-lt:#c4b5fd;
+  /* Feedback states, for validation and result messaging. */
+  --danger:#fb7185;
+  --success:#4ade80;
+  --warning:#fbbf62;
+  --info:#38bdf8;
+  /* Type and spacing scale, so sizes come from one place. */
+  --text-xs:11px;
+  --text-sm:12.5px;
+  --text-base:14px;
+  --text-lg:16px;
+  --text-xl:20px;
+  --text-2xl:26px;
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-6:24px;
+  --space-8:32px;
   --radius:18px;
   --font-display:'Sora',sans-serif;
   --font-body:'Inter',sans-serif;
@@ -119,7 +95,11 @@ body{
 /* ============================================================
    LAYOUT SHELL
    ============================================================ */
-.shell{ position:relative; z-index:2; display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+/* minmax(0,1fr) — a bare 1fr track has an automatic minimum of `auto`, so a
+   wide child (Plotly container, metric table) would push the column wider
+   than the viewport instead of shrinking. This is the root cause of most of
+   the right-edge overflow; `body{overflow-x:hidden}` was only hiding it. */
+.shell{ position:relative; z-index:2; display:grid; grid-template-columns:250px minmax(0,1fr); min-height:100vh; }
 
 /* ---------- SIDEBAR ---------- */
 .sidebar{
@@ -166,8 +146,31 @@ body{
 .pipeline-tag .pulse{width:6px;height:6px;border-radius:50%;background:#34d399; box-shadow:0 0 8px #34d399; animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
+/* ---------- HAMBURGER / OFF-CANVAS NAV ---------- */
+/* Desktop: the sidebar is always visible, so the toggle does not exist. */
+.nav-toggle{
+  display:none;
+  align-items:center; gap:9px;
+  margin-bottom:14px;
+  padding:8px 14px 8px 11px;
+  font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-mid); background:var(--glass);
+  border:1px solid var(--border); border-radius:999px;
+  cursor:pointer; transition:border-color .2s,color .2s,background .2s;
+}
+.nav-toggle:hover{color:var(--text-hi); border-color:var(--purple); background:var(--glass-hi);}
+.nav-toggle:focus-visible{outline:2px solid var(--purple-lt); outline-offset:2px;}
+.nav-toggle-bars{display:inline-flex; flex-direction:column; gap:3px; width:15px;}
+.nav-toggle-bars i{display:block; height:1.5px; width:100%; background:currentColor; border-radius:2px;}
+.nav-backdrop{
+  position:fixed; inset:0; z-index:55;
+  background:rgba(5,4,12,.62); backdrop-filter:blur(2px);
+  border:0; padding:0;
+}
+.nav-backdrop[hidden]{display:none;}
+
 /* ---------- MAIN ---------- */
-main{padding:36px 44px 80px; max-width:1400px;}
+main{padding:36px 44px 80px; max-width:1400px; min-width:0; width:100%;}
 
 .topbar{
   display:flex; justify-content:space-between; align-items:flex-end;
@@ -225,6 +228,30 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 }
 .section-desc{color:var(--text-mid); font-size:13.5px; max-width:640px; line-height:1.55;}
 
+/* The claim stays visible; its justification lives behind a one-line
+   disclosure. Nothing is deleted — the data-integrity caveats are a
+   deliberate strength of this project, they are just no longer walls of text. */
+details.why{margin-top:10px; max-width:720px;}
+details.why > summary{
+  cursor:pointer; list-style:none;
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-low); padding:4px 10px; border:1px solid var(--border);
+  border-radius:999px; background:var(--glass);
+  transition:color .2s, border-color .2s;
+}
+details.why > summary::-webkit-details-marker{display:none;}
+details.why > summary::before{content:'+'; font-size:12px; line-height:1; color:var(--purple-neon);}
+details.why[open] > summary::before{content:'−';}
+details.why > summary:hover{color:var(--text-hi); border-color:var(--purple);}
+details.why > summary:focus-visible{outline:2px solid var(--purple-lt); outline-offset:2px;}
+details.why > div, details.why > p{
+  margin:9px 0 0; padding:12px 14px;
+  border-left:2px solid var(--purple-deep); border-radius:0 8px 8px 0;
+  background:var(--glass); color:var(--text-mid); font-size:12.5px; line-height:1.7;
+}
+details.why strong{color:var(--text-hi);}
+
 .card{
   background:linear-gradient(180deg, var(--glass-hi), var(--glass));
   border:1px solid var(--border); border-radius:var(--radius);
@@ -236,13 +263,49 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .card .plot{width:100%; height:440px;}
 .card .plot.tall{height:500px;}
 
-.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
-@media (max-width:1080px){ .grid-2{grid-template-columns:1fr;} .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+.grid-2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px;}
+/* Grid/flex children default to min-width:auto, which lets a wide table or a
+   Plotly container refuse to shrink. One rule here, instead of hunting each
+   offender every time something new is added. */
+.grid-2 > *, .kpi-grid > *, .viz-section, .card{min-width:0;}
+@media (max-width:1080px){ .grid-2{grid-template-columns:minmax(0,1fr);} .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+/* A prediction card's right column only has something to show while its fold
+   is open. Collapsed, it would be one summary line squatting beside a
+   half-width form with the rest of the column empty - so until the fold is
+   opened the form takes the full width and the fold waits below it. Opening
+   the fold restores the two-column layout. Browsers without :has() keep the
+   two-column layout they had before. */
+.grid-2:has(> .ml-side:empty),
+.grid-2:has(> .ml-side > details:not([open])){
+  grid-template-columns:minmax(0,1fr);
+}
+/* Below 1080px the sidebar leaves the grid and becomes an off-canvas drawer:
+   it no longer eats 250px of a narrow viewport, and it no longer stacks above
+   the dashboard pushing the content down a full screen. */
+@media (max-width:1080px){
+  .shell{grid-template-columns:minmax(0,1fr);}
+  .nav-toggle{display:inline-flex;}
+  .sidebar{
+    position:fixed; top:0; left:0; z-index:60;
+    width:290px; max-width:86vw; height:100vh; height:100dvh;
+    overflow-y:auto;
+    transform:translateX(-100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    background:linear-gradient(180deg, rgba(18,15,36,.97), rgba(10,9,24,.97));
+    box-shadow:0 0 0 100vmax rgba(0,0,0,0);
+  }
+  .sidebar.open{transform:translateX(0); box-shadow:24px 0 60px rgba(0,0,0,.5);}
+  main{padding:28px 24px 60px;}
+}
+@media (prefers-reduced-motion:reduce){
+  .sidebar{transition:none;}
+}
+
 @media (max-width:760px){
-  .shell{grid-template-columns:1fr;}
-  .sidebar{position:relative; height:auto;}
-  main{padding:24px 18px 60px;}
+  main{padding:24px 16px 60px;}
   .kpi-grid{grid-template-columns:1fr 1fr;}
+  .nav-toggle-text{display:none;}
+  .nav-toggle{padding:8px 11px;}
 }
 
 .footer-note{
@@ -269,14 +332,61 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .table-wrap{overflow-x:auto;}
 
 .ml-form{display:flex;flex-direction:column;gap:14px;padding:6px 4px 10px;}
+/* Three yes/no flag selects side by side instead of three full-width rows. */
+.ml-form .form-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (max-width:520px){ .ml-form .form-row{grid-template-columns:1fr;} }
 .ml-form label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-low);display:flex;flex-direction:column;gap:6px;}
-.ml-form .field-hint{text-transform:none;letter-spacing:0;font-size:10px;opacity:.75;}
+/* Was --text-low at 75% opacity, which was too faint to read against the dark
+   card. Full-opacity --text-mid instead. (On a dark theme, "darker" would only
+   reduce contrast — this is the change that makes the hints legible.) */
+.ml-form .field-hint{text-transform:none;letter-spacing:0;font-size:10.5px;color:var(--text-mid);opacity:1;line-height:1.5;}
 .ml-form input,.ml-form select{
   background:var(--surface-2);border:1px solid var(--border);border-radius:10px;
   color:var(--text-hi);font-family:var(--font-body);font-size:14px;padding:10px 12px;
   outline:none;transition:border-color .2s, box-shadow .2s;width:100%;
 }
 .ml-form input:focus,.ml-form select:focus{border-color:var(--border-hi);box-shadow:0 0 0 3px rgba(168,85,247,.14);}
+
+/* The native select paints its own control: a squared-off box with the arrow in
+   a light (on Windows, white) button, and a white option list on open — which
+   is why these read as rectangular with a white edge while the inputs looked
+   rounded. Reset the appearance and draw it ourselves, so a select is the same
+   radius, border and padding as a text input. */
+.ml-form select{
+  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  /* color-scheme reaches the one surface no CSS property can style: the open
+     option list, which the OS paints. Without it that popup is white. */
+  color-scheme:dark;
+  /* Literal colours first, tokens second. A var() that fails to resolve falls
+     back to the UA default, which for a select is white - so the safety net has
+     to be a real colour, not nothing. */
+  background-color:#181432;
+  background-color:var(--surface-2);
+  color:#f3f0ff;
+  color:var(--text-hi);
+  border:1px solid rgba(168,85,247,0.16);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding-right:34px;                 /* room for the chevron */
+  cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23b1a8cf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  background-size:11px 7px;
+}
+
+/* Number inputs: the spinner arrows are noise here. Every numeric field is
+   optional with a stated default, so nothing needs nudging one step at a time,
+   and the arrows made the fields look heavier than the text ones beside them. */
+.ml-form input[type="number"]{
+  -moz-appearance:textfield;
+  appearance:textfield;
+}
+.ml-form input[type="number"]::-webkit-outer-spin-button,
+.ml-form input[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
 .ml-form input::placeholder{color:var(--text-low);}
 .ml-form button{
   align-self:flex-start;margin-top:4px;cursor:pointer;border:none;border-radius:100px;
@@ -316,7 +426,7 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .ml-side h4{font-family:var(--font-display);font-size:13.5px;font-weight:700;margin:0 0 12px;color:var(--purple-glow);}
 .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 14px;margin:0 0 12px;}
 .kv dt{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-low);align-self:center;}
-.kv dd{margin:0;font-size:12.5px;color:var(--text-mid);line-height:1.6;}
+.kv dd{margin:0;font-size:12.5px;color:var(--text-mid);line-height:1.6;overflow-wrap:anywhere;}
 .limit-list{margin:12px 0 0 18px;color:var(--text-mid);font-size:12.5px;line-height:1.8;}
 .limit-list li::marker{color:var(--cyan);}
 
@@ -354,6 +464,7 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
 .unavailable pre{
   font-family:var(--font-mono);font-size:11.5px;color:var(--cyan);background:var(--surface-2);
   border:1px solid var(--border);border-radius:10px;padding:12px 14px;line-height:1.8;
+  overflow-x:auto;                     /* a long command must not widen the page */
 }
 .unavailable .retry-btn{
   font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;
@@ -371,3 +482,173 @@ section.viz-section{margin-bottom:56px; scroll-margin-top:24px;}
   .kv{grid-template-columns:1fr;}
 }
 .hidden{display:none !important;}
+
+
+/* ================================================================
+   Chart 5 category labels
+   Every bubble is labelled, and the categories cluster tightly, so a label
+   lands on a light bubble (amber / green / sky) as often as on the dark page.
+   No flat colour reads on both — a dark halo does. paint-order draws the stroke
+   behind the fill, so the glyphs stay crisp.
+   ================================================================ */
+#chart5 text{
+  paint-order:stroke fill;
+  stroke:rgba(8,7,20,0.92);
+  stroke-width:3px;
+  stroke-linejoin:round;
+}
+
+/* Section 09 drops its stage number and centres the heading. */
+.section-head h2.h-center{text-align:center;}
+
+/* Section 09 folds: the details.why disclosure pattern, but full width and
+   spaced like section headings. The inner panel styling is dropped because
+   these folds contain full-width tables and plots. */
+details.perf-fold{margin:20px 0 0; max-width:none;}
+details.perf-fold > summary{
+  font-size:11.5px; letter-spacing:.1em; color:var(--text-mid);
+  padding:6px 14px; border-color:var(--border-hi); background:var(--glass-hi);
+}
+details.perf-fold > div{
+  margin:14px 0 0; padding:0; border-left:0; border-radius:0; background:none;
+}
+
+/* Chart 1 legend, rebuilt in HTML: with one Plotly trace there is no trace
+   legend to show, and the old 48-entry SVG legend ate 130px of plot width.
+   Every entry is a toggle button, because the only way to read anything off a
+   17,000-point scatter is to filter it down to the categories you care about. */
+.chart-legend{margin:12px 0 6px;}
+.chart-legend .legend-bar{
+  display:flex; justify-content:space-between; align-items:flex-start;
+  gap:var(--space-4); flex-wrap:wrap; margin-bottom:var(--space-2);
+}
+.chart-legend .legend-note{
+  flex:1 1 340px; font-size:var(--text-xs); line-height:1.65; color:var(--text-mid);
+}
+.chart-legend .legend-status{
+  display:flex; align-items:center; gap:var(--space-2); white-space:nowrap;
+  font-family:var(--font-mono); font-size:var(--text-xs); color:var(--text-mid);
+}
+.chart-legend .legend-items{display:flex; flex-wrap:wrap; gap:5px 6px;}
+.chart-legend .legend-item{
+  display:inline-flex; align-items:center; gap:5px; cursor:pointer;
+  font-family:var(--font-mono); font-size:9.5px; letter-spacing:.02em; line-height:1;
+  color:var(--text-mid); background:var(--glass);
+  border:1px solid var(--border); border-radius:999px; padding:5px 9px 5px 6px;
+  transition:border-color .15s, color .15s, background .15s, opacity .15s;
+}
+.chart-legend .legend-item:hover{color:var(--text-hi); border-color:var(--border-hi);}
+/* Dim only once a filter is active. With nothing selected every category is
+   on screen, so nothing should look switched off. Unselected entries stay
+   clickable and keep their pressed-state, so the filter is always reversible. */
+.chart-legend.filtered .legend-item[aria-pressed="false"]{opacity:.45;}
+.chart-legend .legend-item i{width:8px; height:8px; border-radius:50%; flex:none;}
+.chart-legend .legend-item b{color:var(--text-mid); font-weight:500;}
+.chart-legend .legend-reset{
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.08em;
+  text-transform:uppercase; line-height:1; cursor:pointer;
+  color:var(--purple-lt); background:var(--glass-hi);
+  border:1px solid var(--border-hi); border-radius:999px; padding:5px 10px;
+  transition:color .15s, border-color .15s;
+}
+.chart-legend .legend-reset:hover{color:var(--text-hi); border-color:var(--purple);}
+
+/* ================================================================
+   Accessibility & interaction feedback
+   ================================================================ */
+
+/* WCAG 2.4.7 Focus Visible, and 1.4.11 Non-text Contrast for the ring itself.
+   One consistent ring on every interactive element. :where() keeps specificity
+   at zero so component styles can still override it. The variables this uses
+   were missing for a long time — see :root. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{
+  outline:2px solid var(--purple-lt);
+  outline-offset:2px;
+}
+
+/* WCAG 2.4.1 Bypass Blocks: keyboard users can jump straight to the content. */
+.skip-link{
+  position:absolute; left:-9999px; top:0; z-index:200;
+  background:var(--purple-deep); color:#fff; font-weight:600;
+  font-size:var(--text-sm); padding:var(--space-3) var(--space-4);
+  border-radius:0 0 10px 0; text-decoration:none;
+}
+.skip-link:focus{ left:0; }
+
+/* Form feedback. :user-invalid only matches after the user has actually
+   interacted, so fields do not shout at people before they have typed. */
+.ml-form input:user-invalid, .ml-form select:user-invalid{
+  border-color:var(--danger);
+  box-shadow:0 0 0 3px rgba(251,113,133,0.16);
+}
+.field-error{
+  display:block; margin-top:var(--space-1);
+  color:var(--danger); font-size:var(--text-xs); font-weight:500;
+}
+/* Every predictor field is optional (blank values are imputed, and each
+   imputation is listed with the result), so say so once instead of per field. */
+.form-note{
+  font-size:var(--text-xs); color:var(--text-mid); line-height:1.6;
+  margin:0 0 var(--space-2); padding:var(--space-2) var(--space-3);
+  border-left:2px solid var(--purple-deep); background:var(--glass);
+  border-radius:0 6px 6px 0;
+}
+
+/* Busy state for the predict buttons: disabled, announced via aria-busy, and
+   visibly working rather than just sitting there looking clickable. */
+.ml-form button[aria-busy="true"]{ opacity:.8; cursor:progress; }
+.spinner{
+  display:inline-block; width:13px; height:13px; margin-right:var(--space-2);
+  border:2px solid rgba(10,9,22,0.3); border-top-color:#0a0916;
+  border-radius:50%; animation:apex-spin .7s linear infinite; vertical-align:-2px;
+}
+@keyframes apex-spin{ to{ transform:rotate(360deg); } }
+/* Respect a reduced-motion preference: slow it rather than stop it, so the
+   button still reads as working. */
+@media (prefers-reduced-motion:reduce){
+  .spinner{ animation-duration:2.4s; }
+  .ml-form button:hover{ transform:none; }
+}
+
+/* WCAG 2.5.5 Target Size (Enhanced) asks for 44x44. On touch-sized screens
+   every control gets it; the disclosure pills keep their padding but still
+   clear the 24px AA minimum of 2.5.8. */
+@media (max-width:768px){
+  .ml-form input, .ml-form select, .ml-form button,
+  .nav-toggle, .retry-btn{ min-height:44px; }
+  details.why > summary{ min-height:32px; padding-top:7px; padding-bottom:7px; }
+}
+
+/* Disclosure labels. These inherit the body line-height (1.7), which leaves the
+   label sitting low inside its pill with visibly more space above than below.
+   An explicit line-height plus symmetric vertical padding centres every fold
+   label, and the two fold sizes now share the same optical rhythm. */
+details.why > summary,
+details.perf-fold > summary,
+.chart-legend .legend-item,
+.chart-legend .legend-reset{ line-height:1; align-items:center; }
+details.why > summary{ padding:8px 12px; }
+details.perf-fold > summary{ padding:10px 14px; }
+
+/* One line, not a banner: where the metrics came from, shown next to them. */
+.metrics-source{
+  font-size:var(--text-xs); line-height:1.6; color:var(--text-mid);
+  margin:0 0 var(--space-3); padding:var(--space-2) var(--space-3);
+  border-left:2px solid var(--purple-deep); background:var(--glass);
+  border-radius:0 6px 6px 0;
+}
+.metrics-source:empty{ display:none; }
+
+/* In-text link (the VIVA_PREP.txt download in section 09). Cyan measures
+   >= 9.4:1 on every surface it can appear over, including the worst-case
+   aurora composite - WCAG AA with margin. */
+.text-link{ color:var(--cyan); text-decoration:underline; text-underline-offset:2px; }
+.text-link:hover{ color:var(--text-hi); }
+
+/* Do NOT set background on option/optgroup. Chromium then switches to its
+   CSS-painted popup and leaves the surface around the rows white - dark rows
+   on a white margin. With no option styles the whole popup is OS-painted,
+   and color-scheme:dark above makes every part of it dark. */
+.ml-form select:focus,
+.ml-form select:hover{ background-color:var(--surface-2); }
+.ml-form select:disabled{ opacity:.6; }

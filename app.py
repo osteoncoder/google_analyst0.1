@@ -66,10 +66,30 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="APEX ML API", lifespan=lifespan)
 
 
-class RatingIn(BaseModel):
+class AppProfileIn(BaseModel):
+    """Fields both models accept.
+
+    Everything beyond category/size/price is OPTIONAL: a request that omits
+    them gets exactly the same answer as the browser engine, because the value
+    is left as NaN and the saved pipeline's own median imputer fills it in.
+    Nothing is invented here — the imputation is merely *described* in the
+    `assumptions` list, with the number the pipeline will actually use.
+    """
+
     category: str = Field(min_length=1, max_length=120)
     size_mb: float | None = Field(default=None, ge=0, le=1_000_000)
     price: float | None = Field(default=None, ge=0, le=100_000)
+    content_rating: str | None = Field(default=None, max_length=60)
+    min_android: float | None = Field(default=None, ge=1, le=20)
+    app_age_days: float | None = Field(default=None, ge=0, le=20_000)
+    days_since_update: float | None = Field(default=None, ge=0, le=20_000)
+    developer_app_count: float | None = Field(default=None, ge=0, le=1_000_000)
+    ad_supported: bool | None = None
+    in_app_purchases: bool | None = None
+    editors_choice: bool | None = None
+
+
+class RatingIn(AppProfileIn):
     reviews: int | None = Field(default=None, ge=0, le=10_000_000_000)
 
     @field_validator("reviews", mode="before")
@@ -84,23 +104,127 @@ class RatingIn(BaseModel):
         return v
 
 
-class TierIn(BaseModel):
-    category: str = Field(min_length=1, max_length=120)
-    size_mb: float | None = Field(default=None, ge=0, le=1_000_000)
-    price: float | None = Field(default=None, ge=0, le=100_000)
+class TierIn(AppProfileIn):
+    pass
 
 
-def _assumptions(size_mb, price, reviews=None, has_reviews=False) -> list[str]:
-    a = []
-    if size_mb is None:
-        a.append("size omitted → imputed to the training-set median")
-    if price is None:
-        a.append("price omitted → treated as free ($0)")
-    # Only M1 has a reviews input; for M2 "no reviews field" is not an assumption.
-    if has_reviews and reviews is None:
-        a.append("reviews omitted → treated as 0")
-    a.append("listed price is a price tag, not observed revenue")
-    return a
+# Numeric model inputs a caller may supply (price is handled separately: an
+# omitted price means free, never the median price).
+PROFILE_NUMERIC = ("size_mb", "app_age_days", "days_since_update",
+                   "developer_app_count", "min_android",
+                   "ad_supported", "in_app_purchases", "editors_choice")
+PROFILE_FLAGS = ("ad_supported", "in_app_purchases", "editors_choice")
+
+# Human wording for the imputation notes, in the order they are reported.
+FEATURE_LABELS = {
+    "app_age_days": "app age (days since release)",
+    "days_since_update": "days since last update",
+    "developer_app_count": "developer portfolio size (listings by this developer)",
+    "min_android": "minimum Android version",
+    "ad_supported": "ad-supported flag",
+    "in_app_purchases": "in-app-purchase flag",
+    "editors_choice": "Editors' Choice flag",
+}
+
+
+def _fitted_medians(pipe) -> dict[str, float]:
+    """Training medians the saved SimpleImputer will substitute, by column."""
+    try:
+        prep = pipe.named_steps["prep"]
+        cols = list(dict((n, c) for n, _t, c in prep.transformers_)["num"])
+        stats = prep.named_transformers_["num"].named_steps["imputer"].statistics_
+        return {c: float(v) for c, v in zip(cols, np.asarray(stats, dtype=float).ravel())}
+    except Exception:
+        return {}
+
+
+def _fmt_median(col: str, v: float) -> str:
+    if not np.isfinite(v):
+        return "unknown"
+    if col in PROFILE_FLAGS:
+        return f"{int(round(v))} ({'yes' if v >= 0.5 else 'no'})"
+    if col in ("developer_app_count", "app_age_days", "days_since_update"):
+        return f"{v:,.0f}"
+    if col == "min_android":
+        return f"{v:.1f}"
+    return f"{v:,.2f}"
+
+
+def _imputation_notes(pipe, body) -> list[str]:
+    """Which model inputs were left out, and the value the pipeline used."""
+    medians = _fitted_medians(pipe)
+    notes = []
+    for col in PROFILE_NUMERIC:
+        if col == "size_mb" or col not in medians:
+            continue                      # size has its own wording (below)
+        if getattr(body, col, None) is None:
+            notes.append(f"{FEATURE_LABELS.get(col, col)} not provided → imputed to "
+                         f"the training median ({_fmt_median(col, medians[col])})")
+    return notes
+
+
+def _categorical_value(pipe, meta, raw, which: str) -> tuple[str, str | None]:
+    """Normalize a categorical input; fall back to the training mode when absent."""
+    defaults = meta.get("categorical_defaults") or {}
+    default = defaults.get(which, "__missing__")
+    s = (raw or "").strip()
+    if not s:
+        return default, (f"{which.replace('_', ' ')} not provided → assumed "
+                         f"\u201c{default}\u201d (the most common value in training)")
+    value = clean_category(s) or default
+    if value not in _known_levels(pipe, which):
+        return value, (f"{which.replace('_', ' ')} {value!r} was not seen in training → "
+                       f"encoded as an unknown category (the model knows "
+                       f"{len(_known_levels(pipe, which))} {which.replace('_', ' ')}s)")
+    return value, None
+
+
+def _known_levels(pipe, which: str) -> set[str]:
+    """Categories the fitted encoder actually saw, for ONE categorical column."""
+    try:
+        prep = pipe.named_steps["prep"]
+        cols = list(dict((n, c) for n, _t, c in prep.transformers_)["cat"])
+        enc = prep.named_transformers_["cat"].named_steps["onehot"]
+        return {str(c) for c in enc.categories_[cols.index(which)]}
+    except Exception:
+        return set()
+
+
+def _profile_row(body, pipe, meta, has_reviews: bool) -> tuple[dict, list[str]]:
+    """Row for the saved preprocessor + the assumptions the UI must disclose."""
+    notes = []
+    if body.size_mb is None:
+        notes.append("size omitted → imputed to the training-set median")
+    if body.price is None:
+        notes.append("price omitted → treated as free ($0)")
+    if has_reviews and getattr(body, "reviews", None) is None:
+        notes.append("reviews omitted → treated as 0")
+    notes.extend(_imputation_notes(pipe, body))
+
+    category = _normalized_category(body.category)
+    content_rating, cr_note = _categorical_value(pipe, meta, body.content_rating,
+                                                 "content_rating")
+    if cr_note:
+        notes.append(cr_note)
+
+    row = {
+        "category": category,
+        "content_rating": content_rating,
+        "size_mb": body.size_mb if body.size_mb is not None else np.nan,
+        "price": body.price if body.price is not None else 0.0,
+        "price_is_positive": 1.0 if (body.price or 0.0) > 0 else 0.0,
+    }
+    for col in PROFILE_NUMERIC:
+        if col in ("size_mb", "price", "price_is_positive"):
+            continue
+        v = getattr(body, col, None)
+        # None -> NaN -> the pipeline's median imputer, exactly like the
+        # browser engine does with a missing input. Never a guessed value.
+        row[col] = np.nan if v is None else (1.0 if v is True else 0.0 if v is False else float(v))
+    if has_reviews or "reviews_log" in (meta.get("features") or []):
+        row["reviews_log"] = float(np.log1p(getattr(body, "reviews", 0) or 0))
+    notes.append("listed price is a price tag, not observed revenue")
+    return row, notes
 
 
 def _build_frame(row: dict, meta: dict) -> pd.DataFrame:
@@ -173,20 +297,14 @@ def predict_rating(body: RatingIn):
     meta = state["m1_meta"] or {}
     if not meta.get("features"):
         raise HTTPException(status_code=503, detail="M1 model metadata missing — re-run: python train_models.py")
-    category = _normalized_category(body.category)
-    row = {
-        "category": category,
-        "size_mb": body.size_mb if body.size_mb is not None else np.nan,
-        "price": body.price if body.price is not None else 0.0,
-        "price_is_positive": 1.0 if (body.price or 0.0) > 0 else 0.0,
-        "reviews_log": float(np.log1p(body.reviews or 0)),
-    }
+    pipe = state["m1"]
+    row, assumptions = _profile_row(body, pipe, meta, has_reviews=True)
+    category = row["category"]
     X = _build_frame(row, meta)
-    raw_pred = float(state["m1"].predict(X)[0])
+    raw_pred = float(pipe.predict(X)[0])
     # Play ratings are defined on [1, 5]; clip extrapolated predictions to the
     # target's own domain and say so when clipping was needed.
     pred = float(np.clip(raw_pred, 1.0, 5.0))
-    assumptions = _assumptions(body.size_mb, body.price, body.reviews, has_reviews=True)
     if pred != raw_pred:
         assumptions.append(f"raw prediction {raw_pred:.3f} clipped to the rating domain [1, 5]")
     hint = _category_assumption(state["m1"], category)
@@ -212,21 +330,15 @@ def predict_tier(body: TierIn):
     meta = state["m2_meta"] or {}
     if not meta.get("features"):
         raise HTTPException(status_code=503, detail="M2 model metadata missing — re-run: python train_models.py")
-    category = _normalized_category(body.category)
-    row = {
-        "category": category,
-        "size_mb": body.size_mb if body.size_mb is not None else np.nan,
-        "price": body.price if body.price is not None else 0.0,
-        "price_is_positive": 1.0 if (body.price or 0.0) > 0 else 0.0,
-    }
-    X = _build_frame(row, meta)
     pipe = state["m2"]
+    row, assumptions = _profile_row(body, pipe, meta, has_reviews=False)
+    category = row["category"]
+    X = _build_frame(row, meta)
     proba = pipe.predict_proba(X)[0]
     labels = list(pipe.classes_)
     probs = {str(l): float(p) for l, p in zip(labels, proba)}
     pred_tier = str(labels[int(np.argmax(proba))])
     tm = meta.get("test_metrics", {})
-    assumptions = _assumptions(body.size_mb, body.price)
     hint = _category_assumption(pipe, category)
     if hint:
         assumptions.append(hint)
@@ -263,4 +375,13 @@ app.mount("/", _SafeStatic(directory=ROOT, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=False)
+    HOST, PORT = "0.0.0.0", 8000
+    # uvicorn logs the BIND address (0.0.0.0 = every interface), which a browser
+    # cannot open — on Windows it fails with ERR_ADDRESS_NOT_AVAILABLE, and VS
+    # Code makes it a clickable link. Print the address that actually works.
+    print(f"\n  APEX dashboard    ->  http://localhost:{PORT}")
+    print(f"  API health check  ->  http://localhost:{PORT}/api/health")
+    print("  (the 0.0.0.0 in uvicorn's log is the bind address, not a URL —\n"
+          "   open localhost or 127.0.0.1 in your browser)\n")
+    sys.stdout.flush()          # print before uvicorn's own log line
+    uvicorn.run("app:app", host=HOST, port=PORT, reload=False)
