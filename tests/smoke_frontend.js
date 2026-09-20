@@ -150,9 +150,41 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   if (c1 && c1.traces[0].y.length === rows.filter(r => r.installs >= 1000 && r.rating && r.size_mb).length)
     ok(`chart1: ${c1.traces[0].y.length} markers, one per app passing the ≥1,000-install filter`);
   else fail('chart1 marker count does not match the filtered rows');
+  // Colours are carried as indices into an N-stop colourscheme (one numeric
+  // lookup per marker instead of parsing 17k hex strings). The mapping has to
+  // land on exactly the same colour the old per-category rule produced.
+  const PAL = vm.runInContext('PURPLE_SCALE', sandbox);
   if (c1 && c1.traces[0].marker.color.length === c1.traces[0].y.length)
     ok('chart1: every marker has its own category colour');
   else fail('chart1 per-point colour array is missing or the wrong length');
+  const mk = c1 && c1.traces[0].marker;
+  if (mk && mk.color.every(v => Number.isInteger(v) && v >= 0 && v <= PAL.length - 1))
+    ok(`chart1: colours are indices in [0,${PAL.length - 1}], not hex strings`);
+  else fail('chart1 colour array is not a clean set of palette indices');
+  if (mk && mk.colorscale && mk.colorscale.length === PAL.length
+      && mk.colorscale.every((stop, i) => stop[1] === PAL[i] && Math.abs(stop[0] - i / (PAL.length - 1)) < 1e-12))
+    ok(`chart1: ${PAL.length}-stop colourscheme reproduces the palette exactly`);
+  else fail('chart1 colourscheme stops do not match PURPLE_SCALE');
+  if (mk && mk.showscale === false && mk.cmin === 0 && mk.cmax === PAL.length - 1)
+    ok('chart1: no colourbar (categories are not a continuous scale)');
+  else fail('chart1 must set showscale:false and pin cmin/cmax');
+  // autocolorscale defaults to true, which makes Plotly ignore marker.colorscale
+  // and substitute its own palette. It has to be off or the colours are wrong.
+  if (mk && mk.autocolorscale === false)
+    ok('chart1: autocolorscale off, so marker.colorscale is actually used');
+  else fail('chart1 must set autocolorscale:false or Plotly will ignore the palette');
+  // End-to-end: index -> palette lookup must equal the colour each category had before.
+  const catsSorted = [...new Set(rows.map(r => r.category))].sort();
+  const oldRule = new Map(catsSorted.map((c, i) => [c, PAL[i % PAL.length]]));
+  if (c1) {
+    let mismatched = 0;
+    c1.traces[0].customdata.forEach((s, k) => {
+      const cat = /Category: ([^<]+)<br>/.exec(s)[1];
+      if (PAL[c1.traces[0].marker.color[k]] !== oldRule.get(cat)) mismatched++;
+    });
+    if (mismatched === 0) ok('chart1: every marker resolves to the same colour as before the change');
+    else fail(`chart1: ${mismatched} markers changed colour`);
+  }
   const knownCats = new Set(rows.map(r => r.category));
   if (c1 && c1.traces[0].customdata.every(s => knownCats.has(/Category: ([^<]+)<br>/.exec(s)[1])))
     ok('chart1: hover still names a real category for every point');
