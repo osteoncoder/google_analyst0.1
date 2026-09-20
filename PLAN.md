@@ -8,8 +8,10 @@ is self-contained, lists the files it touches, and says how to verify it.
 ## 0. Current state (verified 2026-09-19)
 
 - Branch: `arena/01a0ba27-google-analyst0-1`. PR **#3** is open against `main`
-  (14 files, +3773/−94) and **not merged** — so GitHub Pages and a `main` ZIP
-  do not yet have any of this work.
+  (14 files, +3773/−94) and **not merged** — so a `main` ZIP does not yet
+  have any of this work. (2026-09-20: the user repointed GitHub Pages to
+  deploy from *this branch*, so the live site does currently show it; merging
+  PR #3 remains what publishes it to `main`.)
 - All changes so far are pushed and the branch is in sync with the remote.
 - `python app.py` serves the dashboard with the FastAPI backend; the page also
   works with **no backend at all** (GitHub Pages, Live Server, `file://`) via
@@ -594,6 +596,10 @@ Restructure without losing the honesty that makes it credible:
 Create **`VIVA_PREP.txt`** (plain text, downloadable, no Markdown so it opens
 anywhere):
 
+> The viva material Phase 3 removed from the README is preserved in git:
+> `git show 8e8edf0:README.md` — final section, "Viva explanation (verified
+> work only)". Use it as the seed for items 1, 3 and 4.
+
 1. **One-page project summary** — goal, dataset, pipeline, stack.
 2. **Pipeline stages** with the number that matters at each stage
    (2,312,944 → 40,000 stratified sample → 40,000 cleaned → 22,418 rated →
@@ -631,8 +637,8 @@ only viewable.
 | Phase | Status | Commits |
 |---|---|---|
 | Phase 1 — enriched features + faster training | ✅ **DONE** (2026-09-19) | `13e019f`, `4a4ea57` |
-| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose, design-review pass | ✅ **DONE** (2026-09-20) — verified in a browser: no horizontal overflow, render 3289 → 1349 ms, chart 1 sizes fixed, WCAG 2.2 AA met | `34e6a93`, `7a38901`, `3c0e6c8`, `e1305e0` |
-| Phase 3 — professionalise the README | ⬜ next | — |
+| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose, design-review pass | ✅ **DONE** (2026-09-20) — verified in a browser: no horizontal overflow, render 3289 → 1349 ms, chart 1 sizes fixed, WCAG 2.2 AA met | `34e6a93`, `7a38901`, `3c0e6c8`, `e1305e0`, then the later UI passes `55495b5`…`8e8edf0` |
+| Phase 3 — professionalise the README | ✅ **DONE** (2026-09-20) — TOC with 22 validated anchor links; 4-line lead carrying the final metrics; no-backend mode split into its own section; stale sample MD5 corrected to `7bb2de92ec61`; viva section removed (Phase 4 seed preserved in git) | `38afa0d` |
 | Phase 4 — `VIVA_PREP.txt` | ⬜ last (must quote the final metrics) | — |
 
 Branch `arena/01a0ba27-google-analyst0-1`. PR **#3** is open and **not merged**
