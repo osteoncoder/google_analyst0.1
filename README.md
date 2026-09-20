@@ -1,7 +1,38 @@
 # APEX — Play Store Intelligence Dashboard
 
-Aurora-themed Google Play Store analytics dashboard with two machine-learning
-models (rating regression + install-tier classification).
+> A Google Play Store analytics dashboard — six data-driven charts plus two
+> scikit-learn models — built on the MIT-licensed gauthamp10 scrape (June 2021,
+> 2,312,944 apps; the repo ships a deterministic 40,000-row stratified sample).
+> **M1** rating regression: test MAE 0.494, R² +0.071. **M2** install-tier
+> classifier (primary version, without Reviews): 0.768 accuracy / 0.544
+> macro-F1. Served by a FastAPI backend — or evaluated in the browser on any
+> static host. No build step, no npm, nothing retrains per request.
+
+**Live:** <https://osteoncoder.github.io/google_analyst0.1/> — the static
+build; every prediction on that page runs in your browser.
+
+## Contents
+
+- [What this is](#what-this-is)
+- [Repository layout](#repository-layout)
+- [Run it](#run-it)
+  - [One-time setup](#setup) · [Track A — 40k sample](#track-a) · [Track B — full 2.31M dataset](#track-b) · [Verifying it worked](#verify) · [How scale is picked](#scale) · [Running with no backend](#no-backend)
+- [Data pipeline — documented rules](#data-pipeline)
+- [ML models](#ml-models)
+  - [Protocol](#protocol) · [M1 rating regression](#m1) · [Engineered features](#features) · [M2 install-tier classifier](#m2) · [Features at prediction time](#prediction-features)
+- [Dataset provenance](#dataset-provenance)
+  - [Measured cleaning report](#cleaning-report) · [Measured evaluation results](#results)
+- [What was fixed vs the original template](#fixed)
+- [Tests performed](#tests)
+- [Known limitations](#known-limitations)
+
+<a id="what-this-is"></a>
+## What this is
+
+An aurora-themed, single-page dashboard: a KPI strip and six charts (sections
+01–06) driven entirely by the cleaned dataset, two predictors (sections 07–08),
+and a model-performance section (09) that renders the measured evaluation
+metrics of both models.
 
 **Dataset:** the MIT-licensed [gauthamp10/Google-Playstore-Dataset](https://github.com/gauthamp10/Google-Playstore-Dataset)
 scrape (June 2021, **2,312,944 apps**, 24 attributes). The repository ships a
@@ -12,8 +43,10 @@ after which the same pipeline runs at full scale.
 **Stack:** plain HTML/CSS/JS + Plotly.js from CDN for the charts. Inference
 runs either through a small FastAPI backend or — on any static host, with no
 Python at all — through `ml_inference.js`, which evaluates the same saved
-scikit-learn pipelines exported to plain JS. Nothing retrains per request.
-No build step, no npm.
+scikit-learn pipelines exported to plain JS.
+
+<a id="repository-layout"></a>
+## Repository layout
 
 ```
 .
@@ -48,6 +81,7 @@ No build step, no npm.
     └── browser_inference.test.js  # JS engine must match scikit-learn exactly
 ```
 
+<a id="run-it"></a>
 ## Run it
 
 There are two tracks. **Track A** (40,000-row sample) is the default and needs
@@ -55,6 +89,7 @@ no download; **Track B** re-runs everything on the complete 2,312,944-row
 dataset and downloads 666 MB. Both use the exact same commands — the pipeline
 switches scale automatically.
 
+<a id="setup"></a>
 ### Before either track: one-time setup
 
 Requirements: **Python 3.10+** (`app.py`'s Pydantic models use `float | None`
@@ -87,6 +122,7 @@ error. If `python` opens the Microsoft Store, use `py -3`.
 
 ---
 
+<a id="track-a"></a>
 ### Track A — the 40,000-row sample (default; serving is instant)
 
 The repository already commits everything needed: the stratified sample, the
@@ -157,11 +193,12 @@ Two safety nets:
   `browser_export.py`, so `ml/artifacts/browser/models.js` cannot drift out of
   sync with the `.joblib` files.
 - **You can spot stale artifacts.** Section 09 prints the MD5 of the dataset
-  the models were trained on (`70da7d6862fa` for the committed sample). If it
+  the models were trained on (`7bb2de92ec61` for the committed sample). If it
   stops matching your data, retrain.
 
 ---
 
+<a id="track-b"></a>
 ### Track B — the complete 2,312,944-row dataset (~15 min + 666 MB download)
 
 Do this only if you need full-scale metrics rather than sample ones.
@@ -212,6 +249,7 @@ rm data/raw/playstore_full.csv     # Windows: del data\raw\playstore_full.csv
 
 ---
 
+<a id="verify"></a>
 ### Verifying it worked
 
 Open **http://localhost:8000/api/health** — it should return:
@@ -236,6 +274,7 @@ node tests/smoke_frontend.js           # whole frontend against the real artifac
 node tests/browser_inference.test.js   # JS engine must match scikit-learn exactly
 ```
 
+<a id="scale"></a>
 ### How the pipeline picks its scale
 
 This is why Track A and Track B are the same three commands — `clean.py`
@@ -250,6 +289,9 @@ auto-detects its source, first match wins:
 
 So `python clean.py` works in a fresh clone, and silently switches to full
 scale as soon as the full CSV exists. `--raw <path>` overrides everything.
+
+<a id="no-backend"></a>
+### Running with no backend
 
 **Every other way of opening the page — double-click `index.html`, VS Code
 "Run Active File", Live Server, GitHub Pages — works fully, with no Python
@@ -291,6 +333,7 @@ still starting.
 | GitHub Pages / Live Server / any static host | `data/apps.json` | **in-browser** exported pipeline |
 | double-click / VS Code "Run Active File" (`file://`) | `data/apps_bundle.js` | **in-browser** exported pipeline |
 
+<a id="data-pipeline"></a>
 ## Data pipeline (`clean.py`) — documented rules
 
 1. **Identity**: rows missing `App`/`App Name` or `Category` are dropped (counted).
@@ -332,8 +375,10 @@ for training (`train_models.py`) and for the dashboard (`data/apps.json`), and
 prediction uses the **saved** preprocessor inside the pipeline joblib file —
 inference can never drift from training.
 
+<a id="ml-models"></a>
 ## ML models
 
+<a id="protocol"></a>
 ### Protocol (both models, both M2 versions — identical)
 
 - Fixed seed `42` everywhere.
@@ -361,6 +406,7 @@ on purpose**: it exposes no public accessor for its binned trees, so it can
 never be exported to `ml_inference.js`, and adopting it would silently kill the
 no-backend prediction path (GitHub Pages, Live Server, `file://`).
 
+<a id="m1"></a>
 ### M1 — Rating regression (`m1_rating/`)
 
 - Target: `Rating`. Inputs: `category`, `content_rating`, `size_mb`, `price`,
@@ -370,6 +416,7 @@ no-backend prediction path (GitHub Pages, Live Server, `file://`).
   Random Forest, Gradient Boosting.
 - Reported: actual MAE / RMSE / R² (validation + final test), per candidate.
 
+<a id="features"></a>
 ### Engineered app-profile features (`clean.py` rule 13)
 
 The primary dataset carries columns the pipeline originally never parsed. They
@@ -400,6 +447,7 @@ These columns are written to `apps_cleaned.csv` for training but deliberately
 > with it removed costs ~0.015 macro-F1 (0.5492 → 0.5344), i.e. the lift from
 > the engineered features is real and does not rest on that one column.
 
+<a id="m2"></a>
 ### M2 — Four-class install-tier classification (`m2_tier_*/`)
 
 - Target: install band of the **reported installs lower bound**,
@@ -445,6 +493,7 @@ popularity information). Neither model is a **pre-launch** or
 **future-growth** predictor: the data is a cross-sectional store snapshot and
 evaluation is in-sample-time. Section 09 states all of this on the page.
 
+<a id="prediction-features"></a>
 ### Features available at prediction time
 
 The forms ask for what a user can actually know, and **disclose every value the
@@ -483,6 +532,7 @@ model had to assume**:
   errors (422) are rendered as readable `field: reason` messages in the UI,
   not raw JSON.
 
+<a id="dataset-provenance"></a>
 ## Dataset (provenance)
 
 - **Primary:** [gauthamp10/Google-Playstore-Dataset](https://github.com/gauthamp10/Google-Playstore-Dataset)
@@ -521,6 +571,7 @@ model had to assume**:
 - The pipeline is dataset-agnostic: any CSV/XLSX with the same spirit of
   columns (aliases handled) works via `python clean.py --raw <path>`.
 
+<a id="cleaning-report"></a>
 ### Measured cleaning report
 
 **Committed 40,000-row sample** (`python clean.py`, the default path):
@@ -555,6 +606,7 @@ measured in a 2-core / 3.8 GB sandbox: **80 s wall, 3.0 GB peak RSS**):
 | Tier mix: Under 10K / 10K-1M / 1M-100M / 100M+ | 1,794,823 / 469,347 / 47,261 / 684 |
 | `apps.json` export (capped) | 60,000 of 2,312,222 rows |
 
+<a id="results"></a>
 ### Measured evaluation results (committed sample, seed 42, reproducible)
 
 **M1 — Rating regression** (n=22,418; test n=4,482; selected by validation R²;
@@ -611,7 +663,8 @@ Full per-class P/R/F1/support, confusion matrices and per-candidate
 validation/test scores are rendered in sections 09/08 from
 `ml/artifacts/metrics.json`.
 
-## What was fixed vs the original (and why it is defensible)
+<a id="fixed"></a>
+## What was fixed vs the original template
 
 | Original | Problem (verified in code) | Now |
 |---|---|---|
@@ -626,6 +679,7 @@ validation/test scores are rendered in sections 09/08 from
 Chart 01 (size vs rating, bubble ∝ installs) was kept — its data and
 interpretation were valid — with legend/margin fixes for mobile.
 
+<a id="tests"></a>
 ## Tests / checks performed
 
 - `python fetch_dataset.py` — 3 parts combined (2,312,944 data rows;
@@ -655,6 +709,7 @@ interpretation were valid — with legend/margin fixes for mobile.
   names, dead anchor, unused variable, missing-price semantics, `is_sample`
   heuristic, month-name date parsing (UTC), tier stub in the tests.
 
+<a id="known-limitations"></a>
 ## Known limitations / unresolved
 
 - **Sample vs full scale:** the committed models are trained on 40,000 rows
@@ -679,62 +734,3 @@ interpretation were valid — with legend/margin fixes for mobile.
   labels are automated (e.g. TextBlob-derived). No K-Means. (The primary
   dataset has no sentiment column, so the dashboard correctly omits the
   "Subjectivity" column from chart 02 rather than inventing one.)
-
-## Viva explanation (verified work only)
-
-> "The dashboard is a single cleaned dataset rendered end-to-end. The primary
-> source is the MIT-licensed gauthamp10 Google-Playstore scrape — 2,312,944
-> apps scraped in June 2021 — and the repository ships a deterministic
-> 40,000-row stratified sample of it so the project runs out of the box;
-> `fetch_dataset.py` rebuilds the full 666 MB CSV, which `clean.py` then
-> auto-detects. On the full file, clean.py applied its documented rules in
-> 80 seconds with a 3 GB peak (installs treated as band lower bounds, unrated
-> apps' `0.0` ratings turned into missing — never fake zeros — 717 exact
-> duplicates removed) and produced a report: 2,312,222 cleaned rows, 1,230,293
-> with valid ratings for the regressor, 2,312,115 with valid installs for the
-> classifier.
->
-> Two scikit-learn model families are trained with a fixed seed: a rating
-> regression and a four-class install-tier classifier (Under 10K, 10K-1M,
-> 1M-100M, 100M-plus), each compared against a naive baseline and three other
-> learners. The train/test split is done *before* any preprocessing and
-> grouped by app name, so the same app can't leak across the split;
-> imputation, one-hot encoding and scaling fit on training rows only; models
-> are chosen on a validation slice — by macro-F1 for the classifier, precisely
-> because the tiers are imbalanced — and the test set is used exactly once.
->
-> The measured results are honest. The regressor reaches R² ≈ 0.07 with
-> MAE ≈ 0.49, and in this dataset the median rating is 4.2, so predicting the
-> mean already gives MAE 0.52: rating is driven by app quality, which these
-> profile features can't capture, and I can explain why that's expected. The
-> tier classifier reaches 0.84 macro-F1 *with* Reviews but 0.54 *without*, and
-> 73% of apps sit in the lowest band, so the do-nothing baseline scores 72.4%
-> accuracy on accuracy alone — which is exactly why I select and report
-> macro-F1 instead of hiding behind accuracy, and why the without-Reviews
-> model is the primary one.
->
-> The without-Reviews model originally sat below that baseline on accuracy
-> (0.673) at 0.307 macro-F1. I added the app-profile features the dataset was
-> already carrying but the pipeline never parsed — app age, days since the last
-> update, developer portfolio size, minimum Android version, the ad/IAP/Editors'
-> Choice flags and content rating — and it now reaches 0.768 accuracy at 0.544
-> macro-F1, above the baseline on both. I checked that this isn't leakage: the
-> one feature computed across the whole frame rather than per split, developer
-> portfolio size, is worth about 0.015 macro-F1 in an ablation, so the lift does
-> not rest on it.
->
-> One more design decision worth defending: model selection is not only about
-> score. Every candidate is measured after fitting, and anything that cannot be
-> shipped — over a 10 MB budget, because it has to be committed, served and
-> exported into the browser bundle — is excluded. Random Forest scored slightly
-> higher and was rejected at 334 MB; Gradient Boosting gets 99% of the lift in
-> 1 MB. Their scores stay in the tables, struck out, so the trade-off is
-> visible.
->
-> Inference runs through a FastAPI endpoint that loads the saved pipelines
-> once — no retraining per request — and if the models are absent the UI shows
-> an unavailable state instead of demo numbers. Every chart uses data that
-> exists in the dataset: the fabricated map, growth curves and revenue
-> estimates were replaced by a correlation matrix, a last-updated-month
-> snapshot, a rating histogram and a pricing mix, each labelled with how it
-> was aggregated and what it does not claim."
