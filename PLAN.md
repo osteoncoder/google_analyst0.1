@@ -542,6 +542,37 @@ collapsible `<details>` ("Why?"). Applies to `index.html` section descriptions,
 
 ---
 
+### 2.5 Design review pass (2026-09-20) — aurora palette kept
+
+A generic design review was pasted in (visual hierarchy, colour system, forms,
+buttons, loading states, mobile, accessibility, error handling, plus a
+typography/spacing scale). Much of it is a template that does not apply — it
+proposes a **Google Blue (#4285f4)** rebrand and asks for SQL query editors,
+query-history panels and Query/Results/Visualize tabs, none of which exist in
+this dashboard. **Decision: apply what fits, keep the aurora identity.** Those
+items are deliberately **not** being done.
+
+Applied:
+
+| Item | What changed |
+|---|---|
+| Focus visibility | **Bug fixed:** `--purple` / `--purple-lt` were referenced by the focus rules but never declared, so focus rings computed to no colour. Declared; one `:focus-visible` ring on every interactive element (WCAG 2.4.7, 1.4.11). |
+| Skip navigation | WCAG 2.4.1 skip-to-content link. |
+| Contrast | Full WCAG 2.2 AA audit, `--text-low` and `--purple-neon` corrected (see §2.6), enforced by test. |
+| Loading states | Both predict buttons: disabled + `aria-busy` + spinner, cleared in a `finally`. They previously stayed clickable and were double-submittable. |
+| Validation | `:user-invalid` styling — fires only after interaction, so an untouched form is not pre-flagged. |
+| Optional fields | One "every field is optional" note per form. |
+| Touch targets | 44 px minimum ≤768 px (WCAG 2.5.5); pills clear the 24 px AA minimum. |
+| Design tokens | `--text-xs…2xl`, `--space-1…8`, `--danger/success/warning/info`. |
+| Reduced motion | Spinner honours `prefers-reduced-motion`. |
+
+**Not applied, with reasons:** Google Blue rebrand (destroys the existing
+identity); SQL/query editor, query history, Query/Results/Visualize tabs (not
+features of this dashboard); toast notifications (results already render
+inline, so toasts would duplicate them); sortable/filterable data tables and
+pagination (the tables are small model-comparison summaries, not browseable
+datasets); syntax highlighting (no code output is shown).
+
 ## Phase 3 — Professionalise the README
 
 Restructure without losing the honesty that makes it credible:
@@ -600,7 +631,7 @@ only viewable.
 | Phase | Status | Commits |
 |---|---|---|
 | Phase 1 — enriched features + faster training | ✅ **DONE** (2026-09-19) | `13e019f`, `4a4ea57` |
-| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose | ✅ **DONE** (2026-09-19) — verified in a browser 2026-09-20: no horizontal overflow, render time 3289 → 1349 ms | `34e6a93`, `7a38901` |
+| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose, design-review pass | ✅ **DONE** (2026-09-20) — verified in a browser: no horizontal overflow, render 3289 → 1349 ms, chart 1 sizes fixed, WCAG 2.2 AA met | `34e6a93`, `7a38901`, `3c0e6c8`, `e1305e0` |
 | Phase 3 — professionalise the README | ⬜ next | — |
 | Phase 4 — `VIVA_PREP.txt` | ⬜ last (must quote the final metrics) | — |
 
