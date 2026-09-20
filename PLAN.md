@@ -380,6 +380,32 @@ no DevTools, no shareable URL. Round 1, after the lazy-rendering work:
 | 6 — pricing | 189 ms | — | untouched |
 | **total** | **3289 ms** | | |
 
+### Measured render times — round 2 (same browser, after the fixes)
+
+| chart | round 1 | round 2 | change |
+|---|---|---|---|
+| 1 — size × rating | 1403 ms | **401 ms** | −1002 ms (−71%) |
+| 2 — correlation | 926 ms | **235 ms** | −691 ms (−75%) |
+| 3 — last-updated month | 434 ms | **344 ms** | −90 ms (−21%) |
+| 4 — rating histogram | 159 ms | **114 ms** | −45 ms (−28%, untouched) |
+| 5 — category scatter | 178 ms | **132 ms** | −46 ms (−26%, untouched) |
+| 6 — pricing | 189 ms | **123 ms** | −66 ms (−35%, untouched) |
+| **total** | 3289 ms | **1349 ms** | **−1940 ms (−59%)** |
+
+Charts 4, 5 and 6 were **not touched** yet all dropped 26–35%, so roughly a
+quarter of the improvement is environmental (warm cache, scroll speed, less GC
+pressure from the removed 1.3M throwaway arrays). Charts 1 and 2 improved
+71–75% — well clear of that baseline, so the fixes account for the bulk of it.
+
+Reading the result: the six charts now cost 114–401 ms each, paid one at a time
+as each scrolls into view, instead of 3.3 s up front. No single chart is over
+the ~400 ms jank threshold any more.
+
+**Overflow, finally confirmed in a browser:** the page reported
+`scrollWidth 871 ≤ innerWidth 881` at a preview width of 881 px — i.e. below
+the 1080 px breakpoint, which is the narrow case that mattered. No horizontal
+overflow. ✅
+
 WebGL **was** available (`scattergl` engaged), so chart 1's cost was not the
 SVG fallback — it was the trace count.
 
@@ -561,7 +587,7 @@ only viewable.
 | Phase | Status | Commits |
 |---|---|---|
 | Phase 1 — enriched features + faster training | ✅ **DONE** (2026-09-19) | `13e019f`, `4a4ea57` |
-| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose | ✅ **DONE** (2026-09-19) — needs one browser look, see §2 | `34e6a93` |
+| Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose | ✅ **DONE** (2026-09-19) — verified in a browser 2026-09-20: no horizontal overflow, render time 3289 → 1349 ms | `34e6a93`, `7a38901` |
 | Phase 3 — professionalise the README | ⬜ next | — |
 | Phase 4 — `VIVA_PREP.txt` | ⬜ last (must quote the final metrics) | — |
 
