@@ -93,20 +93,11 @@ function renderChart1(){
   // keeps exactly the category colour it had as its own trace, and hover still
   // names the category. Same data, same picture, one draw call.
   const cats = [...new Set(rows.map(d=>d.category))].sort();
-  // Colour by INDEX, not by hex string. Plotly parses every entry of a
-  // per-point colour array, so 17,247 '#rrggbb' strings means 17,247 parses;
-  // a numeric array plus an N-stop colourscheme is a lookup per point instead.
-  // The stops sit exactly on the integers (i/(N-1)), so category i still
-  // resolves to precisely PURPLE_SCALE[i % N] — the picture is unchanged.
-  const PAL = PURPLE_SCALE, NC = PAL.length;
-  const catIdx = new Map(cats.map((c,i)=>[c, i % NC]));
-  const COLOR_SCALE = NC > 1
-    ? PAL.map((col,i)=>[i/(NC-1), col])
-    : [[0, PAL[0]], [1, PAL[0]]];
+  const catColor = new Map(cats.map((c,i)=>[c, PURPLE_SCALE[i%PURPLE_SCALE.length]]));
 
   const n = rows.length;
   const x = new Array(n), y = new Array(n), sizes = new Array(n),
-        cvals = new Array(n), cd = new Array(n);
+        colors = new Array(n), cd = new Array(n);
   // Installs are banded — only ~14 distinct values across 40k rows — so
   // re-formatting the same handful of numbers 20k times is pure waste.
   const fmtCache = new Map();
@@ -123,7 +114,7 @@ function renderChart1(){
     x[k] = d.size_mb; y[k] = d.rating;
     const s = Math.sqrt(d.installs)/9;
     sizes[k] = s; if(s > maxSize) maxSize = s;
-    cvals[k] = catIdx.get(d.category);
+    colors[k] = catColor.get(d.category);
     cd[k] = `${d.app}<br>Category: ${d.category}<br>Installs (band lower bound): ${fmtInst(d.installs)}`;
   }
 
@@ -132,14 +123,7 @@ function renderChart1(){
     marker:{
       size:sizes, sizemode:'area',
       sizeref: 2.0*maxSize/(40**2), sizemin:4,
-      // Numeric colour + explicit stops. showscale:false is important: these
-      // are categories, and a colourbar implying a continuous scale would be
-      // actively misleading.
-      // autocolorscale defaults to TRUE, which makes Plotly pick its own
-      // palette and silently ignore colorscale — it must be switched off.
-      color:cvals, colorscale:COLOR_SCALE, cmin:0, cmax:NC-1,
-      autocolorscale:false, showscale:false,
-      opacity:0.75,
+      color:colors, opacity:0.75,
       // A 1px stroke on every one of ~20k markers roughly doubles the paint
       // cost and buys almost nothing at this bubble size.
       line:{width:0},
