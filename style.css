@@ -269,6 +269,16 @@ details.why strong{color:var(--text-hi);}
    offender every time something new is added. */
 .grid-2 > *, .kpi-grid > *, .viz-section, .card{min-width:0;}
 @media (max-width:1080px){ .grid-2{grid-template-columns:minmax(0,1fr);} .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+/* A prediction card's right column only has something to show while its fold
+   is open. Collapsed, it would be one summary line squatting beside a
+   half-width form with the rest of the column empty - so until the fold is
+   opened the form takes the full width and the fold waits below it. Opening
+   the fold restores the two-column layout. Browsers without :has() keep the
+   two-column layout they had before. */
+.grid-2:has(> .ml-side:empty),
+.grid-2:has(> .ml-side > details:not([open])){
+  grid-template-columns:minmax(0,1fr);
+}
 /* Below 1080px the sidebar leaves the grid and becomes an off-canvas drawer:
    it no longer eats 250px of a narrow viewport, and it no longer stacks above
    the dashboard pushing the content down a full screen. */
@@ -344,6 +354,9 @@ details.why strong{color:var(--text-hi);}
    radius, border and padding as a text input. */
 .ml-form select{
   -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  /* color-scheme reaches the one surface no CSS property can style: the open
+     option list, which the OS paints. Without it that popup is white. */
+  color-scheme:dark;
   /* Literal colours first, tokens second. A var() that fails to resolve falls
      back to the UA default, which for a select is white - so the safety net has
      to be a real colour, not nothing. */
@@ -361,10 +374,6 @@ details.why strong{color:var(--text-hi);}
   background-position:right 12px center;
   background-size:11px 7px;
 }
-/* The open option list is painted by the OS, so it must be told the theme
-   explicitly or it renders white-on-white. */
-.ml-form select option{ background:var(--surface-2); color:var(--text-hi); }
-.ml-form select::-ms-expand{ display:none; }
 
 /* Number inputs: the spinner arrows are noise here. Every numeric field is
    optional with a stated default, so nothing needs nudging one step at a time,
@@ -630,11 +639,10 @@ details.perf-fold > summary{ padding:10px 14px; }
 }
 .metrics-source:empty{ display:none; }
 
-/* Selects: theme every part the browser paints itself, including the popup.
-   The option list is drawn by the OS in most engines, so it needs its own
-   colours or it comes back white regardless of what the select is set to. */
-.ml-form select option,
-.ml-form select optgroup{ background:var(--surface-2); color:var(--text-hi); }
+/* Do NOT set background on option/optgroup. Chromium then switches to its
+   CSS-painted popup and leaves the surface around the rows white - dark rows
+   on a white margin. With no option styles the whole popup is OS-painted,
+   and color-scheme:dark above makes every part of it dark. */
 .ml-form select:focus,
 .ml-form select:hover{ background-color:var(--surface-2); }
 .ml-form select:disabled{ opacity:.6; }
