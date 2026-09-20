@@ -6,7 +6,7 @@
 <title>APEX &mdash; Play Store Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20260920g">
+<link rel="stylesheet" href="./style.css?v=20260920h">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
 </head>
 <body>
@@ -397,31 +397,13 @@
       </div>
     </section>
 
-    <div class="footer-note">
-      <strong>Data note</strong> &mdash; <span id="footSource">loading…</span>.
-      Cleaning and modelling follow the documented rules in <code>clean.py</code> and
-      <code>train_models.py</code>. No revenue, geography or historical trend is
-      fabricated anywhere on this page.
-      <details class="why"><summary>Provenance &amp; pipeline</summary>
-        <div>Primary source: the MIT-licensed
-        <em>gauthamp10/Google-Playstore-Dataset</em> scrape (June 2021, 24 attributes). The
-        committed default is a deterministic stratified sample;
-        <code>python fetch_dataset.py</code> builds the full 2,312,944-row file
-        (<code>data/raw/playstore_full.csv</code>), which <code>clean.py</code> auto-detects.
-        Cleaning treats install bands as lower bounds, preserves $0 prices, fixes one
-        category typo and removes exact duplicates. ML: scikit-learn pipelines, seed 42,
-        grouped train/test split; models are trained by <code>python train_models.py</code>
-        and served by <code>python app.py</code> (no retraining per request).</div>
-      </details>
-    </div>
-
   </main>
 </div>
 
 <!-- load order: data (helpers+loader) → charts (01-06) → inference engine → ml (07-09 + bootstrap) -->
-<script src="./data.js?v=20260920g"></script>
-<script src="./charts.js?v=20260920g"></script>
-<script src="./ml_inference.js?v=20260920g"></script>
-<script src="./ml_dashboard.js?v=20260920g"></script>
+<script src="./data.js?v=20260920h"></script>
+<script src="./charts.js?v=20260920h"></script>
+<script src="./ml_inference.js?v=20260920h"></script>
+<script src="./ml_dashboard.js?v=20260920h"></script>
 </body>
 </html>

@@ -127,6 +127,10 @@ function renderChart1(){
      the cap are drawn at the maximum size. Area is still proportional to
      installs below the cap, and the cap is stated in the legend, so nothing is
      silently distorted. */
+  // Kept so the legend can filter the plot with a restyle instead of rebuilding
+  // ~17k-point arrays from DF on every click.
+  CH1 = { rows, pts:{x, y, sizes, colors, cd}, hidden:new Set() };
+
   const ordered = [...sizes].sort((a,b)=>a-b);
   const sizeCap = ordered[Math.floor(ordered.length*0.95)] || ordered[ordered.length-1] || 1;
   let maxSize = 0;
@@ -134,6 +138,15 @@ function renderChart1(){
     if(sizes[k] > sizeCap) sizes[k] = sizeCap;
     if(sizes[k] > maxSize) maxSize = sizes[k];
   }
+
+  // Pin the axes to the full-data extent: without this, hiding a category
+  // re-autoranges and the remaining bubbles jump around under the cursor.
+  let xMin=Infinity, xMax=-Infinity, yMin=Infinity, yMax=-Infinity;
+  for(let k=0;k<n;k++){
+    if(x[k]<xMin) xMin=x[k]; if(x[k]>xMax) xMax=x[k];
+    if(y[k]<yMin) yMin=y[k]; if(y[k]>yMax) yMax=y[k];
+  }
+  const pad = (lo,hi)=>{ const span=(hi-lo)||1; return [lo-span*0.04, hi+span*0.04]; };
 
   Plotly.newPlot(el, [{
     x, y, mode:'markers', type: webglAvailable() ? 'scattergl' : 'scatter',
@@ -151,8 +164,8 @@ function renderChart1(){
     ...layoutBase,
     margin:{t:16,l:60,r:24,b:56},
     showlegend:false,
-    xaxis:{...AX, title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
-    yaxis:{...AX, title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
+    xaxis:{...AX, range:pad(xMin,xMax), title:{text:'App size (MB)', font:{color:'#8f86ac', size:12}}},
+    yaxis:{...AX, range:pad(yMin,yMax), title:{text:'User rating (1–5)', font:{color:'#8f86ac', size:12}}},
   }, CONFIG);
 
   // One trace means Plotly's showlegend cannot list the categories any more, so
@@ -163,8 +176,43 @@ function renderChart1(){
 
 /* 48 categories share a 10-colour palette, so colour alone cannot identify a
    category — the legend supplies the mapping and hover supplies the exact
-   name. Counts are shown so the reader can see how lopsided the categories
-   are, which matters when judging any one bubble. */
+   name. Each entry is a real toggle button: selecting categories filters the
+   plot to just those bubbles, which is the only way to read anything off a
+   17,000-point scatter. */
+let CH1 = null;
+
+function chart1VisibleIndices(){
+  if(!CH1 || CH1.hidden.size === 0) return null;      // null = show everything
+  const idx = [];
+  for(let k=0;k<CH1.rows.length;k++) if(!CH1.hidden.has(CH1.rows[k].category)) idx.push(k);
+  return idx;
+}
+
+function applyChart1Filter(){
+  if(!CH1) return;
+  const el = document.getElementById('chart1');
+  const idx = chart1VisibleIndices();
+  const take = arr => (idx === null ? arr : idx.map(k=>arr[k]));
+  if(el && el.data && typeof Plotly !== 'undefined'){
+    try{
+      Plotly.restyle(el, {
+        x:[take(CH1.pts.x)], y:[take(CH1.pts.y)],
+        customdata:[take(CH1.pts.cd)],
+        'marker.size':[take(CH1.pts.sizes)],
+        'marker.color':[take(CH1.pts.colors)],
+      });
+    }catch(err){ console.error('[apex] chart1 filter failed', err); }
+  }
+  // Reflect the state in the legend: a live count, and Reset only when filtered.
+  const shown = idx === null ? CH1.rows.length : idx.length;
+  const count = document.getElementById('chart1count');
+  if(count) count.textContent = idx === null
+    ? `${CH1.rows.length.toLocaleString()} apps`
+    : `${shown.toLocaleString()} of ${CH1.rows.length.toLocaleString()} apps`;
+  const reset = document.getElementById('chart1reset');
+  if(reset && 'hidden' in reset) reset.hidden = (idx === null);
+}
+
 function renderChart1Legend(cats, catColor, catCount, sizeCap){
   const el = document.getElementById('chart1legend');
   if(!el) return;
@@ -172,13 +220,42 @@ function renderChart1Legend(cats, catColor, catCount, sizeCap){
     c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const capInstalls = Math.round((sizeCap*9)*(sizeCap*9));
   el.innerHTML =
-      `<span class="legend-note">Bubble area &prop; installs, capped at the 95th `
+      `<div class="legend-bar">`
+    + `<span class="legend-note">Bubble area &prop; installs, capped at the 95th `
     + `percentile (${capInstalls.toLocaleString()}+ installs) so the common range `
     + `stays readable. 48 categories share a 10-colour palette — hover any bubble `
-    + `for its exact category.</span>`
-    + cats.map(c=>`<span class="legend-item" title="${esc(c)}: `
-      + `${catCount.get(c)||0} apps"><i style="background:${catColor.get(c)}"></i>`
-      + `${esc(c)}<b>${catCount.get(c)||0}</b></span>`).join('');
+    + `for its exact category. <b>Select categories below to filter the plot.</b></span>`
+    + `<span class="legend-status"><span id="chart1count"></span>`
+    + `<button type="button" class="legend-reset" id="chart1reset" hidden>Reset</button></span>`
+    + `</div>`
+    + `<div class="legend-items">`
+    + cats.map(c=>`<button type="button" class="legend-item" data-cat="${esc(c)}" `
+      + `aria-pressed="true" title="${esc(c)}: ${catCount.get(c)||0} apps">`
+      + `<i style="background:${catColor.get(c)}"></i>${esc(c)}<b>${catCount.get(c)||0}</b></button>`).join('')
+    + `</div>`;
+
+  const items = el.querySelectorAll ? el.querySelectorAll('.legend-item') : null;
+  if(items && items.forEach) items.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const cat = b.getAttribute('data-cat');
+      if(cat === null) return;
+      if(CH1.hidden.has(cat)) CH1.hidden.delete(cat); else CH1.hidden.add(cat);
+      const off = CH1.hidden.has(cat);
+      b.setAttribute('aria-pressed', off ? 'false' : 'true');
+      if(b.classList) b.classList.toggle('off', off);
+      applyChart1Filter();
+    });
+  });
+  const reset = document.getElementById('chart1reset');
+  if(reset && reset.addEventListener) reset.addEventListener('click', ()=>{
+    CH1.hidden.clear();
+    if(items && items.forEach) items.forEach(b=>{
+      b.setAttribute('aria-pressed', 'true');
+      if(b.classList) b.classList.remove('off');
+    });
+    applyChart1Filter();
+  });
+  applyChart1Filter();
 }
 
 /* ================================================================
@@ -275,8 +352,11 @@ function renderChart2(){
   }, CONFIG);
   const note = document.getElementById('chart2note');
   if(note){
-    note.textContent = `Pearson r on ${DF.length} cleaned apps (log1p applied to skewed Reviews/Installs).`
-      + ` Correlation = association, not causation.`
+    // Used to repeat the section head ("Correlation is association, not
+    // causation") and the disclosure ("log1p applied to the skewed columns")
+    // almost verbatim. The footer now carries only what appears nowhere else:
+    // the n, and any columns dropped for having no variance.
+    note.textContent = `Pearson r on ${DF.length.toLocaleString()} cleaned apps.`
       + (dropped.length ? ` Constant/absent columns excluded: ${dropped.join(', ')}.` : '');
   }
 }

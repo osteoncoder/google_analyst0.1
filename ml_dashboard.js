@@ -561,18 +561,25 @@ function renderRatingModelCard(){
   const el = document.getElementById('ratingModelCard');
   const m = METRICS.models.m1_rating;
   const tm = m.test_metrics || {};
+  // "Selected model", "Inputs", "Split" and the held-out metrics all appear
+  // again in section 09, so this card is folded rather than deleted — it is
+  // useful beside the form, but it should not be the first thing you read.
   el.innerHTML = `
-    <h4>Model M1 — rating regression</h4>
-    <dl class="kv">
+    <details class="why side-fold">
+      <summary>Model M1 — rating regression</summary>
+      <div>
+      <dl class="kv">
       <dt>Selected model</dt><dd>${m.model} (chosen by ${m.selection_metric})</dd>
       <dt>Target</dt><dd>${m.target} (excluded from inputs)</dd>
       <dt>Inputs</dt><dd>${m.features.join(', ')}</dd>
       <dt>Split</dt><dd>${m.n_train} train / ${m.n_val} val / ${m.n_test} test (grouped by app name)</dd>
       <dt>Held-out test</dt><dd>MAE ${tm.mae?.toFixed(3)} · RMSE ${tm.rmse?.toFixed(3)} · R² ${tm.r2?.toFixed(3)}</dd>
     </dl>
-    <p class="tiny">Limitations: cross-sectional snapshot, so this is <em>not</em> a pre-launch or
-    future rating predictor; installs are excluded from inputs; weak R² is reported honestly in
-    section 09.</p>`;
+      <p class="tiny">Limitations: cross-sectional snapshot, so this is <em>not</em> a pre-launch or
+      future rating predictor; installs are excluded from inputs; weak R² is reported honestly in
+      section 09.</p>
+      </div>
+    </details>`;
 }
 
 /* ================================================================

@@ -125,6 +125,7 @@ const sandbox = {
     // calls instead of on timing instrumentation (which no longer exists).
     newPlot(el, traces, layout) { newPlotCount.n++; el.data = { traces, layout }; plots[el.id] = { traces, layout }; },
     Plots: { resize() {} },
+    restyle(el, update) { restyleCalls.push(update); },
   },
 };
 sandbox.window = sandbox;
@@ -141,6 +142,8 @@ for (const f of ['data.js', 'charts.js', 'ml_inference.js', 'ml_dashboard.js']) 
 ok('data.js + charts.js + ml_inference.js + ml_dashboard.js load without errors');
 
 const newPlotCount = { n: 0 };
+const restyleCalls = [];
+sandbox.__restyleCalls = restyleCalls;
 sandbox.__newPlotCount = newPlotCount;
 
 const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
@@ -176,14 +179,29 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
     ok('chart1: hover still names a real category for every point');
   else fail('chart1 hover lost the category when the traces were merged');
   if (c1 && c1.traces.every(t => t.y.every(v => v >= 1 && v <= 5))) ok('chart1: all ratings within 1-5');
+  // The legend must be interactive: real toggle buttons (not spans) carrying a
+  // pressed state, plus a reset. The click wiring itself is covered by the
+  // standalone legend check, which needs a DOM richer than this stub.
+  const legendEl = elements.get('chart1legend');
+  const toggles = legendEl ? (legendEl.innerHTML.match(/class="legend-item"/g) || []).length : 0;
+  if (legendEl && toggles === 48 && legendEl.innerHTML.includes('aria-pressed="true"')
+      && legendEl.innerHTML.includes('id="chart1reset"')
+      && legendEl.innerHTML.includes('<button'))
+    ok(`chart1: legend is 48 toggle buttons with aria-pressed + a reset control`);
+  else fail(`chart1 legend is not interactive (${toggles} items, hasReset=${legendEl ? legendEl.innerHTML.includes('chart1reset') : 'no element'})`);
 
   const c2 = plots['chart2'];
   if (c2 && c2.traces[0].type === 'heatmap' && c2.traces[0].z.length === c2.traces[0].x.length && c2.traces[0].z.length >= 4)
     ok(`chart2: ${c2.traces[0].z.length}x${c2.traces[0].z.length} Pearson matrix over real columns`);
   else fail('chart2 missing/invalid');
-  if (elements.get('chart2note') && elements.get('chart2note').textContent.includes('association, not causation'))
-    ok('chart2: "correlation = association, not causation" note present');
-  else fail('chart2 causation note missing');
+  // The causation caveat belongs in the section head; the footer used to repeat
+  // it and the log1p note verbatim. Assert the de-duplication so it cannot
+  // creep back, and that the footer still carries the one thing unique to it.
+  const c2n = elements.get('chart2note');
+  if (c2n && !/association, not causation|log1p applied/.test(c2n.textContent)
+      && /Pearson r on [\d,]+ cleaned apps/.test(c2n.textContent))
+    ok('chart2: footer no longer repeats the heading/disclosure text (keeps n)');
+  else fail(`chart2 footer still duplicated or lost its content: ${c2n ? c2n.textContent.slice(0, 90) : 'missing'}`);
 
   // chart3 is data-aware: real date column → stacked bars; no dates → gap card
   const hasDates = rows.some(r => r.last_updated);
