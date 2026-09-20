@@ -129,7 +129,7 @@ function renderChart1(){
      silently distorted. */
   // Kept so the legend can filter the plot with a restyle instead of rebuilding
   // ~17k-point arrays from DF on every click.
-  CH1 = { rows, pts:{x, y, sizes, colors, cd}, hidden:new Set() };
+  CH1 = { rows, pts:{x, y, sizes, colors, cd}, selected:new Set() };
 
   const ordered = [...sizes].sort((a,b)=>a-b);
   const sizeCap = ordered[Math.floor(ordered.length*0.95)] || ordered[ordered.length-1] || 1;
@@ -182,9 +182,13 @@ function renderChart1(){
 let CH1 = null;
 
 function chart1VisibleIndices(){
-  if(!CH1 || CH1.hidden.size === 0) return null;      // null = show everything
+  // Selection is INCLUSIVE: an empty selection means no filter, so everything is
+  // shown, and once categories are selected ONLY those are drawn. Selecting a
+  // category is how you isolate it — the first version inverted this and hid
+  // what you clicked, which is backwards.
+  if(!CH1 || CH1.selected.size === 0) return null;
   const idx = [];
-  for(let k=0;k<CH1.rows.length;k++) if(!CH1.hidden.has(CH1.rows[k].category)) idx.push(k);
+  for(let k=0;k<CH1.rows.length;k++) if(CH1.selected.has(CH1.rows[k].category)) idx.push(k);
   return idx;
 }
 
@@ -207,8 +211,11 @@ function applyChart1Filter(){
   const shown = idx === null ? CH1.rows.length : idx.length;
   const count = document.getElementById('chart1count');
   if(count) count.textContent = idx === null
-    ? `${CH1.rows.length.toLocaleString()} apps`
-    : `${shown.toLocaleString()} of ${CH1.rows.length.toLocaleString()} apps`;
+    ? `Showing all ${CH1.rows.length.toLocaleString()} apps`
+    : `Showing ${shown.toLocaleString()} of ${CH1.rows.length.toLocaleString()} apps`;
+  // Dim the unselected entries only while a filter is active.
+  const box = document.getElementById('chart1legend');
+  if(box && box.classList) box.classList.toggle('filtered', idx !== null);
   const reset = document.getElementById('chart1reset');
   if(reset && 'hidden' in reset) reset.hidden = (idx === null);
 }
@@ -224,13 +231,14 @@ function renderChart1Legend(cats, catColor, catCount, sizeCap){
     + `<span class="legend-note">Bubble area &prop; installs, capped at the 95th `
     + `percentile (${capInstalls.toLocaleString()}+ installs) so the common range `
     + `stays readable. 48 categories share a 10-colour palette — hover any bubble `
-    + `for its exact category. <b>Select categories below to filter the plot.</b></span>`
+    + `for its exact category. <b>Select a category to show only those apps — `
+    + `with none selected, all are shown.</b></span>`
     + `<span class="legend-status"><span id="chart1count"></span>`
     + `<button type="button" class="legend-reset" id="chart1reset" hidden>Reset</button></span>`
     + `</div>`
     + `<div class="legend-items">`
     + cats.map(c=>`<button type="button" class="legend-item" data-cat="${esc(c)}" `
-      + `aria-pressed="true" title="${esc(c)}: ${catCount.get(c)||0} apps">`
+      + `aria-pressed="false" title="${esc(c)}: ${catCount.get(c)||0} apps">`
       + `<i style="background:${catColor.get(c)}"></i>${esc(c)}<b>${catCount.get(c)||0}</b></button>`).join('')
     + `</div>`;
 
@@ -239,20 +247,15 @@ function renderChart1Legend(cats, catColor, catCount, sizeCap){
     b.addEventListener('click', ()=>{
       const cat = b.getAttribute('data-cat');
       if(cat === null) return;
-      if(CH1.hidden.has(cat)) CH1.hidden.delete(cat); else CH1.hidden.add(cat);
-      const off = CH1.hidden.has(cat);
-      b.setAttribute('aria-pressed', off ? 'false' : 'true');
-      if(b.classList) b.classList.toggle('off', off);
+      if(CH1.selected.has(cat)) CH1.selected.delete(cat); else CH1.selected.add(cat);
+      b.setAttribute('aria-pressed', CH1.selected.has(cat) ? 'true' : 'false');
       applyChart1Filter();
     });
   });
   const reset = document.getElementById('chart1reset');
   if(reset && reset.addEventListener) reset.addEventListener('click', ()=>{
-    CH1.hidden.clear();
-    if(items && items.forEach) items.forEach(b=>{
-      b.setAttribute('aria-pressed', 'true');
-      if(b.classList) b.classList.remove('off');
-    });
+    CH1.selected.clear();              // no filter = show everything again
+    if(items && items.forEach) items.forEach(b=>b.setAttribute('aria-pressed', 'false'));
     applyChart1Filter();
   });
   applyChart1Filter();

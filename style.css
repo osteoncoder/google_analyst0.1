@@ -51,6 +51,11 @@ p,span{
     color:var(--subtext);
 }
 :root{
+  /* Without this the browser renders native controls - selects, their
+     popup lists, scrollbars - with LIGHT defaults no matter what the CSS
+     says, which is where the white edge came from. It makes the UA paint
+     them dark, so the CSS below can finish the job. */
+  color-scheme:dark;
   --void:#05040c;
   --base:#0a0918;
   --surface:#120f24;
@@ -391,6 +396,10 @@ details.why strong{color:var(--text-hi);}
    radius, border and padding as a text input. */
 .ml-form select{
   -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  background-color:var(--surface-2);   /* explicit: the UA default is white */
+  color:var(--text-hi);
+  border:1px solid var(--border);
+  border-radius:10px;
   padding-right:34px;                 /* room for the chevron */
   cursor:pointer;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23b1a8cf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
@@ -566,10 +575,10 @@ details.perf-fold > div{
   transition:border-color .15s, color .15s, background .15s, opacity .15s;
 }
 .chart-legend .legend-item:hover{color:var(--text-hi); border-color:var(--border-hi);}
-/* Deselected categories are struck through and dimmed, but stay clickable and
-   keep their accessible pressed-state, so the filter is reversible. */
-.chart-legend .legend-item[aria-pressed="false"]{opacity:.45;}
-.chart-legend .legend-item[aria-pressed="false"] i{background:var(--text-low) !important;}
+/* Dim only once a filter is active. With nothing selected every category is
+   on screen, so nothing should look switched off. Unselected entries stay
+   clickable and keep their pressed-state, so the filter is always reversible. */
+.chart-legend.filtered .legend-item[aria-pressed="false"]{opacity:.45;}
 .chart-legend .legend-item i{width:8px; height:8px; border-radius:50%; flex:none;}
 .chart-legend .legend-item b{color:var(--text-mid); font-weight:500;}
 .chart-legend .legend-reset{

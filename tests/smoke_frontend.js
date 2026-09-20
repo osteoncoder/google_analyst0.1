@@ -184,10 +184,15 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   // standalone legend check, which needs a DOM richer than this stub.
   const legendEl = elements.get('chart1legend');
   const toggles = legendEl ? (legendEl.innerHTML.match(/class="legend-item"/g) || []).length : 0;
-  if (legendEl && toggles === 48 && legendEl.innerHTML.includes('aria-pressed="true"')
+  // Nothing is selected on load, so no entry is pressed and every app is shown:
+  // selection is inclusive (pick categories to isolate them), not exclusive.
+  const pressed = legendEl ? (legendEl.innerHTML.match(/aria-pressed="(true|false)"/g) || []) : [];
+  if (legendEl && toggles === 48 && pressed.length === 48
+      && legendEl.innerHTML.includes('aria-pressed="false"')
+      && !legendEl.innerHTML.includes('aria-pressed="true"')
       && legendEl.innerHTML.includes('id="chart1reset"')
       && legendEl.innerHTML.includes('<button'))
-    ok(`chart1: legend is 48 toggle buttons with aria-pressed + a reset control`);
+    ok(`chart1: legend is 48 toggle buttons, none pressed on load (inclusive filter) + reset`);
   else fail(`chart1 legend is not interactive (${toggles} items, hasReset=${legendEl ? legendEl.innerHTML.includes('chart1reset') : 'no element'})`);
 
   const c2 = plots['chart2'];
