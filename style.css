@@ -68,6 +68,29 @@ p,span{
   --border-hi:rgba(168,85,247,0.45);
   --glass:rgba(255,255,255,0.035);
   --glass-hi:rgba(255,255,255,0.06);
+  /* --purple and --purple-lt were referenced by the focus-outline rules but
+     never declared, so those outlines computed to no colour at all and focus
+     was effectively invisible on keyboard navigation. Declared now. */
+  --purple:#8b5cf6;
+  --purple-lt:#c4b5fd;
+  /* Feedback states, for validation and result messaging. */
+  --danger:#fb7185;
+  --success:#4ade80;
+  --warning:#fbbf62;
+  --info:#38bdf8;
+  /* Type and spacing scale, so sizes come from one place. */
+  --text-xs:11px;
+  --text-sm:12.5px;
+  --text-base:14px;
+  --text-lg:16px;
+  --text-xl:20px;
+  --text-2xl:26px;
+  --space-1:4px;
+  --space-2:8px;
+  --space-3:12px;
+  --space-4:16px;
+  --space-6:24px;
+  --space-8:32px;
   --radius:18px;
   --font-display:'Sora',sans-serif;
   --font-body:'Inter',sans-serif;
@@ -502,3 +525,69 @@ details.perf-fold > div{
 }
 .chart-legend .legend-item i{width:8px; height:8px; border-radius:50%; flex:none;}
 .chart-legend .legend-item b{color:var(--text-mid); font-weight:500;}
+
+/* ================================================================
+   Accessibility & interaction feedback
+   ================================================================ */
+
+/* WCAG 2.4.7 Focus Visible, and 1.4.11 Non-text Contrast for the ring itself.
+   One consistent ring on every interactive element. :where() keeps specificity
+   at zero so component styles can still override it. The variables this uses
+   were missing for a long time — see :root. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{
+  outline:2px solid var(--purple-lt);
+  outline-offset:2px;
+}
+
+/* WCAG 2.4.1 Bypass Blocks: keyboard users can jump straight to the content. */
+.skip-link{
+  position:absolute; left:-9999px; top:0; z-index:200;
+  background:var(--purple-deep); color:#fff; font-weight:600;
+  font-size:var(--text-sm); padding:var(--space-3) var(--space-4);
+  border-radius:0 0 10px 0; text-decoration:none;
+}
+.skip-link:focus{ left:0; }
+
+/* Form feedback. :user-invalid only matches after the user has actually
+   interacted, so fields do not shout at people before they have typed. */
+.ml-form input:user-invalid, .ml-form select:user-invalid{
+  border-color:var(--danger);
+  box-shadow:0 0 0 3px rgba(251,113,133,0.16);
+}
+.field-error{
+  display:block; margin-top:var(--space-1);
+  color:var(--danger); font-size:var(--text-xs); font-weight:500;
+}
+/* Every predictor field is optional (blank values are imputed, and each
+   imputation is listed with the result), so say so once instead of per field. */
+.form-note{
+  font-size:var(--text-xs); color:var(--text-mid); line-height:1.6;
+  margin:0 0 var(--space-2); padding:var(--space-2) var(--space-3);
+  border-left:2px solid var(--purple-deep); background:var(--glass);
+  border-radius:0 6px 6px 0;
+}
+
+/* Busy state for the predict buttons: disabled, announced via aria-busy, and
+   visibly working rather than just sitting there looking clickable. */
+.ml-form button[aria-busy="true"]{ opacity:.8; cursor:progress; }
+.spinner{
+  display:inline-block; width:13px; height:13px; margin-right:var(--space-2);
+  border:2px solid rgba(10,9,22,0.3); border-top-color:#0a0916;
+  border-radius:50%; animation:apex-spin .7s linear infinite; vertical-align:-2px;
+}
+@keyframes apex-spin{ to{ transform:rotate(360deg); } }
+/* Respect a reduced-motion preference: slow it rather than stop it, so the
+   button still reads as working. */
+@media (prefers-reduced-motion:reduce){
+  .spinner{ animation-duration:2.4s; }
+  .ml-form button:hover{ transform:none; }
+}
+
+/* WCAG 2.5.5 Target Size (Enhanced) asks for 44x44. On touch-sized screens
+   every control gets it; the disclosure pills keep their padding but still
+   clear the 24px AA minimum of 2.5.8. */
+@media (max-width:768px){
+  .ml-form input, .ml-form select, .ml-form button,
+  .nav-toggle, .retry-btn{ min-height:44px; }
+  details.why > summary{ min-height:32px; padding-top:7px; padding-bottom:7px; }
+}

@@ -422,6 +422,24 @@ python app.py</pre>
 /* Banner explaining WHERE the numbers came from. Nothing here is a fallback
    value: the metrics are the measured training results either way, and the
    prediction engine is stated explicitly. */
+/* Both predict forms used to give no feedback between "submit" and "result"
+   beyond a line of grey text, with the button still looking clickable — so it
+   was double-submittable. The button now carries the state: disabled,
+   aria-busy, and a spinner. */
+function setBusy(btn, busy, busyLabel){
+  if(!btn) return;
+  if(busy){
+    if(btn.dataset.idleLabel === undefined) btn.dataset.idleLabel = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner" aria-hidden="true"></span>' + busyLabel;
+  }else{
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+    if(btn.dataset.idleLabel !== undefined) btn.innerHTML = btn.dataset.idleLabel;
+  }
+}
+
 function showMlNotice(){
   const el = document.getElementById('mlNotice');
   if(!el) return;
@@ -509,6 +527,8 @@ function initRatingForm(){
       return;
     }
     result.innerHTML = '<p class="tiny">Predicting…</p>';
+    const btn = form.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Predicting…');
     try{
       const out = await predictRating({
         category: cat,
@@ -531,6 +551,8 @@ function initRatingForm(){
     }catch(err){
       result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
         + backendHint(err) + sampleNote();
+    }finally{
+      setBusy(btn, false);   // never leave the button stuck in its busy state
     }
   });
 }
@@ -591,6 +613,8 @@ function initTierForm(){
       return;
     }
     result.innerHTML = '<p class="tiny">Predicting…</p>';
+    const btn = form.querySelector('button[type="submit"]');
+    setBusy(btn, true, 'Predicting…');
     try{
       const out = await predictTier({
         category: cat,
@@ -626,6 +650,8 @@ function initTierForm(){
     }catch(err){
       result.innerHTML = `<div class="pred-error">Prediction failed: ${err.message}</div>`
         + backendHint(err) + sampleNote();
+    }finally{
+      setBusy(btn, false);   // never leave the button stuck in its busy state
     }
   });
 }

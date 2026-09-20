@@ -58,6 +58,19 @@ class El {
   getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
   /* Real elements return a NodeList; the tests only ever iterate it. */
   querySelectorAll() { return { forEach() {} }; }
+  /* The submit button the predict forms drive through their busy state. Kept on
+     the element so a test can inspect it afterwards. */
+  querySelector() {
+    if (!this._submitBtn) {
+      this._submitBtn = {
+        dataset: {}, innerHTML: '', disabled: false, attrs: {},
+        setAttribute(k, v) { this.attrs[k] = String(v); },
+        removeAttribute(k) { delete this.attrs[k]; },
+        getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; },
+      };
+    }
+    return this._submitBtn;
+  }
 }
 const docListeners = {};
 const plots = {};
@@ -273,7 +286,30 @@ const tick = (ms = 100) => new Promise(r => setTimeout(r, ms));
   await tick();
   const rr = elements.get('ratingResult');
   if (rr && rr.innerHTML.includes('predicted rating')) ok('section 07: submit → inference result rendered');
-  else fail('rating form submission did not render a result');
+  // The button must never be left stuck in its busy state, on success or error.
+  const btnAfter = vm.runInContext(`(() => {
+    const f = document.getElementById('ratingForm');
+    const b = f && f._submitBtn;
+    return b ? { busy: b.getAttribute('aria-busy'), disabled: b.disabled, label: b.innerHTML } : null;
+  })()`, sandbox);
+  if (btnAfter && btnAfter.busy === null && btnAfter.disabled === false)
+    ok('section 07: submit button leaves its busy state (aria-busy cleared, re-enabled)');
+  else fail(`section 07: submit button stuck busy (${JSON.stringify(btnAfter)})`);
+  const spun = vm.runInContext(`(() => {
+    const f = document.getElementById('ratingForm');
+    const b = f && f._submitBtn;
+    if (!b) return false;
+    let sawBusy = false;
+    const realSet = b.setAttribute.bind(b);
+    b.setAttribute = (k, v) => { if (k === 'aria-busy' && v === 'true') sawBusy = true; realSet(k, v); };
+    document.getElementById('ratingForm').listeners['submit'][0]({ preventDefault() {} });
+    return sawBusy;
+  })()`, sandbox);
+  if (spun) ok('section 07: button is marked busy while the prediction is in flight');
+  else fail('section 07: no busy state was set during submit');
+  await tick();
+  if (!(rr && rr.innerHTML.includes('predicted rating')))
+    fail('rating form submission did not render a result');
   if (rr && rr.innerHTML.includes('Category used: <strong>Education</strong>') && rr.innerHTML.includes('normalized from your input'))
     ok('section 07: normalized category is shown to the user');
   else fail('section 07 should report the category actually used (and that it was normalized)');
