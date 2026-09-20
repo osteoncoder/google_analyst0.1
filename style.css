@@ -383,6 +383,38 @@ details.why strong{color:var(--text-hi);}
   outline:none;transition:border-color .2s, box-shadow .2s;width:100%;
 }
 .ml-form input:focus,.ml-form select:focus{border-color:var(--border-hi);box-shadow:0 0 0 3px rgba(168,85,247,.14);}
+
+/* The native select paints its own control: a squared-off box with the arrow in
+   a light (on Windows, white) button, and a white option list on open — which
+   is why these read as rectangular with a white edge while the inputs looked
+   rounded. Reset the appearance and draw it ourselves, so a select is the same
+   radius, border and padding as a text input. */
+.ml-form select{
+  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  padding-right:34px;                 /* room for the chevron */
+  cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'><path d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23b1a8cf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  background-size:11px 7px;
+}
+/* The open option list is painted by the OS, so it must be told the theme
+   explicitly or it renders white-on-white. */
+.ml-form select option{ background:var(--surface-2); color:var(--text-hi); }
+.ml-form select::-ms-expand{ display:none; }
+
+/* Number inputs: the spinner arrows are noise here. Every numeric field is
+   optional with a stated default, so nothing needs nudging one step at a time,
+   and the arrows made the fields look heavier than the text ones beside them. */
+.ml-form input[type="number"]{
+  -moz-appearance:textfield;
+  appearance:textfield;
+}
+.ml-form input[type="number"]::-webkit-outer-spin-button,
+.ml-form input[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
 .ml-form input::placeholder{color:var(--text-low);}
 .ml-form button{
   align-self:flex-start;margin-top:4px;cursor:pointer;border:none;border-radius:100px;
