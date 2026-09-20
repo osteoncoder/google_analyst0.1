@@ -666,3 +666,21 @@ details.perf-fold > summary,
 .chart-legend .legend-reset{ line-height:1; align-items:center; }
 details.why > summary{ padding:8px 12px; }
 details.perf-fold > summary{ padding:10px 14px; }
+
+/* One line, not a banner: where the metrics came from, shown next to them. */
+.metrics-source{
+  font-size:var(--text-xs); line-height:1.6; color:var(--text-mid);
+  margin:0 0 var(--space-3); padding:var(--space-2) var(--space-3);
+  border-left:2px solid var(--purple-deep); background:var(--glass);
+  border-radius:0 6px 6px 0;
+}
+.metrics-source:empty{ display:none; }
+
+/* Selects: theme every part the browser paints itself, including the popup.
+   The option list is drawn by the OS in most engines, so it needs its own
+   colours or it comes back white regardless of what the select is set to. */
+.ml-form select option,
+.ml-form select optgroup{ background:var(--surface-2); color:var(--text-hi); }
+.ml-form select:focus,
+.ml-form select:hover{ background-color:var(--surface-2); }
+.ml-form select:disabled{ opacity:.6; }

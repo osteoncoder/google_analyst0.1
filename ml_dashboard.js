@@ -440,23 +440,22 @@ function setBusy(btn, busy, busyLabel){
   }
 }
 
-function showMlNotice(){
-  const el = document.getElementById('mlNotice');
+/* Where the metrics came from, stated once where they are shown.
+
+   This used to be a two-sentence banner above section 07 covering two separate
+   facts. One — which engine produced a prediction — is already disclosed on
+   every single result by engineNote(), so repeating it here was noise. The
+   other — that these numbers were read from the committed snapshot rather than
+   a live API — appears nowhere else, and this project's position is that a
+   fallback is never silent, so it stays: as one line in section 09, next to
+   the numbers it describes, instead of a banner at the top of the page. */
+function showMetricsSource(){
+  const el = document.getElementById('metricsSourceNote');
   if(!el) return;
-  const bits = [];
-  if(METRICS && !METRICS_FROM_API){
-    bits.push('Sections 08–09 below are reading the measured metrics snapshot '
-      + '<code>ml/artifacts/metrics.json</code> directly (the live API did not answer). '
-      + 'The numbers are the real results of the reproducible training run.');
-  }
-  // Only the in-browser path is worth a notice. The backend path is the normal
-  // case, and announcing it added a banner above the predictor for no reason.
-  if(INFERENCE.mode === 'browser'){
-    bits.push('Predictions run <strong>in your browser</strong>: <code>ml_inference.js</code> evaluates '
-      + 'the fitted scikit-learn pipelines exported to <code>ml/artifacts/browser/models.js</code> — '
-      + 'same model, same numbers, no backend needed.');
-  }
-  el.innerHTML = bits.length ? `<p class="warn-note">${bits.join(' ')}</p>` : '';
+  el.innerHTML = (METRICS && !METRICS_FROM_API)
+    ? 'Reading the measured metrics snapshot <code>ml/artifacts/metrics.json</code> '
+      + '(no live backend answered) — the real results of the reproducible training run.'
+    : '';
 }
 
 /* Honest, dataset-driven caveat: never claim "11-row" when the model was
@@ -890,7 +889,7 @@ function renderML(){
         if(e) unavailable(e, note, INFERENCE.error);
       });
     }
-    showMlNotice();
+    showMetricsSource();
 
     try{
       const hit = await loadMetrics();
@@ -899,7 +898,7 @@ function renderML(){
     }catch(err){
       METRICS = null;
       METRICS_FROM_API = false;
-      showMlNotice();
+      showMetricsSource();
       const note = 'Backend reachable but no artifacts yet? Run: python clean.py && python train_models.py';
       ['ratingModelCard','confusionCard','perfContent'].forEach(id=>{
         const e = document.getElementById(id);
@@ -907,7 +906,7 @@ function renderML(){
       });
       return;
     }
-    showMlNotice();
+    showMetricsSource();
     renderRatingModelCard();
     renderConfusionMatrix();
     renderPerfM1();
