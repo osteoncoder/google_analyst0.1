@@ -639,7 +639,7 @@ only viewable.
 | Phase 1 — enriched features + faster training | ✅ **DONE** (2026-09-19) | `13e019f`, `4a4ea57` |
 | Phase 2 — website: hamburger, overflow, charts 1 & 5, trim prose, design-review pass | ✅ **DONE** (2026-09-20) — verified in a browser: no horizontal overflow, render 3289 → 1349 ms, chart 1 sizes fixed, WCAG 2.2 AA met | `34e6a93`, `7a38901`, `3c0e6c8`, `e1305e0`, then the later UI passes `55495b5`…`8e8edf0` |
 | Phase 3 — professionalise the README | ✅ **DONE** (2026-09-20) — TOC with 22 validated anchor links; 4-line lead carrying the final metrics; no-backend mode split into its own section; stale sample MD5 corrected to `7bb2de92ec61`; viva section removed (Phase 4 seed preserved in git) | `38afa0d` |
-| Phase 4 — `VIVA_PREP.txt` | ✅ **DONE** (2026-09-20) — 381-line plain-text file; every number re-read from the measured artifacts (caught the README's 180-per-model parity error → 60/model, 180 total); downloadable from §09 via a `.text-link` that works in all four serving modes | `465c594` |
+| Phase 4 — `VIVA_PREP.txt` | ✅ **DONE** (2026-09-20) — plain-text file; every number re-read from the measured artifacts (caught the README's 180-per-model parity error → 60/model, 180 total); downloadable from §09 via a `.text-link` that works in all four serving modes; extended on request with §4 "The models in plain words" — one analogy per technique (20-Questions trees, practice-test boosting, scorecard logistic regression), details re-verified against the fitted pipelines | `465c594`, `630c364` |
 
 Branch `arena/01a0ba27-google-analyst0-1`. PR **#3** is open and **not merged**
 — merging it is what republishes GitHub Pages.
