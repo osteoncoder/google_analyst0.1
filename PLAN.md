@@ -406,6 +406,19 @@ the ~400 ms jank threshold any more.
 the 1080 px breakpoint, which is the narrow case that mattered. No horizontal
 overflow. ✅
 
+### Round 3 (tried and REVERTED — do not retry)
+
+Replacing chart 1's 17,247-entry hex colour array with palette indices plus a
+10-stop `marker.colorscale` — the theory being that Plotly parses every string
+in a per-point colour array, so numbers would be cheaper. **It was slower
+(467 ms vs 401 ms) and the categories stopped rendering.** Reverted in
+`b6d7ed9`.
+
+Conclusion: chart 1's remaining ~400 ms is Plotly's own WebGL path, not data
+prep. It is not reachable by further array reshaping. Chart 1 is now 3.5× faster
+than it was and no single chart exceeds the jank threshold — **the chart work
+is done**.
+
 WebGL **was** available (`scattergl` engaged), so chart 1's cost was not the
 SVG fallback — it was the trace count.
 
