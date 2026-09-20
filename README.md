@@ -698,7 +698,7 @@ interpretation were valid — with legend/margin fixes for mobile.
   inference call, and — with the API switched off — the dataset still loads
   from `data/apps_bundle.js` (40,000 rows, never the 11-row fallback) while
   both prediction forms fall through to the in-browser engine.
-- `node tests/browser_inference.test.js` — 180 parity cases per model: the JS
+- `node tests/browser_inference.test.js` — 60 parity cases per model (180 across the three tasks): the JS
   engine must reproduce the sklearn pipeline's own output (max abs error
   ~5e-11), plus unknown-category encoding, median imputation and the
   `apps_bundle.js` round-trip.

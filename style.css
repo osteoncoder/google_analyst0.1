@@ -639,6 +639,12 @@ details.perf-fold > summary{ padding:10px 14px; }
 }
 .metrics-source:empty{ display:none; }
 
+/* In-text link (the VIVA_PREP.txt download in section 09). Cyan measures
+   >= 9.4:1 on every surface it can appear over, including the worst-case
+   aurora composite - WCAG AA with margin. */
+.text-link{ color:var(--cyan); text-decoration:underline; text-underline-offset:2px; }
+.text-link:hover{ color:var(--text-hi); }
+
 /* Do NOT set background on option/optgroup. Chromium then switches to its
    CSS-painted popup and leaves the surface around the rows white - dark rows
    on a white margin. With no option styles the whole popup is OS-painted,

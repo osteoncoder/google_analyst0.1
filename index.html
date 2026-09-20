@@ -6,7 +6,7 @@
 <title>APEX &mdash; Play Store Intelligence</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./style.css?v=20260920m">
+<link rel="stylesheet" href="./style.css?v=20260920n">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.32.0/plotly.min.js"></script>
 </head>
 <body>
@@ -334,6 +334,9 @@
           <h2 class="h-center">Model Performance</h2>
           <p class="section-desc">Actual evaluation metrics from the reproducible training run.
           No tuned-to-test numbers, no placeholders.</p>
+          <p class="section-desc">Preparation notes &mdash; <a class="text-link" href="VIVA_PREP.txt" download>download
+          VIVA_PREP.txt</a>: the numbers, their caveats and the questions they
+          answer, as plain text.</p>
           <details class="why"><summary>Protocol</summary>
             <div>Fixed seed; 80/20 train/test split grouped by app name and made
             <em>before</em> any preprocessing; 75/25 train/validation for model selection; the
@@ -401,9 +404,9 @@
 </div>
 
 <!-- load order: data (helpers+loader) → charts (01-06) → inference engine → ml (07-09 + bootstrap) -->
-<script src="./data.js?v=20260920m"></script>
-<script src="./charts.js?v=20260920m"></script>
-<script src="./ml_inference.js?v=20260920m"></script>
-<script src="./ml_dashboard.js?v=20260920m"></script>
+<script src="./data.js?v=20260920n"></script>
+<script src="./charts.js?v=20260920n"></script>
+<script src="./ml_inference.js?v=20260920n"></script>
+<script src="./ml_dashboard.js?v=20260920n"></script>
 </body>
 </html>
