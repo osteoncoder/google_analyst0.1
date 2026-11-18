@@ -734,3 +734,17 @@ interpretation were valid — with legend/margin fixes for mobile.
   labels are automated (e.g. TextBlob-derived). No K-Means. (The primary
   dataset has no sentiment column, so the dashboard correctly omits the
   "Subjectivity" column from chart 02 rather than inventing one.)
+
+### Deploying to Render
+
+The repository root is the Render root directory. For a Python **Web Service**,
+set `PYTHON_VERSION` to `3.11.11`, use build command
+`python -m pip install -r requirements.txt`, and start command `python app.py`.
+Render supplies `PORT`; the application binds to `0.0.0.0` on that port (and
+defaults to 8000 locally). No secrets are required. Set the health check path to
+`/api/health`. `render.yaml` provides these settings for a new Blueprint;
+existing services need their settings updated in the Render dashboard.
+
+The committed model pipelines were trained with scikit-learn 1.9.1; that
+version is required to load them reliably. If deploying a different branch,
+make sure the Render service tracks the branch containing these settings.

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -375,7 +376,7 @@ app.mount("/", _SafeStatic(directory=ROOT, html=True), name="static")
 if __name__ == "__main__":
     import uvicorn
 
-    HOST, PORT = "0.0.0.0", 8000
+    HOST, PORT = "0.0.0.0", int(os.environ.get("PORT", "8000"))
     # uvicorn logs the BIND address (0.0.0.0 = every interface), which a browser
     # cannot open — on Windows it fails with ERR_ADDRESS_NOT_AVAILABLE, and VS
     # Code makes it a clickable link. Print the address that actually works.
